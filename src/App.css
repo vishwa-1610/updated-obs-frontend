@@ -1,0 +1,4 @@
+/* If you keep App.css, make sure it imports Tailwind */
+@import "tailwindcss";
+
+/* Or you can just delete App.css and update main.jsx to import index.css only */
