@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
 import { 
   User, Mail, Phone, MapPin, Calendar, Heart, 
   ArrowRight, Loader2, AlertCircle, ShieldCheck, 
@@ -9,13 +8,16 @@ import {
 } from 'lucide-react';
 import api from '../../api';
 
+// IMPORT THE CONTEXT HOOK
+import { useOnboarding } from '../../context/OnboardingContext';
+
 // --- CONFIGURATION ---
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL; 
 
 // --- STYLES ---
 const INPUT_BASE = "w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-white text-gray-900 text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all duration-200 placeholder-gray-400 hover:border-blue-300 shadow-sm";
 const LABEL_STYLE = "block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1";
-const CARD_STYLE = "bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-xl shadow-slate-200/50 relative transition-all duration-300 hover:shadow-2xl hover:shadow-blue-900/5";
+const CARD_STYLE = "bg-white p-5 md:p-8 rounded-3xl border border-gray-100 shadow-xl shadow-slate-200/50 relative transition-all duration-300 hover:shadow-2xl hover:shadow-blue-900/5";
 
 // --- FULL US STATES LIST ---
 const US_STATES = [
@@ -41,13 +43,13 @@ const US_STATES = [
 // --- COMPONENTS ---
 
 const SuccessModal = () => (
-  <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-    <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4 transform animate-in zoom-in-95 duration-300 border border-white/50">
+  <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300 p-4">
+    <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-auto transform animate-in zoom-in-95 duration-300 border border-white/50">
       <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 text-green-600 shadow-lg shadow-green-500/20">
         <Check size={32} strokeWidth={3} />
       </div>
       <h3 className="text-2xl font-bold text-slate-900 mb-2">Details Saved!</h3>
-      <p className="text-slate-500 text-center mb-2">Proceeding to emergency contacts...</p>
+      <p className="text-slate-500 text-center mb-2">Proceeding to next step...</p>
       <div className="flex gap-1 mt-2">
         <span className="w-2 h-2 bg-green-500 rounded-full animate-bounce delay-0"></span>
         <span className="w-2 h-2 bg-green-500 rounded-full animate-bounce delay-100"></span>
@@ -79,7 +81,7 @@ const FeatureItem = ({ icon: Icon, title, desc }) => (
 );
 
 const InputField = ({ label, name, value, onChange, type = "text", placeholder, icon: Icon, required, width = "full" }) => (
-  <div className={`space-y-1 ${width === 'half' ? 'col-span-1' : 'col-span-1 md:col-span-2'}`}>
+  <div className={`space-y-1 w-full ${width === 'half' ? 'col-span-1' : 'col-span-1 md:col-span-2'}`}>
     <label className={LABEL_STYLE}>{label} {required && <span className="text-blue-600">*</span>}</label>
     <div className="relative group">
       <input type={type} name={name} value={value} onChange={onChange} placeholder={placeholder} className={INPUT_BASE} />
@@ -92,59 +94,42 @@ const InputField = ({ label, name, value, onChange, type = "text", placeholder, 
   </div>
 );
 
-// --- DATE PICKER (Responsive) ---
+// --- IMPROVED DATE PICKER (Responsive + Year Selection) ---
 const CustomDatePicker = ({ label, name, value, onChange, required, icon: Icon, width = "half" }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [view, setView] = useState('days');
+  const [viewMode, setViewMode] = useState('days'); // 'days' or 'years'
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [menuStyle, setMenuStyle] = useState({});
-  const triggerRef = useRef(null);
-  const calendarRef = useRef(null);
   
+  // Ref to detect clicks outside
+  const containerRef = useRef(null);
+
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+  // Handle outside click
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (triggerRef.current && !triggerRef.current.contains(event.target) && calendarRef.current && !calendarRef.current.contains(event.target)) {
-        setIsOpen(false); setView('days');
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+        setViewMode('days');
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
+    if (isOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (isOpen && triggerRef.current) {
-      const updatePosition = () => {
-        const rect = triggerRef.current.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        
-        let style = { position: 'fixed', zIndex: 9999 };
-        
-        // Mobile: Center on screen
-        if (viewportWidth < 768) {
-            style.left = '50%'; style.top = '50%'; style.transform = 'translate(-50%, -50%)'; 
-            style.width = '320px'; style.maxWidth = '90vw';
-        } else {
-            // Desktop: Align to input
-            style.left = `${rect.left}px`; style.width = '320px'; style.transform = 'none';
-            style.top = `${rect.bottom + 4}px`;
-        }
-        setMenuStyle(style);
-      };
-      updatePosition();
-      window.addEventListener('scroll', updatePosition, true); window.addEventListener('resize', updatePosition);
-      return () => { window.removeEventListener('scroll', updatePosition, true); window.removeEventListener('resize', updatePosition); };
-    }
   }, [isOpen]);
 
   const handleDateSelect = (day) => {
     const selected = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+    // Adjust for timezone offset to prevent "day before" bug
     const offset = selected.getTimezoneOffset();
-    const adjustedDate = new Date(selected.getTime() - (offset*60*1000));
+    const adjustedDate = new Date(selected.getTime() - (offset * 60 * 1000));
     onChange({ target: { name, value: adjustedDate.toISOString().split('T')[0] } });
     setIsOpen(false);
+  };
+
+  const handleYearSelect = (year) => {
+    setCurrentDate(new Date(year, currentDate.getMonth(), 1));
+    setViewMode('days');
   };
 
   const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
@@ -162,29 +147,94 @@ const CustomDatePicker = ({ label, name, value, onChange, required, icon: Icon, 
     return days;
   };
 
+  // Generate years for year picker (e.g., 1950 - Current Year + 5)
+  const generateYears = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear - 100; i <= currentYear + 5; i++) {
+      years.push(i);
+    }
+    return years.reverse(); // Newest first
+  };
+
   return (
-    <div className={`space-y-1 ${width === 'half' ? 'col-span-1' : 'col-span-1 md:col-span-2'}`}>
+    <div className={`space-y-1 w-full ${width === 'half' ? 'col-span-1' : 'col-span-1 md:col-span-2'}`} ref={containerRef}>
       <label className={LABEL_STYLE}>{label} {required && <span className="text-blue-600">*</span>}</label>
       <div className="relative">
-        <button ref={triggerRef} type="button" onClick={() => setIsOpen(!isOpen)} className={`${INPUT_BASE} text-left cursor-pointer flex items-center justify-between ${isOpen ? 'border-blue-600 ring-2 ring-blue-500/20' : ''}`}>
+        <button type="button" onClick={() => setIsOpen(!isOpen)} className={`${INPUT_BASE} text-left cursor-pointer flex items-center justify-between ${isOpen ? 'border-blue-600 ring-2 ring-blue-500/20' : ''}`}>
           <span className={`truncate ${value ? 'text-gray-900' : 'text-gray-400'}`}>{value || 'Select date...'}</span>
           <Calendar size={18} className={`transition-colors ${isOpen ? 'text-blue-600' : 'text-slate-400'}`} />
         </button>
         {Icon && <div className={`absolute left-4 top-1/2 -translate-y-1/2 z-10 ${isOpen ? 'text-blue-600' : 'text-slate-400'}`}><Icon size={20} strokeWidth={2.5} /></div>}
         
         {isOpen && (
-            <>
-             <div className="fixed inset-0 bg-black/20 md:hidden z-[9998]" onClick={() => setIsOpen(false)}></div>
-             <div ref={calendarRef} style={menuStyle} className="bg-white rounded-xl border-2 border-gray-200 shadow-2xl p-4 animate-in fade-in zoom-in-95">
-                <div className="flex items-center justify-between mb-4">
-                    <button type="button" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}><ChevronLeft size={18} /></button>
-                    <span className="font-bold text-gray-900">{months[currentDate.getMonth()]} {currentDate.getFullYear()}</span>
-                    <button type="button" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}><ChevronRight size={18} /></button>
-                </div>
-                <div className="grid grid-cols-7 gap-1 text-center mb-2">{daysOfWeek.map(d => <div key={d} className="text-xs font-bold text-gray-400">{d}</div>)}</div>
-                <div className="grid grid-cols-7 gap-1">{generateCalendarDays().map((d, i) => ( <button key={i} type="button" disabled={d.disabled} onClick={() => d.day && handleDateSelect(d.day)} className={`h-8 w-8 rounded-lg text-sm font-medium ${!d.day ? 'invisible' : ''} ${d.isSelected ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}>{d.day}</button>))}</div>
+           <div className="fixed inset-0 md:absolute md:inset-auto md:top-full md:left-0 md:w-80 md:mt-2 z-[9999] flex items-center justify-center md:block">
+             
+             {/* Backdrop for Mobile */}
+             <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm md:hidden" onClick={() => setIsOpen(false)}></div>
+             
+             {/* Calendar Container */}
+             <div className="relative bg-white md:rounded-xl rounded-2xl border-2 border-gray-200 shadow-2xl p-4 w-[90%] max-w-sm md:w-full animate-in fade-in zoom-in-95 flex flex-col max-h-[500px]">
+               
+               {/* Header */}
+               <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
+                   <button type="button" className="p-1 hover:bg-gray-100 rounded-lg" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}><ChevronLeft size={20} /></button>
+                   
+                   {/* Toggle between Month/Year View */}
+                   <button 
+                     type="button" 
+                     onClick={() => setViewMode(viewMode === 'days' ? 'years' : 'days')}
+                     className="font-bold text-gray-900 hover:bg-blue-50 px-3 py-1 rounded-lg transition-colors flex items-center gap-1"
+                   >
+                     {months[currentDate.getMonth()]} {currentDate.getFullYear()}
+                     <ChevronDown size={14} className={`transform transition-transform ${viewMode === 'years' ? 'rotate-180' : ''}`}/>
+                   </button>
+
+                   <button type="button" className="p-1 hover:bg-gray-100 rounded-lg" onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}><ChevronRight size={20} /></button>
+               </div>
+
+               {/* Days View */}
+               {viewMode === 'days' && (
+                 <>
+                   <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                       {daysOfWeek.map(d => <div key={d} className="text-xs font-bold text-gray-400 uppercase">{d}</div>)}
+                   </div>
+                   <div className="grid grid-cols-7 gap-1 overflow-y-auto max-h-[300px] custom-scrollbar">
+                       {generateCalendarDays().map((d, i) => ( 
+                         <button 
+                           key={i} 
+                           type="button" 
+                           disabled={d.disabled} 
+                           onClick={() => d.day && handleDateSelect(d.day)} 
+                           className={`h-9 w-full rounded-lg text-sm font-medium flex items-center justify-center transition-colors
+                             ${!d.day ? 'invisible' : ''} 
+                             ${d.isSelected ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'hover:bg-gray-100 text-gray-700'}
+                           `}
+                         >
+                           {d.day}
+                         </button>
+                       ))}
+                   </div>
+                 </>
+               )}
+
+               {/* Years View */}
+               {viewMode === 'years' && (
+                 <div className="grid grid-cols-4 gap-2 overflow-y-auto max-h-[300px] custom-scrollbar p-1">
+                   {generateYears().map(year => (
+                     <button
+                       key={year}
+                       type="button"
+                       onClick={() => handleYearSelect(year)}
+                       className={`py-2 rounded-lg text-sm font-medium transition-colors ${year === currentDate.getFullYear() ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-gray-100 text-gray-700'}`}
+                     >
+                       {year}
+                     </button>
+                   ))}
+                 </div>
+               )}
              </div>
-            </>
+           </div>
         )}
       </div>
     </div>
@@ -194,70 +244,39 @@ const CustomDatePicker = ({ label, name, value, onChange, required, icon: Icon, 
 // --- CUSTOM DROPDOWN (Responsive) ---
 const CustomDropdown = ({ label, name, value, onChange, options, required, icon: Icon, width = "half", placeholder = "Select..." }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [menuStyle, setMenuStyle] = useState({});
-  const triggerRef = useRef(null);
-  const optionsRef = useRef(null);
+  const containerRef = useRef(null);
 
   useEffect(() => {
-    const handleClickOutside = (e) => { if (triggerRef.current && !triggerRef.current.contains(e.target) && optionsRef.current && !optionsRef.current.contains(e.target)) setIsOpen(false); };
-    document.addEventListener('mousedown', handleClickOutside); return () => document.removeEventListener('mousedown', handleClickOutside);
+    const handleClickOutside = (e) => { 
+        if (containerRef.current && !containerRef.current.contains(e.target)) setIsOpen(false); 
+    };
+    document.addEventListener('mousedown', handleClickOutside); 
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  useEffect(() => {
-    if (isOpen && triggerRef.current) {
-      const updatePosition = () => {
-        const rect = triggerRef.current.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        const optionsHeight = Math.min(options.length * 40 + 20, 300); 
-        
-        let style = { position: 'fixed', zIndex: 9999 };
-
-        // Mobile: Center Logic
-        if (viewportWidth < 768) {
-            style.left = '50%'; style.top = '50%'; style.transform = 'translate(-50%, -50%)'; 
-            style.width = '320px'; style.maxWidth = '90vw'; style.maxHeight = '50vh';
-        } else {
-            // Desktop: Align Logic
-            style.left = `${rect.left}px`; style.width = `${rect.width}px`; 
-            if (window.innerHeight - rect.bottom < optionsHeight && rect.top > optionsHeight) {
-                style.bottom = `${window.innerHeight - rect.top + 4}px`; style.top = 'auto';
-            } else {
-                style.top = `${rect.bottom + 4}px`; style.bottom = 'auto';
-            }
-        }
-        setMenuStyle(style);
-      };
-      updatePosition(); window.addEventListener('scroll', updatePosition, true); window.addEventListener('resize', updatePosition);
-      return () => { window.removeEventListener('scroll', updatePosition, true); window.removeEventListener('resize', updatePosition); };
-    }
-  }, [isOpen, options.length]);
 
   const handleSelect = (val) => { onChange({ target: { name, value: val } }); setIsOpen(false); };
   const selectedOption = options.find(opt => opt.value === value);
 
   return (
-    <div className={`space-y-1 ${width === 'half' ? 'col-span-1' : 'col-span-1 md:col-span-2'}`}>
+    <div className={`space-y-1 w-full ${width === 'half' ? 'col-span-1' : 'col-span-1 md:col-span-2'}`} ref={containerRef}>
       <label className={LABEL_STYLE}>{label} {required && <span className="text-blue-600">*</span>}</label>
       <div className="relative">
-        <button ref={triggerRef} type="button" onClick={() => setIsOpen(!isOpen)} className={`${INPUT_BASE} text-left cursor-pointer flex items-center justify-between ${isOpen ? 'border-blue-600 ring-2 ring-blue-500/20' : ''}`}>
+        <button type="button" onClick={() => setIsOpen(!isOpen)} className={`${INPUT_BASE} text-left cursor-pointer flex items-center justify-between ${isOpen ? 'border-blue-600 ring-2 ring-blue-500/20' : ''}`}>
           <span className={`truncate ${selectedOption ? 'text-gray-900' : 'text-gray-400'}`}>{selectedOption ? selectedOption.label : placeholder}</span>
           <ChevronDown size={18} className={`transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-600' : 'text-slate-400'} shrink-0`} />
         </button>
         {Icon && <div className={`absolute left-4 top-1/2 -translate-y-1/2 z-10 ${isOpen ? 'text-blue-600' : 'text-slate-400'}`}><Icon size={20} strokeWidth={2.5} /></div>}
         
         {isOpen && (
-          <>
-            <div className="fixed inset-0 bg-black/20 md:hidden z-[9998]" onClick={() => setIsOpen(false)}></div>
-            <div ref={optionsRef} style={menuStyle} className="fixed bg-white rounded-xl border-2 border-gray-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 overflow-y-auto max-h-[300px]">
-                <div className="py-1">
-                {options.map((opt) => (
-                    <button key={opt.value} type="button" onClick={() => handleSelect(opt.value)} className={`w-full px-4 py-3 text-left text-sm font-medium flex items-center justify-between hover:bg-blue-50 ${value === opt.value ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700'}`}>
-                    <span>{opt.label}</span> {value === opt.value && <CheckCircle2 size={16} className="text-blue-600" />}
-                    </button>
-                ))}
-                </div>
+          <div className="absolute z-[50] mt-2 w-full bg-white rounded-xl border-2 border-gray-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 max-h-[250px] overflow-y-auto custom-scrollbar">
+            <div className="py-1">
+            {options.map((opt) => (
+                <button key={opt.value} type="button" onClick={() => handleSelect(opt.value)} className={`w-full px-4 py-3 text-left text-sm font-medium flex items-center justify-between hover:bg-blue-50 ${value === opt.value ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700'}`}>
+                <span>{opt.label}</span> {value === opt.value && <CheckCircle2 size={16} className="text-blue-600" />}
+                </button>
+            ))}
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
@@ -273,12 +292,15 @@ const PersonalDetailsPage = () => {
   // 1. GET DATA FROM URL
   const token = searchParams.get('token'); 
   const urlState = searchParams.get('state'); 
+
+  // 2. USE ONBOARDING CONTEXT
+  const { goToNextStep, workflow } = useOnboarding();
   
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  // 2. INITIALIZE STATE (Including State from URL)
+  // 3. INITIALIZE STATE (Including State from URL)
   const [formData, setFormData] = useState({
     first_name: '', middle_initial: '', last_name: '', dob: '', 
     ssn: '', marital_status: '', gender: '',
@@ -286,6 +308,13 @@ const PersonalDetailsPage = () => {
     state: urlState || '', // This auto-selects the state in the dropdown
     zipcode: ''
   });
+
+  // 4. Calculate Dynamic Steps
+  // If workflow is empty (loading), default to 1/1 to prevent NaN
+  const stepName = 'Personal Details';
+  const currentStepIndex = workflow.findIndex(s => s.step_name === stepName);
+  const currentStepNumber = currentStepIndex !== -1 ? currentStepIndex + 1 : 1;
+  const totalSteps = workflow.length > 0 ? workflow.length : 5; // Fallback to 5 if loading
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -302,22 +331,14 @@ const PersonalDetailsPage = () => {
     setIsSubmitting(true);
     
     try {
-      // 3. API CALL (Include Token)
-      // ✅ NEW
-await api.post('/personal-details/', { 
-    token: token, 
-    ...formData 
-});
+      // 5. API CALL (Include Token)
+      await api.post('/personal-details/', { token: token, ...formData });
       
       setShowSuccessModal(true);
       
+      // 6. DYNAMIC NAVIGATION
       setTimeout(() => {
-          // 4. REDIRECT WITH TOKEN AND STATE
-          // We pass 'state' so the next pages (taxes) know which form to load
-          const selectedState = formData.state;
-          const nextUrl = `/emergency-contact?token=${token}&state=${selectedState}`;
-          
-          navigate(nextUrl);
+          goToNextStep(); // This uses the company workflow
       }, 1500);
 
     } catch (err) {
@@ -355,6 +376,7 @@ await api.post('/personal-details/', {
         
         {/* --- LEFT SIDE (Visuals) --- */}
         <div className="hidden lg:flex lg:w-5/12 p-16 sticky top-0 h-screen flex-col bg-slate-900 text-white relative overflow-hidden z-0">
+            
             <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-600/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
             <div className="relative z-10 flex items-center gap-3 mb-12">
@@ -388,13 +410,19 @@ await api.post('/personal-details/', {
             <div className="max-w-2xl w-full mx-auto relative">
                 <div className="hidden lg:flex justify-between items-end mb-6">
                     <div><h2 className="text-3xl font-bold text-slate-900">Personal Details</h2><p className="text-slate-500 mt-1">Please enter your details exactly as on your ID.</p></div>
-                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Step 1/5</span>
+                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                        Step {currentStepNumber}/{totalSteps}
+                    </span>
                 </div>
-                <StepIndicator currentStep={1} totalSteps={5} />
+                
+                {/* DYNAMIC STEP INDICATOR */}
+                <StepIndicator currentStep={currentStepNumber} totalSteps={totalSteps} />
+                
                 {error && <div className="mb-8 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-700 flex items-center gap-3 animate-in fade-in"><AlertCircle className="shrink-0" /> <p className="font-medium text-sm">{error}</p></div>}
                 
                 <form onSubmit={handleSubmit} className="space-y-8 relative">
                     <div className={CARD_STYLE}>
+                        {/* CHANGED: grid-cols-1 for mobile, md:grid-cols-2 for desktop */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <InputField label="First Name" name="first_name" value={formData.first_name} onChange={handleChange} required icon={User} width="half" />
                             <InputField label="Last Name" name="last_name" value={formData.last_name} onChange={handleChange} required icon={User} width="half" />
@@ -413,7 +441,6 @@ await api.post('/personal-details/', {
                             <InputField label="Street Address" name="address" value={formData.address} onChange={handleChange} required icon={Home} width="full" />
                             <InputField label="City" name="city" value={formData.city} onChange={handleChange} required icon={Building2} width="half" />
                             
-                            {/* STATE DROPDOWN WITH PRE-FILL SUPPORT */}
                             <CustomDropdown 
                                 label="State" 
                                 name="state" 

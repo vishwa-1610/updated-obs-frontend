@@ -6,6 +6,7 @@ import templateReducer from './templateSlice';
 import onboardingReducer from './onboardingSlice';
 import companyIntakeReducer from './companyIntakeSlice';
 import authReducer from './authSlice';
+import reportReducer from './reportSlice';
 
 export const store = configureStore({
   reducer: {
@@ -15,6 +16,7 @@ export const store = configureStore({
     template: templateReducer,
     onboarding: onboardingReducer,
     companyIntake: companyIntakeReducer,
+    reports: reportReducer,
     auth: authReducer,
   },
   middleware: (getDefaultMiddleware) =>

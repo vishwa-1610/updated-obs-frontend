@@ -9,7 +9,8 @@ import {
   Shield,
   Menu,
   X,
-  Building
+  Building,
+  FileText
 } from 'lucide-react';
 import { useTheme } from '../Theme/ThemeProvider';
 
@@ -23,6 +24,7 @@ const Sidebar = ({ isOpen, onToggle }) => {
     { id: 'employee', label: 'Employee', icon: Briefcase, path: '/employee' },
     { id: 'subcontractor', label: 'Subcontractor', icon: Building, path: '/subcontractor' },
     { id: 'templates', label: 'Templates', icon: LayoutTemplate, path: '/templates' },
+    { id: 'reports', label: 'Reports', icon: FileText, path: '/reports' },
     { id: 'admin', label: 'Admin', icon: Shield, path: '/admin' },
   ];
 

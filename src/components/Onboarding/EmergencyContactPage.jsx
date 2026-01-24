@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
 import { 
   Users, Phone, Mail, Heart, UserPlus, 
   ArrowRight, Loader2, AlertCircle, MapPin, 
@@ -8,26 +7,28 @@ import {
 } from 'lucide-react';
 
 import api from '../../api';
+
+// 1. IMPORT CONTEXT HOOK
+import { useOnboarding } from '../../context/OnboardingContext';
+
 // --- CONFIGURATION ---
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL; 
 
 // --- STYLES ---
-// Added 'text-base' for better readability on mobile inputs
-const INPUT_BASE = "w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-white text-gray-900 text-base font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all duration-200 placeholder-gray-400 hover:border-blue-300 shadow-sm";
+const INPUT_BASE = "w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-white text-gray-900 text-base font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all duration-200 placeholder-gray-400 hover:border-blue-300 shadow-sm appearance-none";
 const LABEL_STYLE = "block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1";
-// Adjusted padding for mobile (p-5) vs desktop (p-8)
 const CARD_STYLE = "bg-white p-5 md:p-8 rounded-3xl border border-gray-100 shadow-xl shadow-slate-200/50 relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-blue-900/5";
 
 // --- COMPONENTS ---
 
 const SuccessModal = () => (
-  <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300 px-4">
+  <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300 p-4">
     <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full transform animate-in zoom-in-95 duration-300 border border-white/50">
       <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 text-green-600 shadow-lg shadow-green-500/20">
         <Check size={32} strokeWidth={3} />
       </div>
       <h3 className="text-2xl font-bold text-slate-900 mb-2">Contacts Saved!</h3>
-      <p className="text-slate-500 text-center mb-2">Proceeding to tax forms...</p>
+      <p className="text-slate-500 text-center mb-2">Proceeding to next step...</p>
       <div className="flex gap-1 mt-2">
         <span className="w-2 h-2 bg-green-500 rounded-full animate-bounce delay-0"></span>
         <span className="w-2 h-2 bg-green-500 rounded-full animate-bounce delay-100"></span>
@@ -82,9 +83,10 @@ const InputField = ({ label, name, value, onChange, type = "text", placeholder, 
 const EmergencyContactPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
   const token = searchParams.get('token'); 
-  const stateParam = searchParams.get('state');
+  
+  // 2. GET WORKFLOW DATA
+  const { goToNextStep, workflow } = useOnboarding();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -95,39 +97,42 @@ const EmergencyContactPage = () => {
     ec2_name: '', ec2_relationship: '', ec2_phone: '', ec2_email: '', ec2_address: ''
   });
 
+  // 3. CALCULATE DYNAMIC STEP NUMBER
+  // We match the name 'Emergency Contact' with the backend step name
+  const stepName = 'Emergency Contact';
+  const currentStepIndex = workflow.findIndex(s => s.step_name === stepName);
+  const currentStepNumber = currentStepIndex !== -1 ? currentStepIndex + 1 : 2; // Default to 2 if not found
+  const totalSteps = workflow.length > 0 ? workflow.length : 5;
+
   const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.ec1_name || !formData.ec1_relationship || !formData.ec1_phone) {
         setError("Please complete the Primary Contact section.");
-        window.scrollTo(0,0);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
     }
 
     setIsSubmitting(true);
-    // ✅ NEW
-try {
-    // 1. Use 'api.post'
-    // 2. Remove URL and '/api' prefix
-    await api.post('/emergency-contact/', { 
+    
+    try {
+      await api.post('/emergency-contact/', { 
         token: token,
         ...formData 
-    });
+      });
         
-        setShowSuccessModal(true);
+      setShowSuccessModal(true);
 
-        setTimeout(() => {
-            const nextUrl = stateParam 
-                ? `/federal?token=${token}&state=${stateParam}`
-                : `/federal?token=${token}`;
-            navigate(nextUrl);
-        }, 1500);
+      // 4. USE DYNAMIC NAVIGATION
+      setTimeout(() => {
+          goToNextStep(); // Automatically finds the next active step
+      }, 1500);
 
     } catch (err) {
         console.error(err);
         setError("Connection failed. Please try again.");
-        window.scrollTo(0,0);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         setIsSubmitting(false);
     }
   };
@@ -154,6 +159,7 @@ try {
         
         {/* --- LEFT SIDE: HIDDEN ON MOBILE (< lg) --- */}
         <div className="hidden lg:flex lg:w-5/12 p-16 sticky top-0 h-screen flex-col bg-slate-900 text-white relative overflow-hidden z-0">
+            
             <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-600/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
 
@@ -196,7 +202,7 @@ try {
                     <Users size={28} />
                 </div>
                 <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Emergency Info</h1>
-                <p className="text-slate-500 mt-2 text-sm px-6">Please provide contacts we can reach in case of an emergency.</p>
+                <p className="text-slate-500 mt-2 text-sm px-4">Please provide contacts we can reach in case of an emergency.</p>
             </div>
 
             <div className="max-w-3xl w-full mx-auto relative">
@@ -207,11 +213,11 @@ try {
                         <p className="text-slate-500 mt-1">Please provide accurate contact details.</p>
                     </div>
                     <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
-                        Step 2/5
+                        Step {currentStepNumber}/{totalSteps}
                     </span>
                 </div>
                 
-                <StepIndicator currentStep={2} totalSteps={5} />
+                <StepIndicator currentStep={currentStepNumber} totalSteps={totalSteps} />
 
                 {error && (
                     <div className="mb-8 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-700 flex items-center gap-3 animate-in fade-in">
@@ -230,7 +236,7 @@ try {
                             <h3 className="text-lg md:text-xl font-bold text-slate-900">Primary Contact (Required)</h3>
                         </div>
 
-                        {/* Grid changes from 1 col on mobile to 2 cols on desktop */}
+                        {/* MOBILE: grid-cols-1, DESKTOP: grid-cols-2 */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
                             <div className="col-span-1 md:col-span-2">
                                 <InputField label="Full Name" name="ec1_name" value={formData.ec1_name} onChange={handleChange} icon={UserPlus} required placeholder="e.g. Jane Doe" />

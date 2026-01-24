@@ -40,6 +40,9 @@ import CompanyBranding from './components/companyIntake/CompanyBranding';
 import CompanyHosting from './components/companyIntake/CompanyHosting';
 import CompanyPayment from './components/companyIntake/CompnayPayment';
 import Profile from './components/Layout/Profile';
+import AlabamaW4Form from './components/Onboarding/StateForms/AlabamaW4Form';
+import Reports from './components/Layout/Report';
+import {OnboardingProvider} from './context/OnboardingContext';
 
 // --- ScrollToTop Component ---
 const ScrollToTop = () => {
@@ -130,11 +133,14 @@ function AppContent() {
               <Route path="/client" element={<Client />} />
               <Route path="/employee" element={<Employee />} />
               <Route path="/subcontractor" element={<Subcontractor />} />
+              <Route path="/reports" element={<Reports />} />
               <Route path="/templates" element={<Templates />} />
               <Route path="/admin" element={<Admin />} />
           </Route>
 
           {/* 3. PROTECTED EMPLOYEE ROUTES (Navbar HIDDEN) */}
+<OnboardingProvider>
+          <Routes>
           <Route element={<OnboardingLayout />}>
               <Route path="/personal-details" element={<PersonalDetailsPage />} />
               <Route path="/emergency-contact" element={<EmergencyContactPage />} />
@@ -142,7 +148,12 @@ function AppContent() {
               <Route path="/state" element={<StateTaxPage />} />
               <Route path="/i9" element={<I9Form />} />
               <Route path="/direct-deposit" element={<DirectDepositPage />} />
+              {/* <Route path="/alabama" element={<AlabamaW4Form />} /> */}
           </Route>
+
+          </Routes>
+
+          </OnboardingProvider>
 
           {/* 4. COMPANY INTAKE ROUTES (Navbar HIDDEN) */}
           <Route path="/landing" element={<LandingPage />} />

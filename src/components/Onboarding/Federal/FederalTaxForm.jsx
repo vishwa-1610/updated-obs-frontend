@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import SignatureCanvas from 'react-signature-canvas';
-import axios from 'axios'; 
 import { 
-  User, DollarSign, FileText, Calculator, 
-  PenTool, CheckCircle, ChevronRight, AlertCircle, MapPin,
-  FileCheck, ArrowRight, Eye, ListChecks, Shield, Sparkles,
-  ShieldCheck, Zap, FileJson, Check, Loader2
+  User, DollarSign, Calculator, 
+  PenTool, AlertCircle, Sparkles,
+  ArrowRight, Check, Loader2
 } from 'lucide-react';
 import api from '../../../api';
 
+// 1. IMPORT CONTEXT HOOK
+import { useOnboarding } from '../../../context/OnboardingContext';
+
 // --- CONFIGURATION ---
-const API_BASE_URL = 'https://secureobs.tiswatech.com'; 
-const NO_STATE_TAX_STATES = ['TX', 'FL', 'NV', 'WA', 'TN', 'NH', 'SD', 'WY', 'AK'];
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL; 
 
 // --- STYLES ---
 const INPUT_BASE = "w-full pl-4 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-white text-gray-900 text-base font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all duration-200 placeholder-gray-400 hover:border-blue-300 shadow-sm disabled:bg-gray-100 disabled:text-gray-500";
@@ -55,25 +55,6 @@ const SuccessModal = ({ isOpen, onContinue, pdfUrl }) => {
           <p className="text-slate-500 mt-1 text-center">Your document has been securely signed.</p>
         </div>
         <div className="p-6 space-y-4">
-            {/* <button 
-                type="button" 
-                onClick={() => {
-                    if (pdfUrl) {
-                        const link = document.createElement('a');
-                        link.href = pdfUrl;
-                        link.target = '_blank';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    } else {
-                        alert("PDF is still generating...");
-                    }
-                }}
-                className="w-full flex items-center justify-center gap-3 p-4 rounded-xl border-2 border-blue-100 bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 transition-all group"
-            > */}
-                {/* <FileCheck size={20} /> */}
-                {/* <span>View Signed Document</span> */}
-            {/* </button> */}
             <button type="button" onClick={onContinue} className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-lg shadow-lg shadow-slate-900/20 hover:bg-slate-800 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
                 <span>Continue </span>
                 <ArrowRight size={20} />
@@ -106,6 +87,9 @@ const FederalTaxPage = () => {
   // 1. GET TOKEN AND STATE
   const token = searchParams.get('token');
   const urlState = searchParams.get('state') || '';
+
+  // 2. USE CONTEXT FOR WORKFLOW
+  const { goToNextStep, workflow } = useOnboarding();
 
   const sigCanvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -150,6 +134,13 @@ const FederalTaxPage = () => {
     signature_image: null
   });
 
+  // 3. DYNAMIC STEP CALCULATION
+  // Assumes backend step_name is "W2" based on context mapping, or "Federal W4"
+  const stepName = 'W2'; 
+  const currentStepIndex = workflow.findIndex(s => s.step_name === stepName);
+  const currentStepNumber = currentStepIndex !== -1 ? currentStepIndex + 1 : 3;
+  const totalSteps = workflow.length > 0 ? workflow.length : 5;
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const finalValue = name === 'state' ? value.toUpperCase() : value;
@@ -189,16 +180,15 @@ const FederalTaxPage = () => {
     setIsSubmitting(true);
     setError(null);
     try {
-      // 2. SEND TOKEN IN PAYLOAD
       const payload = { 
           token: token, 
           ...formData 
       };
       
       const response = await api.post('/federal-tax/', payload, { 
-    responseType: 'blob', 
-    validateStatus: (status) => status < 500 
-});
+        responseType: 'blob', 
+        validateStatus: (status) => status < 500 
+      });
 
       if (response.headers['content-type'].includes('application/json')) {
           const text = await response.data.text();
@@ -221,16 +211,9 @@ const FederalTaxPage = () => {
   };
 
   const handleContinue = () => {
-      // 3. LOGIC FOR NEXT STEP
-      // Checks if the state needs a specific tax form. If not, skips to I-9.
-      const code = formData.state.trim().toUpperCase();
-      const needsStateTax = !NO_STATE_TAX_STATES.includes(code);
-      
-      if (needsStateTax) {
-          navigate(`/state?token=${token}&state=${code}`);
-      } else {
-          navigate(`/i9?token=${token}`);
-      }
+      // 4. DYNAMIC NAVIGATION
+      // This automatically finds the next step configured in the company dashboard
+      goToNextStep();
   };
 
   // Add scrollbar styles
@@ -265,8 +248,8 @@ const FederalTaxPage = () => {
                 <h1 className="text-5xl font-extrabold leading-tight mb-6 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">Federal Tax <br/> Setup.</h1>
                 <p className="text-slate-400 text-lg leading-relaxed mb-10 max-w-md">Complete your W-4 form accurately to ensure correct federal tax withholding.</p>
                 <div className="space-y-4 mb-8">
-                    <FeatureItem icon={FileJson} title="Auto-Generated PDF" desc="We create the official IRS W-4 form for you." />
-                    <FeatureItem icon={ShieldCheck} title="Legally Binding" desc="Secure digital signature compliant." />
+                    <FeatureItem icon={Loader2} title="Auto-Generated PDF" desc="We create the official IRS W-4 form for you." />
+                    <FeatureItem icon={AlertCircle} title="Legally Binding" desc="Secure digital signature compliant." />
                     <FeatureItem icon={Calculator} title="Tax Calculator" desc="Built-in worksheets for accuracy." />
                 </div>
                 <div className="w-full max-w-sm mt-4 transform hover:scale-105 transition-transform duration-500 opacity-80"><img src="https://illustrations.popsy.co/amber/finance.svg" alt="Finance Illustration" className="w-full h-auto drop-shadow-2xl"/></div>
@@ -287,10 +270,14 @@ const FederalTaxPage = () => {
                 {/* Desktop Header */}
                 <div className="hidden lg:flex justify-between items-end mb-6">
                     <div><h2 className="text-3xl font-bold text-slate-900">Federal Tax (W-4)</h2><p className="text-slate-500 mt-1">Employee's Withholding Certificate.</p></div>
-                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Step 3/5</span>
+                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                        Step {currentStepNumber}/{totalSteps}
+                    </span>
                 </div>
                 
-                <StepIndicator currentStep={3} totalSteps={5} />
+                {/* DYNAMIC INDICATOR */}
+                <StepIndicator currentStep={currentStepNumber} totalSteps={totalSteps} />
+                
                 {error && <div className="mb-8 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-700 flex items-center gap-3 animate-in fade-in"><AlertCircle className="shrink-0" /> <p className="font-medium text-sm">{error}</p></div>}
 
                 <form onSubmit={handleSubmit} className="space-y-8 relative">

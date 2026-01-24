@@ -11,8 +11,11 @@ import {
 
 import api from '../../../api';
 
+// 1. IMPORT CONTEXT HOOK
+import { useOnboarding } from '../../../context/OnboardingContext';
+
 // --- CONFIGURATION ---
-const API_BASE_URL = 'https://secureobs.tiswatech.com';
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 // --- STYLES ---
 const INPUT_BASE = "w-full pl-4 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-white text-gray-900 text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all duration-200 placeholder-gray-400 hover:border-blue-300 shadow-sm disabled:bg-gray-50 disabled:text-gray-500";
@@ -56,13 +59,8 @@ const SuccessModal = ({ isOpen, onClose, message, pdfUrl, onNext }) => {
           <p className="text-sm text-slate-500 mb-0 leading-relaxed text-center">{message || "Your Employment Eligibility form has been successfully generated."}</p>
         </div>
         <div className="p-6 space-y-3">
-            {/* {pdfUrl && (
-              <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center w-full px-4 py-3.5 text-sm font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-all group">
-                <FileText className="mr-2 h-5 w-5" /> View Signed I-9
-              </a>
-            )} */}
             <button type="button" className="w-full px-4 py-3.5 text-lg font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 shadow-lg transition-colors flex items-center justify-center" onClick={onNext}>
-              Continue to Direct Deposit <ArrowRight className="ml-2 h-5 w-5" />
+              Continue <ArrowRight className="ml-2 h-5 w-5" />
             </button>
         </div>
       </div>
@@ -218,6 +216,9 @@ const I9FormPage = () => {
   // 1. GET TOKEN
   const token = searchParams.get('token');
 
+  // 2. USE CONTEXT FOR WORKFLOW
+  const { goToNextStep, workflow } = useOnboarding();
+
   const sigCanvasRef = useRef({});
   const containerRef = useRef(null);
 
@@ -227,6 +228,12 @@ const I9FormPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [successData, setSuccessData] = useState({});
   const [error, setError] = useState(null);
+
+  // 3. DYNAMIC STEP CALCULATION
+  const stepName = 'I9'; 
+  const currentStepIndex = workflow.findIndex(s => s.step_name === stepName);
+  const currentStepNumber = currentStepIndex !== -1 ? currentStepIndex + 1 : 5;
+  const totalSteps = workflow.length > 0 ? workflow.length : 5;
 
   // Form State
   const [formData, setFormData] = useState({
@@ -247,14 +254,13 @@ const I9FormPage = () => {
     signature_image: null
   });
 
-  // 2. Fetch Data using Token
+  // 4. Fetch Data using Token
   useEffect(() => {
     if (!token) return;
     const fetchData = async () => {
       try {
         setLoading(true);
         // Use the public validate endpoint
-        // ✅ NEW
         const res = await api.get(`/onboarding/validate/${token}/`);
         const data = res.data;
         
@@ -282,7 +288,7 @@ const I9FormPage = () => {
     fetchData();
   }, [token]);
 
-  // 3. Resize Canvas
+  // 5. Resize Canvas
   useEffect(() => {
     const resizeCanvas = () => {
         if (containerRef.current && sigCanvasRef.current) {
@@ -323,8 +329,7 @@ const I9FormPage = () => {
     try {
       // Send TOKEN instead of ID
       const payload = { ...formData, token: token };
-      // ✅ NEW
-const res = await api.post('/submit-i9/', payload);
+      const res = await api.post('/submit-i9/', payload);
       setSuccessData(res.data);
       setModalOpen(true);
     } catch (err) {
@@ -336,8 +341,9 @@ const res = await api.post('/submit-i9/', payload);
   };
 
   const handleNext = () => {
-      // Navigate to Direct Deposit with Token
-      navigate(`/direct-deposit?token=${token}`);
+      // 6. DYNAMIC NAVIGATION
+      // Finds the next active step in the company workflow
+      goToNextStep();
   };
 
   // Add scrollbar styles
@@ -401,10 +407,13 @@ const res = await api.post('/submit-i9/', payload);
             <div className="w-full relative max-w-3xl mx-auto">
                 <div className="hidden lg:flex justify-between items-end mb-6">
                     <div><h2 className="text-3xl font-bold text-slate-900">Employment Eligibility (I-9)</h2><p className="text-slate-500 mt-1">Please complete all sections accurately.</p></div>
-                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Step 5/6</span>
+                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                        Step {currentStepNumber}/{totalSteps}
+                    </span>
                 </div>
                 
-                <StepIndicator currentStep={5} totalSteps={6} />
+                {/* DYNAMIC INDICATOR */}
+                <StepIndicator currentStep={currentStepNumber} totalSteps={totalSteps} />
                 
                 {error && <div className="mb-8 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-700 flex items-center gap-3 animate-in fade-in"><AlertCircle className="shrink-0" /> <p className="font-medium text-sm">{error}</p></div>}
 

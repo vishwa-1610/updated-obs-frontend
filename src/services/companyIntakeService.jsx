@@ -44,7 +44,17 @@ export const companyIntakeService = {
   }),
 
   // --- SIGNATURE ---
-  getDigitalSignature: () => api.get('digital-signature/'),
+  getDigitalSignature: () => api.get('digital-signatures/'), 
+
+  // 2. Create New (POST + FormData)
+  createDigitalSignature: (formData) => api.post('digital-signatures/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+
+  // 3. Update Existing (PATCH + FormData + ID)
+  updateDigitalSignature: (id, formData) => api.patch(`digital-signatures/${id}/`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
   saveDigitalSignature: (data) => api.patch('digital-signature/', data),
 
   // --- BRANDING ---

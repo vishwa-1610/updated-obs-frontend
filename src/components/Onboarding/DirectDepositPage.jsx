@@ -10,6 +10,10 @@ import {
 } from 'lucide-react';
 
 import api from '../../api';
+
+// 1. IMPORT CONTEXT HOOK
+import { useOnboarding } from '../../context/OnboardingContext';
+
 // --- CONFIGURATION ---
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -56,7 +60,7 @@ const SuccessModal = ({ isOpen, onClose }) => {
           <h3 className="text-2xl font-bold text-slate-900 mb-2">Setup Complete!</h3>
           <p className="text-sm text-slate-500 mb-8 leading-relaxed">Your direct deposit information has been securely saved.</p>
           <button type="button" className="w-full px-4 py-3.5 text-sm font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 shadow-lg transition-colors" onClick={onClose}>
-            Go to Dashboard
+            Finish Onboarding
           </button>
         </div>
       </div>
@@ -95,6 +99,9 @@ const DirectDepositPage = () => {
   const token = searchParams.get('token');
   const navigate = useNavigate();
 
+  // 2. USE CONTEXT FOR WORKFLOW
+  const { goToNextStep, workflow } = useOnboarding();
+
   const sigCanvasRef = useRef({});
   const containerRef = useRef(null);
 
@@ -120,6 +127,12 @@ const DirectDepositPage = () => {
       percentage: '100.00'
     }
   ]);
+
+  // 3. DYNAMIC STEP CALCULATION
+  const stepName = 'Direct Deposit Form';
+  const currentStepIndex = workflow.findIndex(s => s.step_name === stepName);
+  const currentStepNumber = currentStepIndex !== -1 ? currentStepIndex + 1 : 6;
+  const totalSteps = workflow.length > 0 ? workflow.length : 6;
 
   const totalPercentage = bankAccounts.reduce((sum, acc) => sum + (parseFloat(acc.percentage) || 0), 0);
   const isTotalValid = Math.abs(totalPercentage - 100.00) < 0.01;
@@ -232,8 +245,7 @@ const DirectDepositPage = () => {
           signature_image: signatureImage // Send signature if backend saves it
       };
 
-      // ✅ NEW
-await api.post('/bank-details/', payload);
+      await api.post('/bank-details/', payload);
       setSuccessModalOpen(true); // Open Success Modal
 
     } catch (err) {
@@ -268,8 +280,9 @@ await api.post('/bank-details/', payload);
   };
 
   const handleFinish = () => {
-      // Redirect to home or login after success
-      window.location.href = '/login'; 
+      // 4. DYNAMIC NAVIGATION
+      // Finds the next active step in the company workflow
+      goToNextStep();
   };
 
   // Add scrollbar styles
@@ -319,9 +332,13 @@ await api.post('/bank-details/', payload);
             <div className="w-full relative max-w-3xl mx-auto">
                 <div className="hidden lg:flex justify-between items-end mb-6">
                     <div><h2 className="text-3xl font-bold text-slate-900">Direct Deposit Setup</h2><p className="text-slate-500 mt-1">Configure your payment preferences.</p></div>
-                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Step 6/6</span>
+                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                        Step {currentStepNumber}/{totalSteps}
+                    </span>
                 </div>
-                <StepIndicator currentStep={6} totalSteps={6} />
+                
+                {/* DYNAMIC INDICATOR */}
+                <StepIndicator currentStep={currentStepNumber} totalSteps={totalSteps} />
                 
                 {/* --- TOTAL ALLOCATION BAR --- */}
                 <div className="mb-6 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm sticky top-4 z-20">
