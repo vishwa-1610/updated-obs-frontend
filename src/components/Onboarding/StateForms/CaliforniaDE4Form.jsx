@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import { User, Shield, DollarSign, Calendar, ChevronLeft, ChevronRight, ChevronDown, Eraser, Save, PenTool, Loader2, XCircle, CheckCircle, Calculator } from 'lucide-react';
+import { 
+  User, Shield, DollarSign, Calendar, ChevronLeft, ChevronRight, 
+  ChevronDown, Eraser, Save, PenTool, Loader2, XCircle, CheckCircle, Calculator 
+} from 'lucide-react';
 
 // --- COMPONENTS ---
 
@@ -44,7 +47,7 @@ const ErrorModal = ({ isOpen, title, message, onClose }) => {
   );
 };
 
-// 3. CUSTOM DATE PICKER (Polished)
+// 3. CUSTOM DATE PICKER
 const CustomDatePicker = ({ label, name, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('calendar');
@@ -63,13 +66,6 @@ const CustomDatePicker = ({ label, name, value, onChange, placeholder }) => {
   }, []);
 
   useEffect(() => { if (value) setCurrentDate(new Date(value)); }, [value]);
-
-  useEffect(() => {
-    if (view === 'year' && yearScrollRef.current) {
-        const selectedYearEl = yearScrollRef.current.querySelector('.selected-year');
-        if (selectedYearEl) selectedYearEl.scrollIntoView({ block: 'center' });
-    }
-  }, [view]);
 
   const changeMonth = (offset) => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1));
 
@@ -92,7 +88,7 @@ const CustomDatePicker = ({ label, name, value, onChange, placeholder }) => {
         <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
       </div>
       {isOpen && (
-        <div className="absolute z-50 mb-2 p-4 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 bg-white w-72 bottom-full left-0 bg-white text-gray-800">
+        <div className="absolute z-50 mb-2 p-4 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 bg-white w-72 bottom-full left-0 text-gray-800">
            <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
               {view === 'calendar' && <button type="button" onClick={() => changeMonth(-1)}><ChevronLeft size={18}/></button>}
               <div className="flex gap-2">
@@ -126,6 +122,7 @@ const CaliforniaDE4Form = ({ initialData, onSubmit }) => {
 
   // UI STATES
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showWorksheetB, setShowWorksheetB] = useState(false); // ✅ Added Toggle State
   const [errorState, setErrorState] = useState({ isOpen: false, title: '', message: '' });
 
   // DATA STATE
@@ -135,7 +132,7 @@ const CaliforniaDE4Form = ({ initialData, onSubmit }) => {
     address: '', city: '', state: 'CA', zipcode: '',
     
     // Page 1 Fields
-    filing_status: '1', // 1=Single, 2=Married (1 income), 3=Head of Household
+    filing_status: '1', 
     additional_withholding: '',
     exempt: false,
     military_spouse_exempt: false,
@@ -152,7 +149,7 @@ const CaliforniaDE4Form = ({ initialData, onSubmit }) => {
     signature_image: null
   });
 
-  // Initialize
+  // Initialize Data
   useEffect(() => {
     if (initialData && !dataLoadedRef.current) {
         setLocalData(prev => ({
@@ -160,20 +157,18 @@ const CaliforniaDE4Form = ({ initialData, onSubmit }) => {
             ...initialData,
             state: 'CA',
             zipcode: (initialData.zipcode || '').slice(0, 5),
-            // Ensure numerics
-            allow_self: 1, // Default 1 for self
+            allow_self: 1, 
         }));
         dataLoadedRef.current = true;
     }
   }, [initialData]);
 
-  // Canvas Resize
+  // Canvas Resize Logic
   useEffect(() => {
     const resizeCanvas = () => {
         if (containerRef.current && sigCanvasRef.current) {
             const canvas = sigCanvasRef.current.getCanvas();
             const rect = containerRef.current.getBoundingClientRect();
-            // Only resize if needed
             if (canvas.width !== rect.width || canvas.height !== rect.height) {
                 const saved = sigCanvasRef.current.isEmpty() ? null : sigCanvasRef.current.toDataURL();
                 canvas.width = rect.width;
@@ -189,17 +184,13 @@ const CaliforniaDE4Form = ({ initialData, onSubmit }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
-    // Zip limit
     if (name === 'zipcode') {
         setLocalData(prev => ({ ...prev, [name]: value.replace(/\D/g, '').slice(0, 5) }));
         return;
     }
-
     setLocalData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  // --- SIGNATURE HANDLER (Using standard getCanvas) ---
   const handleSignatureEnd = () => {
     if (sigCanvasRef.current && !sigCanvasRef.current.isEmpty()) {
         const sig = sigCanvasRef.current.getCanvas().toDataURL('image/png');
@@ -212,58 +203,40 @@ const CaliforniaDE4Form = ({ initialData, onSubmit }) => {
     setLocalData(prev => ({ ...prev, signature_image: null }));
   };
 
-  // --- SUBMIT HANDLER (Strict Validation) ---
-// --- SUBMIT HANDLER (Strict Validation + Data Sanitization) ---
   const handleSubmit = async (e) => {
       e.preventDefault();
       
-      // 1. Capture Signature
       let sig = localData.signature_image;
       if (sigCanvasRef.current && !sigCanvasRef.current.isEmpty()) {
           sig = sigCanvasRef.current.getCanvas().toDataURL('image/png');
       }
 
-      // 2. Validate Signature
       if (!sig) {
-          setErrorState({ 
-              isOpen: true, 
-              title: "Missing Signature",
-              message: "Please sign the form in the 'Digital Signature' box before submitting." 
-          });
+          setErrorState({ isOpen: true, title: "Missing Signature", message: "Please sign the form in the 'Digital Signature' box before submitting." });
           return;
       }
 
-      // 3. Validate Basic Info
       if (!localData.first_name || !localData.last_name || !localData.ssn) {
-          setErrorState({
-              isOpen: true,
-              title: "Missing Information",
-              message: "Please ensure your First Name, Last Name, and SSN are filled out."
-          });
+          setErrorState({ isOpen: true, title: "Missing Information", message: "Please ensure your First Name, Last Name, and SSN are filled out." });
           return;
       }
 
-      // 4. Submit
       setIsSubmitting(true);
 
       try {
-          // HELPER: Convert empty strings to 0 to prevent backend 400 errors
           const cleanNumber = (val) => (val === '' || val === null || isNaN(val)) ? 0 : val;
 
           const finalData = { 
               ...localData, 
-              // Sanitize numeric fields
               itemized_deductions: cleanNumber(localData.itemized_deductions),
               adjustments_income: cleanNumber(localData.adjustments_income),
               non_wage_income: cleanNumber(localData.non_wage_income),
               additional_withholding: cleanNumber(localData.additional_withholding),
-              // Ensure allowances are numbers
               allow_self: cleanNumber(localData.allow_self),
               allow_spouse: cleanNumber(localData.allow_spouse),
               allow_blind_self: cleanNumber(localData.allow_blind_self),
               allow_blind_spouse: cleanNumber(localData.allow_blind_spouse),
               allow_dependents: cleanNumber(localData.allow_dependents),
-              
               signature_image: sig 
           };
 
@@ -273,25 +246,21 @@ const CaliforniaDE4Form = ({ initialData, onSubmit }) => {
       } catch (error) {
           console.error("Submission Error:", error);
           setIsSubmitting(false);
-          // Safely extract error message (handles nested serializer errors too)
           let msg = "Something went wrong. Please try again.";
           if (error.response?.data) {
               if (typeof error.response.data === 'string') {
                   msg = error.response.data;
               } else if (error.response.data.error) {
                   msg = error.response.data.error;
-              } else {
-                  // If it's a field error object like {"itemized_deductions": ["Invalid number"]}
-                  const firstKey = Object.keys(error.response.data)[0];
-                  msg = `${firstKey}: ${error.response.data[firstKey][0]}`;
               }
           }
           setErrorState({ isOpen: true, title: "Submission Failed", message: msg });
       }
   };
-  // Calculations for UI display
+
+  // --- CALCULATIONS ---
   const worksheetATotal = parseInt(localData.allow_self || 0) + parseInt(localData.allow_spouse || 0) + parseInt(localData.allow_blind_self || 0) + parseInt(localData.allow_blind_spouse || 0) + parseInt(localData.allow_dependents || 0);
-  const standardDeduction = 5540; // Approx 2024 value
+  const standardDeduction = 5540; 
   const itemized = parseInt(localData.itemized_deductions || 0);
   const adjustments = parseInt(localData.adjustments_income || 0);
   const nonWage = parseInt(localData.non_wage_income || 0);
@@ -300,6 +269,8 @@ const CaliforniaDE4Form = ({ initialData, onSubmit }) => {
   const line5 = line3 + adjustments;
   const line7 = Math.max(line5 - nonWage, 0);
   const worksheetBAllowances = Math.floor(line7 / 1000);
+  
+  // ✅ GRAND TOTAL
   const totalAllowances = worksheetATotal + worksheetBAllowances;
 
   // --- STYLES ---
@@ -312,16 +283,8 @@ const CaliforniaDE4Form = ({ initialData, onSubmit }) => {
 
   return (
     <>
-      {/* 1. LOADING OVERLAY */}
       {isSubmitting && <LoadingOverlay />}
-
-      {/* 2. ERROR MODAL */}
-      <ErrorModal 
-        isOpen={errorState.isOpen} 
-        title={errorState.title}
-        message={errorState.message} 
-        onClose={() => setErrorState({ isOpen: false, title: '', message: '' })} 
-      />
+      <ErrorModal isOpen={errorState.isOpen} title={errorState.title} message={errorState.message} onClose={() => setErrorState({ isOpen: false, title: '', message: '' })} />
 
       <div className="bg-white px-4 py-2 text-left max-w-5xl mx-auto relative">
         <div className="mb-10 text-center">
@@ -375,13 +338,61 @@ const CaliforniaDE4Form = ({ initialData, onSubmit }) => {
                 <div className="sm:col-span-2"><label className={labelClass}>Allowance for Dependents</label><input type="number" name="allow_dependents" value={localData.allow_dependents} onChange={handleChange} className={inputClass} min="0" /></div>
             </div>
             
-            <div className="flex items-center justify-between p-6 bg-blue-50 rounded-xl border border-blue-100">
-                <div className="flex items-center gap-2">
-                    <CheckCircle className="text-blue-600" size={20}/>
-                    <span className="font-bold text-blue-900">Total Regular Allowances (Line 1a)</span>
+            {/* ✅ UPDATED SUMMARY BOX (A + B) */}
+            <div className="grid grid-cols-2 gap-4 mt-6">
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center">
+                    <span className="block text-xs font-bold text-gray-500 uppercase">Worksheet A Count</span>
+                    <span className="text-xl font-bold text-gray-700">{worksheetATotal}</span>
                 </div>
-                <span className="text-2xl font-bold text-blue-600">{worksheetATotal}</span>
+                <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 text-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-blue-100/50 transform -skew-x-12 translate-x-full animate-[shimmer_2s_infinite]"></div>
+                    <span className="block text-xs font-bold text-blue-600 uppercase relative z-10">Total Allowances (Line 1c)</span>
+                    <span className="text-2xl font-extrabold text-blue-700 relative z-10">{totalAllowances}</span>
+                </div>
             </div>
+          </section>
+
+          {/* ✅ WORKSHEET B (OPTIONAL) - ADDED HERE */}
+          <section className={sectionClass}>
+            <div 
+                className="flex justify-between items-center cursor-pointer" 
+                onClick={() => setShowWorksheetB(!showWorksheetB)}
+            >
+                <h3 className={headerClass.replace('mb-6 pb-4 border-b border-gray-100', 'mb-0 pb-0 border-0')}>
+                    <Calculator className="text-blue-600" size={24}/> 
+                    Worksheet B: Estimated Deductions (Optional)
+                </h3>
+                <ChevronDown size={20} className={`transform transition-transform ${showWorksheetB ? 'rotate-180' : ''}`}/>
+            </div>
+
+            {showWorksheetB && (
+                <div className="mt-6 pt-6 border-t border-gray-100 animate-in fade-in slide-in-from-top-2">
+                    <p className="text-sm text-gray-500 mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                        Complete this ONLY if you expect to itemize deductions on your California income tax return.
+                    </p>
+
+                    <div className="space-y-6">
+                        <div>
+                            <label className={labelClass}>1. Estimated Itemized Deductions ($)</label>
+                            <input type="number" name="itemized_deductions" value={localData.itemized_deductions} onChange={handleChange} className={inputClass} placeholder="0" min="0"/>
+                        </div>
+                        <div>
+                            <label className={labelClass}>2. Adjustments to Income (Alimony, IRA, etc) ($)</label>
+                            <input type="number" name="adjustments_income" value={localData.adjustments_income} onChange={handleChange} className={inputClass} placeholder="0" min="0"/>
+                        </div>
+                        <div>
+                            <label className={labelClass}>3. Non-Wage Income (Dividends, Interest) ($)</label>
+                            <input type="number" name="non_wage_income" value={localData.non_wage_income} onChange={handleChange} className={inputClass} placeholder="0" min="0"/>
+                        </div>
+
+                        {/* RESULT BOX */}
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 mt-4">
+                            <span className="font-bold text-gray-600 text-sm">Additional Allowances Calculated:</span>
+                            <span className="text-xl font-bold text-blue-600">{worksheetBAllowances}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
           </section>
 
           {/* WITHHOLDING ADJUSTMENTS */}

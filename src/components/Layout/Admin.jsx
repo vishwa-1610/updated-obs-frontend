@@ -3,16 +3,16 @@ import SignatureCanvas from 'react-signature-canvas';
 import { 
   Users, Briefcase, GitMerge, FileText, PenTool, 
   Palette, CreditCard, Plus, Edit2, X, ToggleLeft, ToggleRight,
-  GripVertical, Download, ShieldCheck, Mail, ChevronDown, Menu, Check,Loader2,ChevronRight ,
-  ChevronLeft, ChevronRight as ChevronRightIcon, UploadCloud, CheckCircle
+  GripVertical, Download, ShieldCheck, Mail, ChevronDown, Menu, Check, Loader2,
+  ChevronRight as ChevronRightIcon, ChevronLeft, UploadCloud, CheckCircle
 } from 'lucide-react';
 import { companyIntakeService } from '../../services/companyIntakeService';
 import { useTheme } from '../Theme/ThemeProvider';
 import SuccessModal from '../common/Modal/SuccessModal';
-import api from '../../api'; // ✅ Using direct API to fix service mismatch
+import api from '../../api'; 
 
 // ==========================================
-// 1. UI COMPONENTS (Stunning UI)
+// 1. UI COMPONENTS (Stunning UI & Prop Cleaned)
 // ==========================================
 
 const StunningSelect = ({ label, value, onChange, options, isDarkMode }) => {
@@ -54,14 +54,57 @@ const SidebarItem = ({ id, label, icon: Icon, active, collapsed, onClick }) => (
   <button onClick={() => onClick(id)} title={collapsed ? label : ''} className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 font-medium text-sm group relative overflow-hidden ${collapsed ? 'w-full justify-center' : 'w-full'} ${active ? 'text-white bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'}`}>
     <Icon size={20} className={`transition-colors shrink-0 ${active ? 'text-white' : 'group-hover:text-white'}`} />
     {!collapsed && <span className="relative z-10 whitespace-nowrap animate-in fade-in duration-300">{label}</span>}
-    {!collapsed && active && <ChevronRight size={16} className="ml-auto text-white animate-in slide-in-from-left-2" />}
+    {!collapsed && active && <ChevronRightIcon size={16} className="ml-auto text-white animate-in slide-in-from-left-2" />}
   </button>
 );
 
-const GradientCard = ({ children, className = '', isDarkMode }) => (<div className={`relative overflow-hidden rounded-2xl ${isDarkMode ? 'bg-slate-800/50' : 'bg-white'} border ${isDarkMode ? 'border-slate-700/50' : 'border-slate-200/50'} shadow-lg shadow-black/5 transition-all duration-300 ${className}`}><div className={`absolute inset-0 bg-gradient-to-br ${isDarkMode ? 'from-blue-500/5 to-purple-500/5' : 'from-blue-50/50 to-purple-50/50'}`}></div><div className="relative z-10">{children}</div></div>);
-const TableContainer = ({ title, description, onAdd, actionLabel, children, isDarkMode }) => (<GradientCard isDarkMode={isDarkMode} className="h-full flex flex-col"><div className="p-6 border-b border-slate-200/50 dark:border-slate-700/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"><div><h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{title}</h2><p className={`text-sm mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{description}</p></div>{onAdd && (<button onClick={onAdd} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95 hover:-translate-y-0.5">{actionLabel === 'Edit' ? <Edit2 size={16}/> : <Plus size={16}/>}{actionLabel || 'Add New'}</button>)}</div><div className="overflow-x-auto w-full flex-1">{children}</div></GradientCard>);
-const DetailRow = ({ label, value, isDarkMode }) => (<div className="flex justify-between items-center py-3 border-b border-dashed border-slate-100 dark:border-slate-700/50 last:border-0"><span className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{label}</span><span className={`font-medium text-sm truncate max-w-[200px] ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>{value || '--'}</span></div>);
-const CustomInput = ({ label, name, value, onChange, type = "text", placeholder, isDarkMode }) => (<div className="space-y-1.5"><label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{label}</label><div className="relative group"><input type={type} name={name} value={value || ''} onChange={onChange} placeholder={placeholder} className={`w-full px-4 py-3 rounded-xl border outline-none transition-all font-medium ${isDarkMode ? 'bg-slate-900/50 border-slate-700 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 placeholder:text-slate-600' : 'bg-white border-slate-200 text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 placeholder:text-slate-400'}`}/></div></div>);
+// ✅ Fix: Cleaned props to avoid React warnings
+const GradientCard = ({ children, className = '', isDarkMode }) => (
+  <div className={`relative overflow-hidden rounded-2xl ${isDarkMode ? 'bg-slate-800/50' : 'bg-white'} border ${isDarkMode ? 'border-slate-700/50' : 'border-slate-200/50'} shadow-lg shadow-black/5 transition-all duration-300 ${className}`}>
+    <div className={`absolute inset-0 bg-gradient-to-br ${isDarkMode ? 'from-blue-500/5 to-purple-500/5' : 'from-blue-50/50 to-purple-50/50'}`}></div>
+    <div className="relative z-10">{children}</div>
+  </div>
+);
+
+const TableContainer = ({ title, description, onAdd, actionLabel, children, isDarkMode }) => (
+  <GradientCard isDarkMode={isDarkMode} className="h-full flex flex-col">
+    <div className="p-6 border-b border-slate-200/50 dark:border-slate-700/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div>
+        <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{title}</h2>
+        <p className={`text-sm mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{description}</p>
+      </div>
+      {onAdd && (
+        <button onClick={onAdd} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95 hover:-translate-y-0.5">
+          {actionLabel === 'Edit' ? <Edit2 size={16}/> : <Plus size={16}/>}{actionLabel || 'Add New'}
+        </button>
+      )}
+    </div>
+    <div className="overflow-x-auto w-full flex-1">{children}</div>
+  </GradientCard>
+);
+
+const DetailRow = ({ label, value, isDarkMode }) => (
+  <div className="flex justify-between items-center py-3 border-b border-dashed border-slate-100 dark:border-slate-700/50 last:border-0">
+    <span className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{label}</span>
+    <span className={`font-medium text-sm truncate max-w-[200px] ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>{value || '--'}</span>
+  </div>
+);
+
+const CustomInput = ({ label, name, value, onChange, type = "text", placeholder, isDarkMode }) => (
+  <div className="space-y-1.5">
+    <label className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{label}</label>
+    <div className="relative group">
+      <input 
+        type={type} 
+        name={name} 
+        value={value || ''} 
+        onChange={onChange} 
+        placeholder={placeholder} 
+        className={`w-full px-4 py-3 rounded-xl border outline-none transition-all font-medium ${isDarkMode ? 'bg-slate-900/50 border-slate-700 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 placeholder:text-slate-600' : 'bg-white border-slate-200 text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 placeholder:text-slate-400'}`}
+      />
+    </div>
+  </div>
+);
 
 // ==========================================
 // 2. MAIN DASHBOARD
@@ -91,7 +134,6 @@ const CompanyDashboard = () => {
   // Refs
   const signaturePad = useRef(null);
   const [notification, setNotification] = useState({ show: false, type: 'success', message: '' });
-  const [showSecret, setShowSecret] = useState(false);
   
   // Drag & Drop
   const [dragItem, setDragItem] = useState(null);
@@ -142,7 +184,7 @@ const CompanyDashboard = () => {
             const res = await companyIntakeService.getCompanyDocuments();
             if (mounted) setListData(Array.isArray(res.data) ? res.data : []);
         } else if (activeTab === 'signature') {
-            const res = await api.get('digital-signatures/'); // ✅ Fixed Endpoint
+            const res = await api.get('digital-signatures/');
             if (mounted) setListData(Array.isArray(res.data) ? res.data : (res.data.results || []));
         } else if (activeTab === 'payment') {
             setData({}); 
@@ -175,7 +217,6 @@ const CompanyDashboard = () => {
         else if (activeTab === 'type') await companyIntakeService.setCompanyType(data);
         else if (activeTab === 'payment') await companyIntakeService.savePayment(data);
         else if (activeTab === 'signature') {
-            // ✅ FIX: Use API Directly + FormData
             const formData = new FormData();
             formData.append('first_name', modalData.first_name || '');
             formData.append('last_name', modalData.last_name || '');
@@ -183,7 +224,9 @@ const CompanyDashboard = () => {
             formData.append('signature_style', modalData.signature_style || 'STYLE_1');
 
             if (signaturePad.current && !signaturePad.current.isEmpty()) {
-                const base64String = signaturePad.current.getTrimmedCanvas().toDataURL('image/png');
+                // ✅ CRITICAL FIX: Changed from getTrimmedCanvas() to toDataURL()
+                // getTrimmedCanvas causes issues in many bundlers (Vite/Webpack)
+                const base64String = signaturePad.current.toDataURL('image/png');
                 formData.append('signature_image_base64', base64String);
             } else if (modalData.uploadedFile) {
                 formData.append('generated_signature_image', modalData.uploadedFile);
@@ -191,7 +234,6 @@ const CompanyDashboard = () => {
 
             const config = { headers: { 'Content-Type': 'multipart/form-data' } };
             
-            // Call API directly to avoid Service Mismatch
             if (modalData.id) {
                 await api.patch(`digital-signatures/${modalData.id}/`, formData, config);
             } else {
@@ -349,44 +391,29 @@ const CompanyDashboard = () => {
     </div>
   );
 
-  // --- RETURN: ✅ FIX - LAYOUT STRUCTURE (PT-16 + Fixed Sidebar Top-16) ---
   return (
     <div className={`flex w-full min-h-screen font-sans pt-16 ${isDarkMode ? 'bg-[#0f172a] text-slate-200' : 'bg-slate-50 text-slate-800'}`}>
       
-      {/* Mobile Backdrop */}
       {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)}></div>}
 
-      {/* Mobile Toggle */}
       <button onClick={() => setSidebarOpen(true)} className="lg:hidden fixed bottom-6 right-6 z-50 p-4 bg-blue-600 text-white rounded-full shadow-lg"><Menu size={24}/></button>
 
-      {/* ✅ SIDEBAR: Fixed BELOW the main navbar (top-16) */}
-     {/* ✅ SIDEBAR: Fixed BELOW the Navbar */}
       <aside className={`
           fixed left-0 z-40 flex flex-col 
           bg-slate-900 border-r border-slate-800 shadow-2xl 
           transition-transform duration-300 transform 
-          
-          /* 1. POSITIONING: Start 4rem (64px) from the top */
           top-32 
-          
-          /* 2. HEIGHT: Fill the rest of the screen (100vh - 4rem) */
           h-[calc(100vh-4rem)]
-          
-          /* 3. MOBILE: Slide in/out logic */
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
           lg:translate-x-0 
-          
-          /* 4. WIDTH: Shrink logic */
           ${collapsed ? 'w-20' : 'w-72'} 
       `}>
-        {/* Header */}
         <div className={`h-20 flex items-center ${collapsed ? 'justify-center px-0' : 'px-6'} border-b border-slate-800/50 bg-transparent shrink-0 relative transition-all`}>
             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0">{(companyInfo.name || 'T').charAt(0).toUpperCase()}</div>
             {!collapsed && <div className="overflow-hidden ml-3 animate-in fade-in duration-300"><span className="block font-bold text-white text-sm truncate">{companyInfo.name}</span><span className="block text-[10px] text-slate-400 font-mono mt-0.5 truncate">Admin Portal</span></div>}
             <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:flex absolute -right-3 top-7 w-6 h-6 bg-blue-600 rounded-full text-white items-center justify-center border-2 border-slate-900 hover:bg-blue-500 transition-transform hover:scale-110 z-50">{collapsed ? <ChevronRightIcon size={12} /> : <ChevronLeft size={12} />}</button>
         </div>
 
-        {/* Links */}
         <div className="flex-1 overflow-y-auto custom-scrollbar py-6 px-3 space-y-2">
             <SidebarItem id="users" label="Users" icon={Users} active={activeTab === 'users'} collapsed={collapsed} onClick={setActiveTab} />
             <SidebarItem id="contacts" label="Contacts" icon={Mail} active={activeTab === 'contacts'} collapsed={collapsed} onClick={setActiveTab} />
@@ -401,7 +428,6 @@ const CompanyDashboard = () => {
         </div>
       </aside>
 
-      {/* ✅ MAIN CONTENT: Pushed right to clear sidebar */}
       <main className={`flex-1 min-h-full transition-all duration-300 ${collapsed ? 'lg:ml-20' : 'lg:ml-72'}`}>
         <div className="p-6 md:p-10 pb-24">
             {fetching ? (
@@ -421,7 +447,6 @@ const CompanyDashboard = () => {
         </div>
       </main>
 
-      {/* MODAL SECTION */}
       {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in">
               <div className={`w-full max-w-lg rounded-3xl shadow-2xl p-8 max-h-[90vh] overflow-y-auto border transform scale-100 transition-all ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-white'}`}>
@@ -452,7 +477,7 @@ const CompanyDashboard = () => {
                                 options={[ { value: 'admin', label: 'Admin (Full Access)' }, { value: 'staff', label: 'Staff (Limited Access)' } ]}
                              />
                           </div>
-                       )}
+                        )}
 
                       {/* SIGNATURE FORM */}
                       {modalType === 'signature' && (
@@ -487,8 +512,7 @@ const CompanyDashboard = () => {
                         </div>
                       )}
 
-                       {/* Keep other forms (Contacts, Type, etc) */}
-                       {modalType === 'contacts' && (
+                        {modalType === 'contacts' && (
                           <div className="space-y-4">
                              <h4 className="font-bold text-blue-600 text-xs uppercase">Admin</h4>
                              <div className="grid grid-cols-2 gap-4"><CustomInput label="First Name" name="admin_first_name" value={data.admin_first_name} onChange={(e) => setData({...data, admin_first_name: e.target.value})} isDarkMode={isDarkMode}/><CustomInput label="Last Name" name="admin_last_name" value={data.admin_last_name} onChange={(e) => setData({...data, admin_last_name: e.target.value})} isDarkMode={isDarkMode}/></div>
@@ -497,20 +521,20 @@ const CompanyDashboard = () => {
                              <div className="grid grid-cols-2 gap-4"><CustomInput label="First Name" name="billing_first_name" value={data.billing_first_name} onChange={(e) => setData({...data, billing_first_name: e.target.value})} isDarkMode={isDarkMode}/><CustomInput label="Last Name" name="billing_last_name" value={data.billing_last_name} onChange={(e) => setData({...data, billing_last_name: e.target.value})} isDarkMode={isDarkMode}/></div>
                              <CustomInput label="Email" name="billing_main_email" value={data.billing_main_email} onChange={(e) => setData({...data, billing_main_email: e.target.value})} isDarkMode={isDarkMode}/><CustomInput label="Phone" name="billing_mobile" value={data.billing_mobile} onChange={(e) => setData({...data, billing_mobile: e.target.value})} isDarkMode={isDarkMode}/>
                           </div>
-                       )}
+                        )}
 
-                       {modalType === 'type' && (
+                        {modalType === 'type' && (
                            <div className="grid grid-cols-2 gap-4">{['OWN', 'STAFFING'].map(t => (<div key={t} onClick={() => setData({...data, industry_type: t})} className={`p-4 border-2 rounded-xl cursor-pointer text-center transition-all ${data.industry_type === t ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 dark:border-slate-700'}`}><Briefcase className="mx-auto mb-2 text-blue-500"/><span className="font-bold text-sm">{t === 'OWN' ? 'Direct' : 'Staffing'}</span></div>))}</div>
-                       )}
+                        )}
 
-                       {modalType === 'upload_doc' ? (
+                        {modalType === 'upload_doc' ? (
                           <>
                             <StunningSelect label="Document Type" value={modalData.doc_type} onChange={(e) => setModalData({...modalData, doc_type: e.target.value})} isDarkMode={isDarkMode} options={[{ value: 'INSURANCE', label: 'Insurance Guide' }, { value: 'HANDBOOK', label: 'Employee Handbook' }, { value: 'OFFER_LETTER', label: 'Offer Letter Template' }, { value: 'AGREEMENT', label: 'Employment Agreement' }, { value: 'TE_POLICY', label: 'T&E Policy' }, { value: 'CLIENT_DOC', label: 'Client Specific' }]}/>
                             <div className="border-2 border-dashed p-6 rounded-xl text-center hover:bg-slate-50 dark:hover:bg-slate-800/50"><input type="file" onChange={(e) => handleFileUpload(e, modalData.doc_type)} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/></div>
                           </>
-                       ) : (
+                        ) : (
                           <button type="submit" disabled={loading} className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95">{loading ? 'Saving...' : 'Save Changes'}</button>
-                       )}
+                        )}
                   </form>
               </div>
           </div>

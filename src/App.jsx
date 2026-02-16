@@ -40,9 +40,8 @@ import CompanyBranding from './components/companyIntake/CompanyBranding';
 import CompanyHosting from './components/companyIntake/CompanyHosting';
 import CompanyPayment from './components/companyIntake/CompnayPayment';
 import Profile from './components/Layout/Profile';
-import AlabamaW4Form from './components/Onboarding/StateForms/AlabamaW4Form';
 import Reports from './components/Layout/Report';
-import {OnboardingProvider} from './context/OnboardingContext';
+import { OnboardingProvider } from './context/OnboardingContext';
 
 // --- ScrollToTop Component ---
 const ScrollToTop = () => {
@@ -64,36 +63,15 @@ function AppContent() {
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const toggleSidebar = () => toggleMobileMenu();
 
-  // ✅ CONFIGURATION:
-  // Defined routes where the Navbar/Sidebar should be HIDDEN.
-  // We do NOT include "/" here, so the Dashboard is visible on Home.
   const hideLayoutRoutes = [
-    "/login", 
-    "/signup", 
-    "/landing",
-    
-    // Employee Onboarding Flow
-    "/personal-details", 
-    "/emergency-contact", 
-    "/federal", 
-    "/state", 
-    "/i9", 
-    "/direct-deposit",
-    
-    // Company Intake Flow
-    "/company-register",
-    "/add-company-contacts",
-    "/set-company-type",
-    "/workflow-steps",
-    "/company-documents",
-    "/client-documents",
-    "/digital-signature",
-    "/branding",
-    "/hosting",
-    "/payment"
+    "/login", "/signup", "/landing",
+    "/personal-details", "/emergency-contact", "/federal", 
+    "/state", "/i9", "/direct-deposit",
+    "/company-register", "/add-company-contacts", "/set-company-type",
+    "/workflow-steps", "/company-documents", "/client-documents",
+    "/digital-signature", "/branding", "/hosting", "/payment"
   ];
 
-  // Check if current path matches exact route or is a sub-route
   const hideLayout = hideLayoutRoutes.some(route => 
     location.pathname === route || location.pathname.startsWith(route + "/")
   );
@@ -102,8 +80,6 @@ function AppContent() {
     <div className="min-h-screen">
       <ScrollToTop />
 
-      {/* === HR DASHBOARD LAYOUT === */}
-      {/* This renders on "/" (Home) but hides on /login, /workflow-steps, etc. */}
       {!hideLayout && (
         <>
           <Navbar isSidebarOpen={isMobileMenuOpen} toggleSidebar={toggleSidebar} />
@@ -116,8 +92,6 @@ function AppContent() {
         </>
       )}
 
-      {/* === MAIN CONTENT === */}
-      {/* Adds padding only if the Layout is visible */}
       <main className={`min-h-screen ${hideLayout ? "" : "pt-16 md:pt-20 pb-16 md:pb-0"}`}>
         <Routes>
           
@@ -127,7 +101,6 @@ function AppContent() {
 
           {/* 2. PROTECTED HR ROUTES (Navbar VISIBLE) */}
           <Route element={<ProtectedRoute />}>
-              {/* Home is here, so it gets the Navbar */}
               <Route path="/" element={<Home />} /> 
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/client" element={<Client />} />
@@ -139,21 +112,19 @@ function AppContent() {
           </Route>
 
           {/* 3. PROTECTED EMPLOYEE ROUTES (Navbar HIDDEN) */}
-<OnboardingProvider>
-          <Routes>
-          <Route element={<OnboardingLayout />}>
+          {/* ✅ FIX: Wrap the Layout component with the Provider inside the element prop */}
+          <Route element={
+            <OnboardingProvider>
+              <OnboardingLayout />
+            </OnboardingProvider>
+          }>
               <Route path="/personal-details" element={<PersonalDetailsPage />} />
               <Route path="/emergency-contact" element={<EmergencyContactPage />} />
               <Route path="/federal" element={<FederalTaxForm />} />
               <Route path="/state" element={<StateTaxPage />} />
               <Route path="/i9" element={<I9Form />} />
               <Route path="/direct-deposit" element={<DirectDepositPage />} />
-              {/* <Route path="/alabama" element={<AlabamaW4Form />} /> */}
           </Route>
-
-          </Routes>
-
-          </OnboardingProvider>
 
           {/* 4. COMPANY INTAKE ROUTES (Navbar HIDDEN) */}
           <Route path="/landing" element={<LandingPage />} />

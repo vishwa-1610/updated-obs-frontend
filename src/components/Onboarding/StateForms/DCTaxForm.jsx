@@ -1,8 +1,53 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import { User, Shield, DollarSign, Calendar, ChevronDown, Eraser, Save, PenTool, Calculator, CheckCircle, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  User, Shield, DollarSign, Calendar, ChevronDown, Eraser, Save, PenTool, 
+  Calculator, CheckCircle, MapPin, ChevronLeft, ChevronRight, Loader2, XCircle 
+} from 'lucide-react';
 
-// --- CUSTOM DATE PICKER (Standard Style) ---
+// --- COMPONENTS ---
+
+// 1. LOADING OVERLAY
+const LoadingOverlay = () => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm transition-all duration-300">
+    <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
+      <div className="relative">
+        <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-8 h-8 bg-blue-50 rounded-full"></div>
+        </div>
+      </div>
+      <h3 className="mt-4 text-lg font-bold text-gray-800 tracking-tight">Processing...</h3>
+      <p className="text-gray-500 text-sm">Securely encrypting and submitting your data</p>
+    </div>
+  </div>
+);
+
+// 2. ERROR MODAL
+const ErrorModal = ({ isOpen, title, message, onClose }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom-8 duration-300 transform transition-all border border-gray-100">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-4">
+            <XCircle className="text-red-500 w-8 h-8" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">{title || "Action Required"}</h3>
+          <p className="text-gray-500 mb-6 text-sm leading-relaxed">{message || "Please check your inputs."}</p>
+          <button 
+            onClick={onClose}
+            className="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl font-bold transition-transform active:scale-95 shadow-lg"
+          >
+            Okay, I'll Fix It
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 3. CUSTOM DATE PICKER
 const CustomDatePicker = ({ label, name, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('calendar');
@@ -85,6 +130,10 @@ const DCTaxForm = ({ initialData, onSubmit }) => {
   const containerRef = useRef(null);
   const dataLoadedRef = useRef(false);
 
+  // UI STATES
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorState, setErrorState] = useState({ isOpen: false, title: '', message: '' });
+
   const [formData, setFormData] = useState({
     first_name: '', middle_initial: '', last_name: '', ssn: '',
     address: '', city: '', state: 'DC', zipcode: '',
@@ -121,14 +170,15 @@ const DCTaxForm = ({ initialData, onSubmit }) => {
     if (initialData && !dataLoadedRef.current) {
         setFormData(prev => ({
             ...prev,
+            ...initialData,
+            state: 'DC',
+            zipcode: (initialData.zipcode || '').slice(0, 5),
             first_name: initialData.first_name || '',
             last_name: initialData.last_name || '',
             middle_initial: initialData.initial || '',
             ssn: initialData.ssn || '',
             address: initialData.address || '',
             city: initialData.city || '',
-            zipcode: (initialData.zipcode || '').slice(0, 5),
-            state: 'DC'
         }));
         dataLoadedRef.current = true;
     }
@@ -140,10 +190,13 @@ const DCTaxForm = ({ initialData, onSubmit }) => {
         if (sigCanvasRef.current && containerRef.current) {
             const canvas = sigCanvasRef.current.getCanvas();
             const rect = containerRef.current.getBoundingClientRect();
-            const saved = sigCanvasRef.current.isEmpty() ? null : sigCanvasRef.current.toDataURL();
-            canvas.width = rect.width;
-            canvas.height = rect.height;
-            if (saved) sigCanvasRef.current.fromDataURL(saved);
+            // Only resize if different to prevent clearing on scroll
+            if (canvas.width !== rect.width || canvas.height !== rect.height) {
+                const saved = sigCanvasRef.current.isEmpty() ? null : sigCanvasRef.current.toDataURL();
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+                if (saved) sigCanvasRef.current.fromDataURL(saved);
+            }
         }
     };
     setTimeout(resize, 200);
@@ -154,7 +207,7 @@ const DCTaxForm = ({ initialData, onSubmit }) => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     if (name === 'zipcode') {
-        setFormData(prev => ({ ...prev, [name]: value.slice(0, 5) }));
+        setFormData(prev => ({ ...prev, [name]: value.replace(/\D/g, '').slice(0, 5) }));
         return;
     }
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
@@ -172,11 +225,57 @@ const DCTaxForm = ({ initialData, onSubmit }) => {
     setFormData(prev => ({ ...prev, signature_image: null }));
   };
 
-  const handleSubmit = (e) => {
+  // --- SUBMIT HANDLER ---
+  const handleSubmit = async (e) => {
       e.preventDefault();
-      let sig = "";
-      if (sigCanvasRef.current && !sigCanvasRef.current.isEmpty()) sig = sigCanvasRef.current.getCanvas().toDataURL('image/png');
-      onSubmit({ ...formData, signature_image: sig });
+      
+      // 1. Capture Signature
+      let sig = formData.signature_image;
+      if (sigCanvasRef.current && !sigCanvasRef.current.isEmpty()) {
+          sig = sigCanvasRef.current.getCanvas().toDataURL('image/png');
+      }
+
+      // 2. Validations
+      if (!sig) {
+          setErrorState({ isOpen: true, title: "Missing Signature", message: "Please sign the form before submitting." });
+          return;
+      }
+
+      if (!formData.first_name || !formData.last_name || !formData.ssn) {
+          setErrorState({ isOpen: true, title: "Missing Information", message: "Please ensure your Name and SSN are filled out." });
+          return;
+      }
+
+      setIsSubmitting(true);
+
+      try {
+          // 3. Data Sanitization (Empty strings to 0 for numbers)
+          const cleanNumber = (val) => (val === '' || val === null || isNaN(val)) ? 0 : val;
+
+          const payload = { 
+              ...formData, 
+              signature_image: sig,
+              dependents: cleanNumber(formData.dependents),
+              itemized_deductions: formData.use_worksheet_2 ? cleanNumber(formData.itemized_deductions) : 0, 
+              additional_withholding: cleanNumber(formData.additional_withholding)
+          };
+
+          await onSubmit(payload);
+          setIsSubmitting(false);
+
+      } catch (error) {
+          console.error("Submission Error:", error);
+          setIsSubmitting(false);
+          let msg = "Submission failed. Please try again.";
+          if (error.response?.data) {
+              if (typeof error.response.data === 'string') {
+                  msg = error.response.data;
+              } else if (error.response.data.error) {
+                  msg = error.response.data.error;
+              }
+          }
+          setErrorState({ isOpen: true, title: "Submission Error", message: msg });
+      }
   };
 
   // Calculations for display
@@ -192,7 +291,7 @@ const DCTaxForm = ({ initialData, onSubmit }) => {
   
   const totalA = a + b + c + d + eVal + f + g + h;
 
-  // --- STYLES (MATCHING STANDARD PATTERN) ---
+  // --- STYLES ---
   const inputClass = "w-full px-4 py-3 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent bg-white text-gray-900 placeholder-gray-400 transition-shadow";
   const labelClass = "block text-sm font-semibold mb-1.5 text-gray-800 tracking-wide";
   const sectionHeader = "text-xl font-bold text-gray-900 flex items-center gap-2 border-b border-gray-200 pb-3 mb-6";
@@ -200,16 +299,20 @@ const DCTaxForm = ({ initialData, onSubmit }) => {
   const activeCheckboxClass = "border-blue-600 ring-1 ring-blue-600 bg-blue-50/20";
 
   return (
-    <div className="bg-white px-4 py-2 text-left">
-      <div className="mb-10 text-center">
-        <h2 className="text-2xl font-bold text-gray-900 tracking-tight">District of Columbia D-4</h2>
-        <p className="text-gray-500 text-sm mt-1">Employee Withholding Allowance Certificate</p>
-      </div>
+    <>
+      {isSubmitting && <LoadingOverlay />}
+      <ErrorModal isOpen={errorState.isOpen} title={errorState.title} message={errorState.message} onClose={() => setErrorState({ isOpen: false, title: '', message: '' })} />
 
-      <form onSubmit={handleSubmit} className="space-y-12">
-        
-        {/* 1. PERSONAL */}
-        <section>
+      <div className="bg-white px-4 py-2 text-left">
+        <div className="mb-10 text-center">
+          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">District of Columbia D-4</h2>
+          <p className="text-gray-500 text-sm mt-1">Employee Withholding Allowance Certificate</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-12">
+          
+          {/* 1. PERSONAL */}
+          <section>
             <h3 className={sectionHeader}><User className="text-blue-600" size={22}/> Personal Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                 <div className="md:col-span-5"><label className={labelClass}>First Name</label><input type="text" name="first_name" value={formData.first_name || ''} onChange={handleChange} className={inputClass} placeholder="First Name" required /></div>
@@ -223,32 +326,32 @@ const DCTaxForm = ({ initialData, onSubmit }) => {
                 <div className="md:col-span-4"><label className={labelClass}>City</label><input type="text" name="city" value={formData.city || ''} onChange={handleChange} className={inputClass} required /></div>
                 <div className="md:col-span-4"><label className={labelClass}>State</label><input type="text" value="DC" readOnly className={`${inputClass} bg-gray-100 text-gray-500 text-center font-bold`} /></div>
             </div>
-        </section>
+          </section>
 
-        {/* 2. FILING STATUS */}
-        <section>
+          {/* 2. FILING STATUS */}
+          <section>
             <h3 className={sectionHeader}><CheckCircle className="text-blue-600" size={22}/> Filing Status</h3>
             <div className="space-y-3">
                 {[
-                    {id: '1', l: 'Single'},
-                    {id: '2', l: 'Married/Domestic Partners Filing Jointly'},
-                    {id: '3', l: 'Married Filing Separately'},
-                    {id: '4', l: 'Head of Household'},
-                    {id: '5', l: 'Married Filing Separately on Same Return'}
+                  {id: '1', l: 'Single'},
+                  {id: '2', l: 'Married/Domestic Partners Filing Jointly'},
+                  {id: '3', l: 'Married Filing Separately'},
+                  {id: '4', l: 'Head of Household'},
+                  {id: '5', l: 'Married Filing Separately on Same Return'}
                 ].map(opt => (
-                    <label key={opt.id} className={`${checkboxCardClass} ${formData.filing_status === opt.id ? activeCheckboxClass : ''}`}>
-                        <input type="radio" name="filing_status" value={opt.id} checked={formData.filing_status === opt.id} onChange={handleChange} className="mt-1 w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500" />
-                        <div>
-                            <span className="block font-bold text-gray-900">{opt.l}</span>
-                            <span className="text-xs text-gray-500">Status Code: {opt.id}</span>
-                        </div>
-                    </label>
+                  <label key={opt.id} className={`${checkboxCardClass} ${formData.filing_status === opt.id ? activeCheckboxClass : ''}`}>
+                    <input type="radio" name="filing_status" value={opt.id} checked={formData.filing_status === opt.id} onChange={handleChange} className="mt-1 w-5 h-5 text-blue-600 border-gray-300 focus:ring-blue-500" />
+                    <div>
+                        <span className="block font-bold text-gray-900">{opt.l}</span>
+                        <span className="text-xs text-gray-500">Status Code: {opt.id}</span>
+                    </div>
+                  </label>
                 ))}
             </div>
-        </section>
+          </section>
 
-        {/* 3. SECTION A (Allowances) */}
-        <section>
+          {/* 3. SECTION A (Allowances) */}
+          <section>
             <h3 className={sectionHeader}><Calculator className="text-blue-600" size={22}/> Section A: Allowances</h3>
             <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -285,10 +388,10 @@ const DCTaxForm = ({ initialData, onSubmit }) => {
                     <span className="text-xl font-bold text-blue-900">{totalA}</span>
                 </div>
             </div>
-        </section>
+          </section>
 
-        {/* 4. SECTION B & EXEMPT */}
-        <section>
+          {/* 4. SECTION B & EXEMPT */}
+          <section>
             <h3 className={sectionHeader}><DollarSign className="text-blue-600" size={22}/> Adjustments & Exemptions</h3>
             <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 space-y-6">
                 
@@ -361,10 +464,10 @@ const DCTaxForm = ({ initialData, onSubmit }) => {
                     )}
                 </div>
             </div>
-        </section>
+          </section>
 
-        {/* 5. SIGNATURE */}
-        <section className="bg-gray-50 rounded-xl border border-gray-200 p-6">
+          {/* 5. SIGNATURE */}
+          <section className="bg-gray-50 rounded-xl border border-gray-200 p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2"><PenTool className="text-blue-600" size={20}/> Declaration & Signature</h3>
             
             <div className="mb-8 max-w-xs">
@@ -393,17 +496,27 @@ const DCTaxForm = ({ initialData, onSubmit }) => {
                     )}
                 </div>
             </div>
-        </section>
+          </section>
 
-        {/* SUBMIT BUTTON */}
-        <div className="flex justify-end pt-8 pb-4 border-t border-gray-100 mt-6">
-            <button type="submit" disabled={!formData.signature_image} className={`px-10 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all flex items-center gap-2 ${formData.signature_image ? 'bg-blue-600 hover:bg-blue-700 text-white hover:-translate-y-0.5 hover:shadow-xl' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
-                <Save size={22} /> Confirm & Generate PDF
+          {/* SUBMIT BUTTON */}
+          <div className="flex justify-end pt-8 pb-4 border-t border-gray-100 mt-6">
+            <button 
+                type="submit" 
+                onClick={handleSubmit}
+                disabled={isSubmitting} 
+                className={`
+                    px-10 py-3.5 font-bold text-lg rounded-xl shadow-lg flex items-center gap-2 transition-all
+                    ${isSubmitting ? 'bg-gray-400 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white hover:-translate-y-0.5 hover:shadow-xl'}
+                `}
+            >
+                {isSubmitting ? <Loader2 className="animate-spin" size={22} /> : <Save size={22} />}
+                {isSubmitting ? 'Submitting...' : 'Confirm & Generate PDF'}
             </button>
-        </div>
+          </div>
 
-      </form>
-    </div>
+        </form>
+      </div>
+    </>
   );
 };
 

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import { User, Shield, DollarSign, Calendar, ChevronLeft, ChevronRight, ChevronDown, Eraser, Save, PenTool, FileText, Calculator, Loader2, XCircle } from 'lucide-react';
+import { 
+  User, Shield, DollarSign, Calendar, ChevronLeft, ChevronRight, 
+  ChevronDown, Eraser, Save, PenTool, Calculator, Loader2, XCircle 
+} from 'lucide-react';
 
-// --- COMPONENTS ---
-
-// 1. LOADING OVERLAY
+// --- 1. LOADING OVERLAY ---
 const LoadingOverlay = () => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm transition-all duration-300">
     <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
@@ -20,7 +21,7 @@ const LoadingOverlay = () => (
   </div>
 );
 
-// 2. ERROR MODAL
+// --- 2. ERROR MODAL ---
 const ErrorModal = ({ isOpen, title, message, onClose }) => {
   if (!isOpen) return null;
   return (
@@ -44,31 +45,28 @@ const ErrorModal = ({ isOpen, title, message, onClose }) => {
   );
 };
 
-// 3. CUSTOM DATE PICKER
+// --- 3. CUSTOM DATE PICKER ---
 const CustomDatePicker = ({ label, name, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('calendar');
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? new Date() : d;
+  });
   const dropdownRef = useRef(null);
   const yearScrollRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-        setView('calendar');
+        setIsOpen(false); setView('calendar');
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (value) {
-      const d = new Date(value);
-      if (!isNaN(d.getTime())) setCurrentDate(d);
-    }
-  }, [value]);
+  useEffect(() => { if (value) setCurrentDate(new Date(value)); }, [value]);
 
   const changeMonth = (offset) => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1));
 
@@ -119,7 +117,7 @@ const CustomDatePicker = ({ label, name, value, onChange, placeholder }) => {
 
 // --- MAIN DELAWARE FORM ---
 const DelawareTaxForm = ({ initialData, onSubmit }) => {
-  const sigCanvasRef = useRef({}); 
+  const sigCanvasRef = useRef(null);
   const containerRef = useRef(null);
   const dataLoadedRef = useRef(false);
 
@@ -151,14 +149,15 @@ const DelawareTaxForm = ({ initialData, onSubmit }) => {
     if (initialData && !dataLoadedRef.current) {
         setLocalData(prev => ({
             ...prev,
+            ...initialData,
+            state: 'DE',
+            zipcode: (initialData.zipcode || '').slice(0, 5),
             first_name: initialData.first_name || '',
             last_name: initialData.last_name || '',
-            middle_initial: initialData.middle_initial || '',
+            middle_initial: initialData.initial || '',
             ssn: initialData.ssn || '',
             address: initialData.address || '',
             city: initialData.city || '',
-            zipcode: (initialData.zipcode || '').slice(0, 5),
-            state: 'DE'
         }));
         dataLoadedRef.current = true;
     }
@@ -186,18 +185,12 @@ const DelawareTaxForm = ({ initialData, onSubmit }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
-    // Fix Zip Code length crash
     if (name === 'zipcode') {
         const truncated = value.replace(/\D/g, '').slice(0, 5);
         setLocalData(prev => ({ ...prev, [name]: truncated }));
         return;
     }
-
-    setLocalData(prev => ({ 
-        ...prev, 
-        [name]: type === 'checkbox' ? checked : value 
-    }));
+    setLocalData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const handleSignatureEnd = () => {
@@ -212,68 +205,77 @@ const DelawareTaxForm = ({ initialData, onSubmit }) => {
     setLocalData(prev => ({ ...prev, signature_image: null }));
   };
 
+  // --- SUBMIT LOGIC ---
   const handleSubmit = async (e) => {
       e.preventDefault();
       
-      // 1. Capture Signature
       let sig = localData.signature_image;
       if (sigCanvasRef.current && !sigCanvasRef.current.isEmpty()) {
           sig = sigCanvasRef.current.getCanvas().toDataURL('image/png');
       }
 
-      // 2. Strict Validation
+      // VALIDATION
       if (!sig) {
-          setErrorState({ 
-              isOpen: true, 
-              title: "Missing Signature",
-              message: "Please sign the form in the 'Digital Signature' box before submitting." 
-          });
+          setErrorState({ isOpen: true, title: "Missing Signature", message: "Please sign the form in the 'Digital Signature' box." });
           return;
       }
 
       if (!localData.first_name || !localData.last_name || !localData.ssn) {
-          setErrorState({
-              isOpen: true,
-              title: "Missing Information",
-              message: "Please ensure your First Name, Last Name, and SSN are filled out."
-          });
+          setErrorState({ isOpen: true, title: "Missing Information", message: "Please ensure First Name, Last Name, and SSN are filled." });
           return;
       }
 
-      // 3. Start Submission
       setIsSubmitting(true);
 
       try {
-          const finalData = { ...localData, signature_image: sig };
+          // --- DATA SANITIZATION (Critical Fix) ---
+          // Ensure all numeric fields send '0' instead of '' to prevent backend crashes.
+          const cleanNumber = (val) => (val === '' || val === null || isNaN(val)) ? 0 : val;
+
+          const finalData = { 
+              ...localData, 
+              signature_image: sig,
+              dependents: cleanNumber(localData.dependents),
+              additional_withholding: cleanNumber(localData.additional_withholding),
+              child_credit: cleanNumber(localData.child_credit),
+              itemized_deductions: cleanNumber(localData.itemized_deductions),
+              adjustments_income: cleanNumber(localData.adjustments_income),
+              non_wage_income: cleanNumber(localData.non_wage_income),
+              nr_wages: cleanNumber(localData.nr_wages),
+              nr_deductions: cleanNumber(localData.nr_deductions),
+              nr_non_wage: cleanNumber(localData.nr_non_wage),
+              nr_tax_liability: cleanNumber(localData.nr_tax_liability),
+              nr_pay_periods: cleanNumber(localData.nr_pay_periods) || 26,
+              nr_self: cleanNumber(localData.nr_self),
+              nr_spouse: cleanNumber(localData.nr_spouse),
+              nr_dependents: cleanNumber(localData.nr_dependents),
+          };
+
           await onSubmit(finalData);
           setIsSubmitting(false);
       } catch (error) {
           console.error("Submission Error:", error);
           setIsSubmitting(false);
-          const msg = error.response?.data?.error || error.message || "Something went wrong. Please try again.";
+          let msg = "Something went wrong. Please try again.";
+          if (error.response?.data) {
+              if (typeof error.response.data === 'string') msg = error.response.data;
+              else if (error.response.data.error) msg = error.response.data.error;
+          }
           setErrorState({ isOpen: true, title: "Submission Failed", message: msg });
       }
   };
 
   // Styles
-  const inputClass = "w-full px-4 py-3 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-blue-600 outline-none";
+  const inputClass = "w-full px-4 py-3 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-blue-600 outline-none transition-all focus:border-transparent";
   const labelClass = "block text-sm font-semibold mb-1.5 text-gray-800 tracking-wide";
   const sectionHeader = "text-xl font-bold text-gray-900 border-b pb-2 mb-6 flex items-center gap-2";
-  const checkboxClass = "flex items-center gap-2 cursor-pointer p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors";
+  const checkboxClass = "flex items-center gap-3 cursor-pointer p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors border-gray-200 select-none";
   const activeClass = "border-blue-500 ring-1 ring-blue-500 bg-blue-50";
 
   return (
     <>
-      {/* LOADING OVERLAY */}
       {isSubmitting && <LoadingOverlay />}
-
-      {/* ERROR MODAL */}
-      <ErrorModal 
-        isOpen={errorState.isOpen} 
-        title={errorState.title}
-        message={errorState.message} 
-        onClose={() => setErrorState({ isOpen: false, title: '', message: '' })} 
-      />
+      <ErrorModal isOpen={errorState.isOpen} title={errorState.title} message={errorState.message} onClose={() => setErrorState({ isOpen: false, title: '', message: '' })} />
 
       <div className="bg-white px-6 py-4 max-w-5xl mx-auto relative">
         <div className="mb-10 text-center">
@@ -283,79 +285,83 @@ const DelawareTaxForm = ({ initialData, onSubmit }) => {
 
         <form onSubmit={handleSubmit} className="space-y-10">
 
-          <section>
-            <h3 className={sectionHeader}><User className="text-blue-600"/> Personal Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div><label className={labelClass}>First Name</label><input type="text" name="first_name" value={localData.first_name || ''} onChange={handleChange} className={inputClass} required/></div>
-              <div><label className={labelClass}>Middle Initial</label><input type="text" name="middle_initial" value={localData.middle_initial || ''} onChange={handleChange} className={inputClass}/></div>
-              <div><label className={labelClass}>Last Name</label><input type="text" name="last_name" value={localData.last_name || ''} onChange={handleChange} className={inputClass} required/></div>
-              <div className="relative"><label className={labelClass}>SSN</label><div className="relative"><input type="text" name="ssn" value={localData.ssn || ''} onChange={handleChange} className={`${inputClass} pl-10`} placeholder="XXX-XX-XXXX" required/><Shield size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"/></div></div>
-              <div><label className={labelClass}>Address</label><input type="text" name="address" value={localData.address || ''} onChange={handleChange} className={inputClass} required/></div>
-              <div><label className={labelClass}>City</label><input type="text" name="city" value={localData.city || ''} onChange={handleChange} className={inputClass} required/></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className={labelClass}>State</label><input type="text" value="DE" readOnly className={`${inputClass} bg-gray-100 cursor-not-allowed`}/></div>
-                <div><label className={labelClass}>Zip Code</label><input type="text" name="zipcode" value={localData.zipcode || ''} onChange={handleChange} className={inputClass} required/></div>
-              </div>
+          {/* 1. PERSONAL INFO */}
+          <section className="p-6 border border-gray-100 rounded-xl shadow-sm">
+            <h3 className={sectionHeader}><User className="text-blue-600" size={24}/> Personal Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+              <div className="md:col-span-5"><label className={labelClass}>First Name</label><input type="text" name="first_name" value={localData.first_name || ''} onChange={handleChange} className={inputClass} required/></div>
+              <div className="md:col-span-2"><label className={labelClass}>M.I.</label><input type="text" name="middle_initial" value={localData.middle_initial || ''} onChange={handleChange} className={inputClass}/></div>
+              <div className="md:col-span-5"><label className={labelClass}>Last Name</label><input type="text" name="last_name" value={localData.last_name || ''} onChange={handleChange} className={inputClass} required/></div>
+              <div className="md:col-span-6 relative"><label className={labelClass}>SSN</label><div className="relative"><input type="text" name="ssn" value={localData.ssn || ''} onChange={handleChange} className={`${inputClass} pl-10`} required/><Shield size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"/></div></div>
+              <div className="md:col-span-6"><label className={labelClass}>Zip Code</label><input type="text" name="zipcode" value={localData.zipcode || ''} onChange={handleChange} className={inputClass} required/></div>
+              <div className="md:col-span-8"><label className={labelClass}>Address</label><input type="text" name="address" value={localData.address || ''} onChange={handleChange} className={inputClass} required/></div>
+              <div className="md:col-span-4"><label className={labelClass}>City</label><input type="text" name="city" value={localData.city || ''} onChange={handleChange} className={inputClass} required/></div>
+              <div className="md:col-span-4"><label className={labelClass}>State</label><input type="text" value="DE" readOnly className={`${inputClass} bg-gray-100 cursor-not-allowed font-bold text-gray-500`}/></div>
             </div>
           </section>
 
-          <section>
-            <h3 className={sectionHeader}><Shield className="text-blue-600"/> Status & Allowances</h3>
+          {/* 2. STATUS & ALLOWANCES */}
+          <section className="p-6 border border-gray-100 rounded-xl shadow-sm">
+            <h3 className={sectionHeader}><Shield className="text-blue-600" size={24}/> Status & Allowances</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className={labelClass}>Marital Status</label>
-                <div className="flex gap-6 mt-2">
-                  <label className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer ${localData.marital_status === 'single' ? activeClass : ''}`}>
-                      <input type="radio" name="marital_status" value="single" checked={localData.marital_status === 'single'} onChange={handleChange} className="w-5 h-5 text-blue-600"/> Single
+                <div className="flex gap-4 mt-2">
+                  <label className={`flex-1 ${checkboxClass} ${localData.marital_status === 'single' ? activeClass : ''}`}>
+                      <input type="radio" name="marital_status" value="single" checked={localData.marital_status === 'single'} onChange={handleChange} className="w-5 h-5 text-blue-600"/> <span className="font-medium">Single</span>
                   </label>
-                  <label className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer ${localData.marital_status === 'married' ? activeClass : ''}`}>
-                      <input type="radio" name="marital_status" value="married" checked={localData.marital_status === 'married'} onChange={handleChange} className="w-5 h-5 text-blue-600"/> Married
+                  <label className={`flex-1 ${checkboxClass} ${localData.marital_status === 'married' ? activeClass : ''}`}>
+                      <input type="radio" name="marital_status" value="married" checked={localData.marital_status === 'married'} onChange={handleChange} className="w-5 h-5 text-blue-600"/> <span className="font-medium">Married</span>
                   </label>
                 </div>
               </div>
               <div><label className={labelClass}>Number of Dependents</label><input type="number" name="dependents" value={localData.dependents} onChange={handleChange} className={inputClass} min="0"/></div>
-              <div><label className={labelClass}>Additional Withholding ($)</label><input type="number" name="additional_withholding" value={localData.additional_withholding} onChange={handleChange} step="0.01" className={inputClass} placeholder="0.00"/></div>
+              <div><label className={labelClass}>Additional Withholding ($)</label><div className="relative"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500">$</span><input type="number" name="additional_withholding" value={localData.additional_withholding} onChange={handleChange} step="0.01" className={`${inputClass} pl-8`} placeholder="0.00"/></div></div>
             </div>
           </section>
 
-          <section className="bg-blue-50 p-6 rounded-xl border border-blue-100">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Calculator className="text-blue-600"/> Resident Allowances</h3>
+          {/* 3. RESIDENT WORKSHEET */}
+          <section className="bg-blue-50/50 p-6 rounded-xl border border-blue-100">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-blue-900"><Calculator className="text-blue-600"/> Resident Allowances Worksheet</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <label className={checkboxClass}><input type="checkbox" name="self_60_or_older" checked={localData.self_60_or_older} onChange={handleChange} className="w-4 h-4"/> Self 60+</label>
-              <label className={checkboxClass}><input type="checkbox" name="spouse_60_or_older" checked={localData.spouse_60_or_older} onChange={handleChange} className="w-4 h-4"/> Spouse 60+</label>
-              <label className={checkboxClass}><input type="checkbox" name="is_self_65" checked={localData.is_self_65} onChange={handleChange} className="w-4 h-4"/> Self 65+</label>
-              <label className={checkboxClass}><input type="checkbox" name="is_self_blind" checked={localData.is_self_blind} onChange={handleChange} className="w-4 h-4"/> Self Blind</label>
-              <label className={checkboxClass}><input type="checkbox" name="is_spouse_65" checked={localData.is_spouse_65} onChange={handleChange} className="w-4 h-4"/> Spouse 65+</label>
-              <label className={checkboxClass}><input type="checkbox" name="is_spouse_blind" checked={localData.is_spouse_blind} onChange={handleChange} className="w-4 h-4"/> Spouse Blind</label>
-              <div><label className="block text-xs font-bold text-gray-600 mb-1">Child Credit (0-2)</label><input type="number" name="child_credit" value={localData.child_credit} onChange={handleChange} min="0" max="2" className={inputClass}/></div>
+              <label className={`${checkboxClass} ${localData.self_60_or_older ? activeClass : 'bg-white'}`}><input type="checkbox" name="self_60_or_older" checked={localData.self_60_or_older} onChange={handleChange} className="w-4 h-4"/> Self 60+</label>
+              <label className={`${checkboxClass} ${localData.spouse_60_or_older ? activeClass : 'bg-white'}`}><input type="checkbox" name="spouse_60_or_older" checked={localData.spouse_60_or_older} onChange={handleChange} className="w-4 h-4"/> Spouse 60+</label>
+              <label className={`${checkboxClass} ${localData.is_self_65 ? activeClass : 'bg-white'}`}><input type="checkbox" name="is_self_65" checked={localData.is_self_65} onChange={handleChange} className="w-4 h-4"/> Self 65+</label>
+              <label className={`${checkboxClass} ${localData.is_self_blind ? activeClass : 'bg-white'}`}><input type="checkbox" name="is_self_blind" checked={localData.is_self_blind} onChange={handleChange} className="w-4 h-4"/> Self Blind</label>
+              <label className={`${checkboxClass} ${localData.is_spouse_65 ? activeClass : 'bg-white'}`}><input type="checkbox" name="is_spouse_65" checked={localData.is_spouse_65} onChange={handleChange} className="w-4 h-4"/> Spouse 65+</label>
+              <label className={`${checkboxClass} ${localData.is_spouse_blind ? activeClass : 'bg-white'}`}><input type="checkbox" name="is_spouse_blind" checked={localData.is_spouse_blind} onChange={handleChange} className="w-4 h-4"/> Spouse Blind</label>
+              <div className="md:col-span-2"><label className="block text-xs font-bold text-gray-600 mb-1">Child Credit (Number of children)</label><input type="number" name="child_credit" value={localData.child_credit} onChange={handleChange} min="0" max="2" className={`${inputClass} bg-white`}/></div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-4 border-t border-blue-200">
-              <div><label className={labelClass}>Itemized Deductions ($)</label><input type="number" name="itemized_deductions" value={localData.itemized_deductions} onChange={handleChange} className={inputClass} placeholder="0.00"/></div>
-              <div><label className={labelClass}>Adjustments to Income ($)</label><input type="number" name="adjustments_income" value={localData.adjustments_income} onChange={handleChange} className={inputClass} placeholder="0.00"/></div>
-              <div><label className={labelClass}>Non-Wage Income ($)</label><input type="number" name="non_wage_income" value={localData.non_wage_income} onChange={handleChange} className={inputClass} placeholder="0.00"/></div>
+              <div><label className={labelClass}>Itemized Deductions ($)</label><input type="number" name="itemized_deductions" value={localData.itemized_deductions} onChange={handleChange} className={`${inputClass} bg-white`} placeholder="0.00"/></div>
+              <div><label className={labelClass}>Adjustments to Income ($)</label><input type="number" name="adjustments_income" value={localData.adjustments_income} onChange={handleChange} className={`${inputClass} bg-white`} placeholder="0.00"/></div>
+              <div><label className={labelClass}>Non-Wage Income ($)</label><input type="number" name="non_wage_income" value={localData.non_wage_income} onChange={handleChange} className={`${inputClass} bg-white`} placeholder="0.00"/></div>
             </div>
           </section>
 
+          {/* 4. NON-RESIDENT WORKSHEET */}
           <section className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-            <label className="flex items-center gap-2 mb-4 text-lg font-bold cursor-pointer">
-              <input type="checkbox" name="use_non_resident" checked={localData.use_non_resident} onChange={handleChange} className="w-5 h-5 text-blue-600"/>
-              Non-Resident Worksheet (Optional)
+            <label className="flex items-center gap-3 mb-6 text-lg font-bold cursor-pointer select-none">
+              <input type="checkbox" name="use_non_resident" checked={localData.use_non_resident} onChange={handleChange} className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"/>
+              <span>Non-Resident Worksheet (Optional)</span>
             </label>
+            
             {localData.use_non_resident && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-4">
-                <div><label className={labelClass}>Wages from DE Sources</label><input type="number" name="nr_wages" value={localData.nr_wages} onChange={handleChange} className={inputClass}/></div>
-                <div><label className={labelClass}>Non-Wage Income</label><input type="number" name="nr_non_wage" value={localData.nr_non_wage} onChange={handleChange} className={inputClass}/></div>
-                <div><label className={labelClass}>Deductions</label><input type="number" name="nr_deductions" value={localData.nr_deductions} onChange={handleChange} className={inputClass}/></div>
-                <div><label className={labelClass}>Gross Tax Liability</label><input type="number" name="nr_tax_liability" value={localData.nr_tax_liability} onChange={handleChange} className={inputClass}/></div>
-                <div><label className={labelClass}>Pay Periods</label><input type="number" name="nr_pay_periods" value={localData.nr_pay_periods} onChange={handleChange} className={inputClass} placeholder="26"/></div>
-                <div><label className={labelClass}>Self Exemptions</label><input type="number" name="nr_self" value={localData.nr_self} onChange={handleChange} className={inputClass}/></div>
-                <div><label className={labelClass}>Spouse Exemptions</label><input type="number" name="nr_spouse" value={localData.nr_spouse} onChange={handleChange} className={inputClass}/></div>
-                <div><label className={labelClass}>Dependent Exemptions</label><input type="number" name="nr_dependents" value={localData.nr_dependents} onChange={handleChange} className={inputClass}/></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-4 border-t border-gray-200 pt-4">
+                <div><label className={labelClass}>Wages from DE Sources</label><input type="number" name="nr_wages" value={localData.nr_wages} onChange={handleChange} className={`${inputClass} bg-white`}/></div>
+                <div><label className={labelClass}>Non-Wage Income</label><input type="number" name="nr_non_wage" value={localData.nr_non_wage} onChange={handleChange} className={`${inputClass} bg-white`}/></div>
+                <div><label className={labelClass}>Deductions</label><input type="number" name="nr_deductions" value={localData.nr_deductions} onChange={handleChange} className={`${inputClass} bg-white`}/></div>
+                <div><label className={labelClass}>Gross Tax Liability</label><input type="number" name="nr_tax_liability" value={localData.nr_tax_liability} onChange={handleChange} className={`${inputClass} bg-white`}/></div>
+                <div><label className={labelClass}>Pay Periods</label><input type="number" name="nr_pay_periods" value={localData.nr_pay_periods} onChange={handleChange} className={`${inputClass} bg-white`} placeholder="26"/></div>
+                <div><label className={labelClass}>Self Exemptions</label><input type="number" name="nr_self" value={localData.nr_self} onChange={handleChange} className={`${inputClass} bg-white`}/></div>
+                <div><label className={labelClass}>Spouse Exemptions</label><input type="number" name="nr_spouse" value={localData.nr_spouse} onChange={handleChange} className={`${inputClass} bg-white`}/></div>
+                <div><label className={labelClass}>Dependent Exemptions</label><input type="number" name="nr_dependents" value={localData.nr_dependents} onChange={handleChange} className={`${inputClass} bg-white`}/></div>
               </div>
             )}
           </section>
 
-          <section className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+          {/* 5. SIGNATURE */}
+          <section className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><PenTool className="text-blue-600"/> Signature</h3>
             <div className="mb-6 max-w-xs">
               <CustomDatePicker label="Date" name="confirmation_date" value={localData.confirmation_date} onChange={handleChange}/>
@@ -370,6 +376,7 @@ const DelawareTaxForm = ({ initialData, onSubmit }) => {
             </div>
           </section>
 
+          {/* SUBMIT */}
           <div className="flex justify-end pt-6">
             <button type="submit" disabled={isSubmitting} className={`px-10 py-3.5 rounded-xl font-bold text-lg shadow-lg flex items-center gap-2 transition-all ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl hover:-translate-y-0.5'}`}>
               {isSubmitting ? <Loader2 className="animate-spin" size={22}/> : <Save size={22}/>}

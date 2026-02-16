@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import { User, Shield, DollarSign, Calendar, ChevronDown, Eraser, Save, PenTool, FileText, Calculator, Loader2, XCircle } from 'lucide-react';
+// ✅ ADDED ChevronLeft, ChevronRight to imports
+import { 
+  User, Shield, DollarSign, Calendar, ChevronDown, ChevronLeft, ChevronRight,
+  Eraser, Save, PenTool, FileText, Calculator, Loader2, XCircle 
+} from 'lucide-react';
 
 // --- COMPONENTS ---
 
+// 1. LOADING OVERLAY
 const LoadingOverlay = () => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm transition-all duration-300">
     <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
@@ -19,6 +24,7 @@ const LoadingOverlay = () => (
   </div>
 );
 
+// 2. ERROR MODAL
 const ErrorModal = ({ isOpen, title, message, onClose }) => {
   if (!isOpen) return null;
   return (
@@ -30,13 +36,16 @@ const ErrorModal = ({ isOpen, title, message, onClose }) => {
           </div>
           <h3 className="text-xl font-bold text-gray-900 mb-2">{title || "Action Required"}</h3>
           <p className="text-gray-500 mb-6 text-sm leading-relaxed">{message || "Please check your inputs."}</p>
-          <button onClick={onClose} className="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl font-bold transition-transform active:scale-95 shadow-lg">Okay, I'll Fix It</button>
+          <button onClick={onClose} className="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl font-bold transition-transform active:scale-95 shadow-lg">
+            Okay, I'll Fix It
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
+// 3. CUSTOM DATE PICKER
 const CustomDatePicker = ({ label, name, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('calendar');
@@ -231,7 +240,7 @@ const LouisianaTaxForm = ({ initialData, onSubmit }) => {
               l4_personal_exemptions: cleanNumber(formData.l4_personal_exemptions),
               dependents: cleanNumber(formData.dependents),
               additional_withholding: cleanNumber(formData.additional_withholding),
-              l4_filing_status: formData.l4_filing_status, // Keep as string "1", "2", "3"
+              l4_filing_status: formData.l4_filing_status, 
               signature_image: sig 
           };
 
@@ -262,7 +271,10 @@ const LouisianaTaxForm = ({ initialData, onSubmit }) => {
       <div className="bg-white px-4 py-2 text-left relative">
         <div className="mb-10 text-center">
           <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Louisiana Withholding Certificate</h2>
-          <p className="text-gray-500 text-sm mt-1">Employee’s Withholding Allowance Certificate (L-4)</p>
+          <div className="flex items-center justify-center gap-2 mt-2 text-gray-500 font-medium">
+              <FileText size={16}/>
+              <p className="text-sm">Form L-4</p>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-12">

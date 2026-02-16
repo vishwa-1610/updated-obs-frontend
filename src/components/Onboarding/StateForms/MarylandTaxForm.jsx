@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import { User, DollarSign, Calendar, ChevronDown, Eraser, Save, PenTool, FileText, Calculator, Building2, Flag, Loader2, XCircle } from 'lucide-react';
+// ✅ ADDED ChevronLeft, ChevronRight to imports
+import { 
+  User, DollarSign, Calendar, ChevronDown, ChevronLeft, ChevronRight,
+  Eraser, Save, PenTool, FileText, Building2, Flag, Loader2, XCircle 
+} from 'lucide-react';
 
 // --- COMPONENTS ---
 
@@ -45,6 +49,7 @@ const CustomDatePicker = ({ label, name, value, onChange, placeholder }) => {
       return isNaN(d.getTime()) ? new Date() : d;
   });
   const dropdownRef = useRef(null);
+  const yearScrollRef = useRef(null);
   
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -98,7 +103,7 @@ const CustomDatePicker = ({ label, name, value, onChange, placeholder }) => {
              </div>
            )}
            {view === 'month' && <div className="grid grid-cols-3 gap-2">{monthNames.map((m,i)=><button key={m} onClick={()=>{setCurrentDate(new Date(currentDate.getFullYear(),i,1));setView('calendar')}} className="p-2 text-sm hover:bg-gray-100 rounded">{m}</button>)}</div>}
-           {view === 'year' && <div className="h-48 overflow-y-auto grid grid-cols-3 gap-2">{years.map(y=><button key={y} onClick={()=>{setCurrentDate(new Date(y,currentDate.getMonth(),1));setView('calendar')}} className="p-2 text-sm hover:bg-gray-100 rounded">{y}</button>)}</div>}
+           {view === 'year' && <div ref={yearScrollRef} className="h-48 overflow-y-auto grid grid-cols-3 gap-2">{years.map(y=><button key={y} onClick={()=>{setCurrentDate(new Date(y,currentDate.getMonth(),1));setView('calendar')}} className="p-2 text-sm hover:bg-gray-100 rounded">{y}</button>)}</div>}
         </div>
       )}
     </div>
@@ -141,10 +146,6 @@ const MarylandTaxForm = ({ initialData, onSubmit }) => {
     step4_deductions: '',
     step4_extra_withholding: '',
 
-    // Exemption
-    exempt: false,
-    exempt_reason: 'A',
-
     // Signature
     confirmation_date: new Date().toISOString().split('T')[0],
     signature_image: null
@@ -183,7 +184,7 @@ const MarylandTaxForm = ({ initialData, onSubmit }) => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     
-    // Strict Length Validation for "value too long" errors
+    // Strict Length Validation
     if (name === 'zipcode') {
         setFormData(prev => ({ ...prev, [name]: value.replace(/\D/g, '').slice(0, 5) }));
         return;
@@ -238,7 +239,6 @@ const MarylandTaxForm = ({ initialData, onSubmit }) => {
               // Truncate fields that cause DB errors if too long
               agency_number: formData.agency_number.slice(0, 5), 
               payroll_system: formData.payroll_system.slice(0, 5),
-              exempt_reason: formData.exempt_reason.slice(0, 5),
               
               // Numeric cleanups
               kids_under_17: cleanNumber(formData.kids_under_17),
@@ -309,7 +309,7 @@ const MarylandTaxForm = ({ initialData, onSubmit }) => {
 
           {/* AGENCY & PAYROLL */}
           <section>
-              <h3 className={sectionHeader}><Building2 className="text-blue-600"/> Agency & Payroll</h3>
+              <h3 className={sectionHeader}><Building2 className="text-blue-600"/> Agency & Payroll (State Employees Only)</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
                   <div>
                       <label className={labelClass}>Payroll System</label>
@@ -416,7 +416,7 @@ const MarylandTaxForm = ({ initialData, onSubmit }) => {
           <section className="bg-gray-50/50 p-8 rounded-2xl border border-gray-100">
               <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2"><Calendar className="text-blue-600" size={20}/> Declaration & Signature</h3>
               
-              <p className="text-sm text-gray-700 mb-6 font-medium">
+              <p className="text-sm text-gray-700 mb-6 font-medium bg-gray-50 p-4 rounded-lg">
                   Under penalties of perjury, I declare that I have examined this certificate and to the best of my knowledge and belief, it is true, correct, and complete.
               </p>
 
@@ -439,10 +439,10 @@ const MarylandTaxForm = ({ initialData, onSubmit }) => {
                           onEnd={handleSignatureEnd}
                       />
                       {!formData.signature_image && (
-                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-gray-300 gap-3">
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-gray-300 gap-3">
                             <div className="p-3 bg-gray-50 rounded-full"><PenTool size={28} className="opacity-50" /></div>
                             <span className="font-medium">Sign Here</span>
-                         </div>
+                          </div>
                       )}
                   </div>
               </div>
@@ -450,8 +450,12 @@ const MarylandTaxForm = ({ initialData, onSubmit }) => {
 
           {/* SUBMIT */}
           <div className="flex justify-end pt-8 pb-4 border-t border-gray-100">
-              <button type="submit" disabled={!formData.signature_image} className={`px-12 py-4 font-bold text-lg rounded-xl shadow-lg shadow-blue-500/20 transform transition-all duration-200 flex items-center gap-3 ${formData.signature_image ? 'bg-blue-600 hover:bg-blue-700 text-white hover:-translate-y-1 hover:shadow-xl' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
-                  <Save size={22} /> Confirm & Generate PDF
+              <button type="submit" disabled={isSubmitting} className={`
+                  px-12 py-4 font-bold text-lg rounded-xl shadow-lg shadow-blue-500/20 transform transition-all duration-200 flex items-center gap-3 
+                  ${isSubmitting ? 'bg-gray-400 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white hover:-translate-y-1 hover:shadow-xl'}
+              `}>
+                  {isSubmitting ? <Loader2 className="animate-spin" size={22}/> : <Save size={22}/>}
+                  {isSubmitting ? 'Submitting...' : 'Confirm & Generate PDF'}
               </button>
           </div>
 

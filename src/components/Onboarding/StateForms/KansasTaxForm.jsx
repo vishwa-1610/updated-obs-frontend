@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import { User, Shield, DollarSign, Calendar, ChevronDown, Eraser, Save, PenTool, FileText, Calculator, Loader2, XCircle } from 'lucide-react';
+// ✅ ADDED ChevronLeft, ChevronRight to imports
+import { 
+  User, Shield, DollarSign, Calendar, ChevronDown, ChevronLeft, ChevronRight,
+  Eraser, Save, PenTool, FileText, Calculator, Loader2, XCircle 
+} from 'lucide-react';
 
 // --- COMPONENTS ---
 
@@ -271,7 +275,10 @@ const KansasTaxForm = ({ initialData, onSubmit }) => {
       <div className="bg-white px-4 py-2 text-left relative">
         <div className="mb-10 text-center">
           <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Kansas Withholding Certificate</h2>
-          <p className="text-gray-500 text-sm mt-1">Employee's Withholding Allowance Certificate (K-4)</p>
+          <div className="flex items-center justify-center gap-2 mt-2 text-gray-500 font-medium">
+              <FileText size={16}/>
+              <p className="text-sm">Form K-4</p>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-12">
