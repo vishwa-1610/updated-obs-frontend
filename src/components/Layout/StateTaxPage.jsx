@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   Loader2, AlertCircle, CheckCircle, MapPin, 
-  ShieldCheck, Zap, Sparkles, ArrowRight, Check, Forward, Globe, ChevronDown, FileText, CheckCircle2
+  ShieldCheck, Zap, Sparkles, ArrowRight, Check, Forward, Globe, ChevronDown, FileText, CheckCircle2,
+  RefreshCw, Download, ExternalLink
 } from 'lucide-react';
 import StateTaxFormDispatcher from '../Onboarding/StateForms/StateTaxFormDispatcher';
 import api from '../../api'; 
@@ -38,7 +39,7 @@ const ALL_US_STATES = [
 
 const StateTaxPage = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const token = searchParams.get('token');
   const urlState = searchParams.get('state') || ''; 
 
@@ -57,6 +58,7 @@ const StateTaxPage = () => {
   
   const [isNoTaxState, setIsNoTaxState] = useState(false);
   const [redirectCount, setRedirectCount] = useState(3);
+  const [isSwitchingState, setIsSwitchingState] = useState(false);
 
   // 1. Fetch onboarding data & initial state
   useEffect(() => {
@@ -70,14 +72,16 @@ const StateTaxPage = () => {
       try {
         setLoading(true);
         const response = await api.get(`/onboarding/validate/${token}/`);
-        const userStateCode = urlState || response.data.state;
+        const userStateCode = urlState || response.data.state || 'AL';
 
         setUserData({ ...response.data, state: userStateCode, token: token });
 
         if (userStateCode) {
-          setSelectedState(userStateCode);
-          if (NO_TAX_FORM_STATES.includes(userStateCode)) {
+          setSelectedState(userStateCode.toUpperCase());
+          if (NO_TAX_FORM_STATES.includes(userStateCode.toUpperCase())) {
             setIsNoTaxState(true);
+          } else {
+            setIsNoTaxState(false);
           }
         }
       } catch (err) {
@@ -101,12 +105,20 @@ const StateTaxPage = () => {
     }
   }, [isNoTaxState, redirectCount, goToNextStep]);
 
-  const handleConfirmState = () => {
-    if (!tempState) return;
-    setSelectedState(tempState);
-    setUserData(prev => ({ ...prev, state: tempState, token: token }));
+  const handleConfirmState = (newState) => {
+    const targetState = (newState || tempState || '').toUpperCase();
+    if (!targetState) return;
+    
+    setSelectedState(targetState);
+    setUserData(prev => ({ ...prev, state: targetState, token: token }));
+    setIsSwitchingState(false);
 
-    if (NO_TAX_FORM_STATES.includes(tempState)) {
+    // Update URL query param cleanly without reload
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('state', targetState);
+    setSearchParams(newParams);
+
+    if (NO_TAX_FORM_STATES.includes(targetState)) {
       setIsNoTaxState(true);
       setRedirectCount(3); 
     } else {
@@ -147,7 +159,10 @@ const StateTaxPage = () => {
 
       const response = await api.post('/confirm-onboarding/', sanitizedPayload);
       if (response.status === 200 || response.status === 201) {
-        setSuccessData({ message: response.data.message || 'State withholding recorded successfully.', pdf_url: response.data.pdf_url || '' });
+        setSuccessData({ 
+          message: response.data.message || `${selectedState} State withholding certificate recorded successfully.`, 
+          pdf_url: response.data.pdf_url || response.data.w4_pdf || '' 
+        });
         setModalOpen(true);
       }
     } catch (err) {
@@ -158,25 +173,24 @@ const StateTaxPage = () => {
         if (typeof d === 'string') {
           errorMsg = d;
         } else if (typeof d === 'object') {
-          errorMsg = Object.entries(d)
-            .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${Array.isArray(v) ? v.join(', ') : v}`)
-            .join(' • ');
+          errorMsg = Object.entries(d).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ');
         }
       }
-      alert(`Submission Failed: ${errorMsg}`);
+      alert(errorMsg);
     }
   };
 
   const cardClass = `p-4 sm:p-5 rounded-2xl border transition-all ${
-    isDarkMode ? 'bg-[#131722] border-zinc-800/80 shadow-md' : 'bg-white border-slate-200/80 shadow-sm'
+    isDarkMode 
+      ? 'bg-[#131722] border-zinc-800 text-zinc-100 shadow-xl' 
+      : 'bg-white border-slate-200/80 text-slate-800 shadow-sm'
   }`;
 
   if (loading) {
     return (
-      <PageLoader 
-        message="Loading State Tax Compliance..."
-        subMessage="Fetching state withholding formulas, tax allowances, and statutory rules"
-      />
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <PageLoader message="Loading State Tax Withholding Form..." />
+      </div>
     );
   }
 
@@ -218,7 +232,7 @@ const StateTaxPage = () => {
 
             <button
               type="button"
-              onClick={handleConfirmState}
+              onClick={() => handleConfirmState(tempState)}
               disabled={!tempState}
               style={{ backgroundColor: activeHexColor }}
               className="w-full py-2.5 rounded-xl text-white font-bold text-xs shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
@@ -245,6 +259,32 @@ const StateTaxPage = () => {
             <strong>{selectedState}</strong> does not levy a state personal income tax withholding on wages. No additional state certificate is needed.
           </p>
 
+          <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setIsSwitchingState(!isSwitchingState)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 ${
+                isDarkMode ? 'border-zinc-700 bg-zinc-800 text-zinc-200' : 'border-slate-300 bg-slate-100 text-slate-700'
+              }`}
+            >
+              <RefreshCw size={12} />
+              <span>Switch State Form for Testing</span>
+            </button>
+          </div>
+
+          {isSwitchingState && (
+            <div className="mb-4 p-3 rounded-xl border border-blue-500/30 bg-blue-500/5 text-left space-y-2">
+              <StunningSelect
+                label="Select Different State to Test"
+                value={tempState || selectedState}
+                onChange={(e) => handleConfirmState(e.target.value)}
+                options={ALL_US_STATES}
+                searchable
+                icon={MapPin}
+              />
+            </div>
+          )}
+
           <div className={`p-3 rounded-xl border mb-4 flex items-center justify-center gap-2 ${
             isDarkMode ? 'bg-[#181a20] border-zinc-800 text-zinc-300' : 'bg-slate-50 border-slate-200 text-slate-700'
           }`}>
@@ -269,8 +309,8 @@ const StateTaxPage = () => {
   // --- SCENARIO 3: ACTIVE STATE TAX WITHHOLDING DISPATCHER ---
   return (
     <div className="w-full space-y-4">
-      {/* Title Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1">
+      {/* Title Header with State Switcher for Smooth Testing */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
           <div className="flex items-center gap-2 mb-0.5">
             <span 
@@ -288,11 +328,17 @@ const StateTaxPage = () => {
           </p>
         </div>
 
-        <div className={`self-start sm:self-auto flex items-center gap-2 px-2.5 py-1.5 rounded-xl border ${
-          isDarkMode ? 'bg-zinc-900/60 border-zinc-800 text-zinc-300' : 'bg-blue-50/60 border-blue-100 text-blue-800'
-        }`}>
-          <MapPin size={14} className="text-blue-500 shrink-0" />
-          <span className="text-[10px] font-bold">{selectedState} Compliance</span>
+        {/* State Switcher Tool for Repeated Testing */}
+        <div className="flex items-center gap-2">
+          <div className="w-48">
+            <StunningSelect
+              value={selectedState}
+              onChange={(e) => handleConfirmState(e.target.value)}
+              options={ALL_US_STATES}
+              searchable
+              icon={MapPin}
+            />
+          </div>
         </div>
       </div>
 
@@ -308,7 +354,7 @@ const StateTaxPage = () => {
       {/* Success Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in">
-          <div className={`p-6 rounded-3xl border shadow-2xl flex flex-col items-center max-w-xs w-full text-center animate-in zoom-in-95 ${
+          <div className={`p-6 rounded-3xl border shadow-2xl flex flex-col items-center max-w-sm w-full text-center animate-in zoom-in-95 ${
             isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-100 text-slate-800'
           }`}>
             <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-3 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
@@ -319,15 +365,43 @@ const StateTaxPage = () => {
               {successData.message || "Your state withholding certificate has been securely recorded."}
             </p>
 
-            <button
-              type="button"
-              onClick={() => goToNextStep()}
-              style={{ backgroundColor: activeHexColor }}
-              className="w-full py-2.5 px-3 rounded-xl text-white font-bold text-xs shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-1.5"
-            >
-              <span>Continue to Next Step</span>
-              <ArrowRight size={13} />
-            </button>
+            <div className="w-full space-y-2">
+              {successData.pdf_url && (
+                <a
+                  href={successData.pdf_url.startsWith('http') ? successData.pdf_url : `http://techinnovatorsinc-6789.lvh.me:8000${successData.pdf_url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`w-full py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    isDarkMode ? 'border-zinc-700 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200' : 'border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  <FileText size={13} className="text-blue-500" />
+                  <span>View Generated Filled PDF</span>
+                  <ExternalLink size={12} className="opacity-60" />
+                </a>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setModalOpen(false)}
+                className={`w-full py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                  isDarkMode ? 'border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-300' : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700'
+                }`}
+              >
+                <RefreshCw size={12} />
+                <span>Test Another State Form</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => goToNextStep()}
+                style={{ backgroundColor: activeHexColor }}
+                className="w-full py-2.5 px-3 rounded-xl text-white font-bold text-xs shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>Continue to Next Step</span>
+                <ArrowRight size={13} />
+              </button>
+            </div>
           </div>
         </div>
       )}
