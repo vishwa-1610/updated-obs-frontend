@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   Loader2, AlertCircle, CheckCircle, MapPin, 
   ShieldCheck, Zap, Sparkles, ArrowRight, Check, Forward, Globe, ChevronDown, FileText, CheckCircle2,
-  RefreshCw, Download, ExternalLink, Eye, X
+  RefreshCw, Download, ExternalLink, Eye, X, Printer
 } from 'lucide-react';
 import StateTaxFormDispatcher from '../Onboarding/StateForms/StateTaxFormDispatcher';
 import api from '../../api'; 
@@ -89,7 +89,7 @@ const StateTaxPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [successData, setSuccessData] = useState({ message: '', pdf_url: '' });
+  const [successData, setSuccessData] = useState({ message: '', pdf_url: '', pdf_blob_url: '' });
   const [previewPdfOpen, setPreviewPdfOpen] = useState(false);
   
   const [isNoTaxState, setIsNoTaxState] = useState(false);
@@ -162,6 +162,25 @@ const StateTaxPage = () => {
     }
   };
 
+  // Convert Base64 Data URI to a local Blob URL for 100% reliable in-browser rendering
+  const createBlobFromBase64 = (base64String) => {
+    try {
+      const parts = base64String.split(';base64,');
+      const contentType = parts[0].split(':')[1] || 'application/pdf';
+      const raw = window.atob(parts[1]);
+      const rawLength = raw.length;
+      const uInt8Array = new Uint8Array(rawLength);
+      for (let i = 0; i < rawLength; ++i) {
+        uInt8Array[i] = raw.charCodeAt(i);
+      }
+      const blob = new Blob([uInt8Array], { type: contentType });
+      return URL.createObjectURL(blob);
+    } catch (e) {
+      console.warn("Could not create blob from base64:", e);
+      return null;
+    }
+  };
+
   const handleTaxSubmit = async (formData) => {
     if (!token) return alert("Error: Security token missing from current session.");
 
@@ -186,7 +205,7 @@ const StateTaxPage = () => {
         token: token 
       };
 
-      // Sanitize payload: ensure null/undefined are converted to safe defaults
+      // Sanitize payload
       const sanitizedPayload = {};
       Object.entries(rawPayload).forEach(([key, val]) => {
         if (val === null || val === undefined) {
@@ -199,13 +218,21 @@ const StateTaxPage = () => {
       const response = await api.post('/confirm-onboarding/', sanitizedPayload);
       if (response.status === 200 || response.status === 201) {
         const rawPdfUrl = response.data.pdf_url || response.data.w4_pdf || '';
+        const pdfBase64 = response.data.pdf_base64 || '';
+        
+        let blobUrl = '';
+        if (pdfBase64) {
+          blobUrl = createBlobFromBase64(pdfBase64);
+        }
+
         const fullPdfUrl = rawPdfUrl 
           ? (rawPdfUrl.startsWith('http') ? rawPdfUrl : `http://techinnovatorsinc-6789.lvh.me:8000${rawPdfUrl}`)
           : '';
 
         setSuccessData({ 
           message: response.data.message || `${selectedState} State withholding certificate recorded & filled successfully.`, 
-          pdf_url: fullPdfUrl 
+          pdf_url: fullPdfUrl,
+          pdf_blob_url: blobUrl || fullPdfUrl
         });
         setModalOpen(true);
       }
@@ -222,6 +249,18 @@ const StateTaxPage = () => {
       }
       alert(errorMsg);
     }
+  };
+
+  const handleDownloadPdf = () => {
+    const targetUrl = successData.pdf_blob_url || successData.pdf_url;
+    if (!targetUrl) return;
+
+    const link = document.createElement('a');
+    link.href = targetUrl;
+    link.download = `${selectedState}_Withholding_Certificate_${new Date().toISOString().split('T')[0]}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const cardClass = `p-4 sm:p-5 rounded-2xl border transition-all ${
@@ -414,8 +453,8 @@ const StateTaxPage = () => {
             </p>
 
             <div className="w-full space-y-2.5">
-              {/* PDF Preview / View Button */}
-              {successData.pdf_url && (
+              {/* PDF Preview & Direct Download Buttons */}
+              {(successData.pdf_blob_url || successData.pdf_url) && (
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -425,17 +464,17 @@ const StateTaxPage = () => {
                     <Eye size={14} />
                     <span>Preview Filled PDF</span>
                   </button>
-                  <a
-                    href={successData.pdf_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center transition-all ${
+                  <button
+                    type="button"
+                    onClick={handleDownloadPdf}
+                    className={`px-3 py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1 transition-all ${
                       isDarkMode ? 'border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700' : 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200'
                     }`}
-                    title="Open PDF in new tab"
+                    title="Download Generated PDF"
                   >
-                    <ExternalLink size={14} />
-                  </a>
+                    <Download size={14} />
+                    <span>Download</span>
+                  </button>
                 </div>
               )}
 
@@ -468,8 +507,8 @@ const StateTaxPage = () => {
         </div>
       )}
 
-      {/* Embedded PDF Full Preview Modal */}
-      {previewPdfOpen && successData.pdf_url && (
+      {/* Embedded High-Definition PDF Full Preview Modal */}
+      {previewPdfOpen && (successData.pdf_blob_url || successData.pdf_url) && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
           <div className={`rounded-3xl border shadow-2xl flex flex-col w-full max-w-4xl h-[90vh] overflow-hidden ${
             isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-200 text-slate-800'
@@ -482,15 +521,14 @@ const StateTaxPage = () => {
                 <h3 className="text-sm font-bold">{selectedState} Filled Withholding Certificate Preview</h3>
               </div>
               <div className="flex items-center gap-2">
-                <a
-                  href={successData.pdf_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 bg-blue-500/10 border-blue-500/20 text-blue-500 hover:bg-blue-500/20 transition-all"
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  className="px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 bg-blue-500/10 border-blue-500/20 text-blue-500 hover:bg-blue-500/20 transition-all"
                 >
                   <Download size={13} />
-                  <span>Download</span>
-                </a>
+                  <span>Download PDF</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setPreviewPdfOpen(false)}
@@ -500,12 +538,18 @@ const StateTaxPage = () => {
                 </button>
               </div>
             </div>
-            <div className="flex-1 w-full bg-zinc-900">
-              <iframe
-                src={successData.pdf_url}
-                title="Filled State Tax PDF"
+            <div className="flex-1 w-full bg-zinc-900 overflow-hidden relative">
+              <object
+                data={successData.pdf_blob_url || successData.pdf_url}
+                type="application/pdf"
                 className="w-full h-full border-0"
-              />
+              >
+                <iframe
+                  src={successData.pdf_blob_url || successData.pdf_url}
+                  title="Filled State Tax PDF"
+                  className="w-full h-full border-0"
+                />
+              </object>
             </div>
           </div>
         </div>
