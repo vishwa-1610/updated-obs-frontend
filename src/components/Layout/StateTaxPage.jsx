@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   Loader2, AlertCircle, CheckCircle, MapPin, 
   ShieldCheck, Zap, Sparkles, ArrowRight, Check, Forward, Globe, ChevronDown, FileText, CheckCircle2,
-  RefreshCw, Download, ExternalLink
+  RefreshCw, Download, ExternalLink, Eye, X
 } from 'lucide-react';
 import StateTaxFormDispatcher from '../Onboarding/StateForms/StateTaxFormDispatcher';
 import api from '../../api'; 
@@ -18,23 +18,58 @@ const NO_TAX_FORM_STATES = [
 ];
 
 const ALL_US_STATES = [
-  { value: 'AL', label: 'AL - Alabama' }, { value: 'AK', label: 'AK - Alaska' }, { value: 'AZ', label: 'AZ - Arizona' },
-  { value: 'AR', label: 'AR - Arkansas' }, { value: 'CA', label: 'CA - California' }, { value: 'CO', label: 'CO - Colorado' },
-  { value: 'CT', label: 'CT - Connecticut' }, { value: 'DE', label: 'DE - Delaware' }, { value: 'FL', label: 'FL - Florida' },
-  { value: 'GA', label: 'GA - Georgia' }, { value: 'HI', label: 'HI - Hawaii' }, { value: 'ID', label: 'ID - Idaho' },
-  { value: 'IL', label: 'IL - Illinois' }, { value: 'IN', label: 'IN - Indiana' }, { value: 'IA', label: 'IA - Iowa' },
-  { value: 'KS', label: 'KS - Kansas' }, { value: 'KY', label: 'KY - Kentucky' }, { value: 'LA', label: 'LA - Louisiana' },
-  { value: 'ME', label: 'ME - Maine' }, { value: 'MD', label: 'MD - Maryland' }, { value: 'MA', label: 'MA - Massachusetts' },
-  { value: 'MI', label: 'MI - Michigan' }, { value: 'MN', label: 'MN - Minnesota' }, { value: 'MS', label: 'MS - Mississippi' },
-  { value: 'MO', label: 'MO - Missouri' }, { value: 'MT', label: 'MT - Montana' }, { value: 'NE', label: 'NE - Nebraska' },
-  { value: 'NV', label: 'NV - Nevada' }, { value: 'NH', label: 'NH - New Hampshire' }, { value: 'NJ', label: 'NJ - New Jersey' },
-  { value: 'NM', label: 'NM - New Mexico' }, { value: 'NY', label: 'NY - New York' }, { value: 'NC', label: 'NC - North Carolina' },
-  { value: 'ND', label: 'ND - North Dakota' }, { value: 'OH', label: 'OH - Ohio' }, { value: 'OK', label: 'OK - Oklahoma' },
-  { value: 'OR', label: 'OR - Oregon' }, { value: 'PA', label: 'PA - Pennsylvania' }, { value: 'RI', label: 'RI - Rhode Island' },
-  { value: 'SC', label: 'SC - South Carolina' }, { value: 'SD', label: 'SD - South Dakota' }, { value: 'TN', label: 'TN - Tennessee' },
-  { value: 'TX', label: 'TX - Texas' }, { value: 'UT', label: 'UT - Utah' }, { value: 'VT', label: 'VT - Vermont' },
-  { value: 'VA', label: 'VA - Virginia' }, { value: 'WA', label: 'WA - Washington' }, { value: 'WV', label: 'WV - West Virginia' },
-  { value: 'WI', label: 'WI - Wisconsin' }, { value: 'WY', label: 'WY - Wyoming' }
+  { value: 'AL', label: 'AL - Alabama (Form A-4)' },
+  { value: 'AZ', label: 'AZ - Arizona (Form A-4)' },
+  { value: 'AR', label: 'AR - Arkansas (Form AR4EC)' },
+  { value: 'CA', label: 'CA - California (Form DE-4)' },
+  { value: 'CO', label: 'CO - Colorado (Federal W-4 / DR 0004)' },
+  { value: 'CT', label: 'CT - Connecticut (Form CT-W4)' },
+  { value: 'DE', label: 'DE - Delaware (Form W-4)' },
+  { value: 'DC', label: 'DC - District of Columbia (Form D-4)' },
+  { value: 'GA', label: 'GA - Georgia (Form G-4)' },
+  { value: 'HI', label: 'HI - Hawaii (Form HW-4)' },
+  { value: 'ID', label: 'ID - Idaho (Form ID W-4)' },
+  { value: 'IL', label: 'IL - Illinois (Form IL-W-4)' },
+  { value: 'IN', label: 'IN - Indiana (Form WH-4)' },
+  { value: 'IA', label: 'IA - Iowa (Form IA W-4)' },
+  { value: 'KS', label: 'KS - Kansas (Form K-4)' },
+  { value: 'KY', label: 'KY - Kentucky (Form K-4)' },
+  { value: 'LA', label: 'LA - Louisiana (Form L-4)' },
+  { value: 'ME', label: 'ME - Maine (Form W-4ME)' },
+  { value: 'MD', label: 'MD - Maryland (Form MW507)' },
+  { value: 'MA', label: 'MA - Massachusetts (Form M-4)' },
+  { value: 'MI', label: 'MI - Michigan (Form MI-W4)' },
+  { value: 'MN', label: 'MN - Minnesota (Form W-4MN)' },
+  { value: 'MS', label: 'MS - Mississippi (Form 89-350)' },
+  { value: 'MO', label: 'MO - Missouri (Form MO W-4)' },
+  { value: 'MT', label: 'MT - Montana (Form MW-4)' },
+  { value: 'NE', label: 'NE - Nebraska (Form W-4N)' },
+  { value: 'NJ', label: 'NJ - New Jersey (Form NJ-W4)' },
+  { value: 'NM', label: 'NM - New Mexico (Federal W-4 Copy)' },
+  { value: 'NY', label: 'NY - New York (Form IT-2104)' },
+  { value: 'NC', label: 'NC - North Carolina (Form NC-4)' },
+  { value: 'ND', label: 'ND - North Dakota (Federal W-4 Copy)' },
+  { value: 'OH', label: 'OH - Ohio (Form IT 4)' },
+  { value: 'OK', label: 'OK - Oklahoma (Form OK-W-4)' },
+  { value: 'OR', label: 'OR - Oregon (Form OR-W-4)' },
+  { value: 'PA', label: 'PA - Pennsylvania (Form REV-419)' },
+  { value: 'RI', label: 'RI - Rhode Island (Form RI W-4)' },
+  { value: 'SC', label: 'SC - South Carolina (Form SC W-4)' },
+  { value: 'UT', label: 'UT - Utah (Federal W-4 Copy)' },
+  { value: 'VT', label: 'VT - Vermont (Form W-4VT)' },
+  { value: 'VA', label: 'VA - Virginia (Form VA-4)' },
+  { value: 'WV', label: 'WV - West Virginia (Form WV/IT-104)' },
+  { value: 'WI', label: 'WI - Wisconsin (Form WT-4)' },
+  // No Personal Income Tax States
+  { value: 'AK', label: 'AK - Alaska (No State Tax)' },
+  { value: 'FL', label: 'FL - Florida (No State Tax)' },
+  { value: 'NV', label: 'NV - Nevada (No State Tax)' },
+  { value: 'NH', label: 'NH - New Hampshire (No State Tax)' },
+  { value: 'SD', label: 'SD - South Dakota (No State Tax)' },
+  { value: 'TN', label: 'TN - Tennessee (No State Tax)' },
+  { value: 'TX', label: 'TX - Texas (No State Tax)' },
+  { value: 'WA', label: 'WA - Washington (No State Tax)' },
+  { value: 'WY', label: 'WY - Wyoming (No State Tax)' }
 ];
 
 const StateTaxPage = () => {
@@ -55,6 +90,7 @@ const StateTaxPage = () => {
   const [error, setError] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [successData, setSuccessData] = useState({ message: '', pdf_url: '' });
+  const [previewPdfOpen, setPreviewPdfOpen] = useState(false);
   
   const [isNoTaxState, setIsNoTaxState] = useState(false);
   const [redirectCount, setRedirectCount] = useState(3);
@@ -72,13 +108,13 @@ const StateTaxPage = () => {
       try {
         setLoading(true);
         const response = await api.get(`/onboarding/validate/${token}/`);
-        const userStateCode = urlState || response.data.state || 'AL';
+        const userStateCode = (urlState || response.data.state || 'AL').toUpperCase();
 
         setUserData({ ...response.data, state: userStateCode, token: token });
 
         if (userStateCode) {
-          setSelectedState(userStateCode.toUpperCase());
-          if (NO_TAX_FORM_STATES.includes(userStateCode.toUpperCase())) {
+          setSelectedState(userStateCode);
+          if (NO_TAX_FORM_STATES.includes(userStateCode)) {
             setIsNoTaxState(true);
           } else {
             setIsNoTaxState(false);
@@ -130,6 +166,7 @@ const StateTaxPage = () => {
     if (!token) return alert("Error: Security token missing from current session.");
 
     try {
+      const signatureVal = formData?.signature || formData?.signature_image || '';
       const rawPayload = {
         email: formData?.email || userData?.email || '', 
         client_name: formData?.client_name || userData?.client_name || '',
@@ -143,6 +180,8 @@ const StateTaxPage = () => {
         zipcode: formData?.zipcode || userData?.zipcode || '',
         confirmation_date: formData?.confirmation_date || userData?.confirmation_date || new Date().toISOString().split('T')[0],
         ...formData, 
+        signature: signatureVal,
+        signature_image: signatureVal,
         state: selectedState || formData?.state || userData?.state || 'AL', 
         token: token 
       };
@@ -159,9 +198,14 @@ const StateTaxPage = () => {
 
       const response = await api.post('/confirm-onboarding/', sanitizedPayload);
       if (response.status === 200 || response.status === 201) {
+        const rawPdfUrl = response.data.pdf_url || response.data.w4_pdf || '';
+        const fullPdfUrl = rawPdfUrl 
+          ? (rawPdfUrl.startsWith('http') ? rawPdfUrl : `http://techinnovatorsinc-6789.lvh.me:8000${rawPdfUrl}`)
+          : '';
+
         setSuccessData({ 
-          message: response.data.message || `${selectedState} State withholding certificate recorded successfully.`, 
-          pdf_url: response.data.pdf_url || response.data.w4_pdf || '' 
+          message: response.data.message || `${selectedState} State withholding certificate recorded & filled successfully.`, 
+          pdf_url: fullPdfUrl 
         });
         setModalOpen(true);
       }
@@ -213,9 +257,9 @@ const StateTaxPage = () => {
           </div>
           
           <div className="text-center mb-4">
-            <h2 className="text-lg font-extrabold tracking-tight">Confirm Work State</h2>
+            <h2 className="text-lg font-extrabold tracking-tight">Select Work State Form</h2>
             <p className={`text-xs mt-0.5 leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
-              Select the state in which you primarily perform work to load your state withholding certificate.
+              Select the US State certificate you want to test and complete.
             </p>
           </div>
 
@@ -309,7 +353,7 @@ const StateTaxPage = () => {
   // --- SCENARIO 3: ACTIVE STATE TAX WITHHOLDING DISPATCHER ---
   return (
     <div className="w-full space-y-4">
-      {/* Title Header with State Switcher for Smooth Testing */}
+      {/* Title Header with Dynamic State Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
           <div className="flex items-center gap-2 mb-0.5">
@@ -319,19 +363,23 @@ const StateTaxPage = () => {
             >
               Step 4 • State Withholding
             </span>
+            <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-full">
+              Testing for: {userData?.email || 'Candidate'}
+            </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
             {selectedState} State Withholding Certificate
           </h1>
           <p className={`text-xs ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
-            Tax withholding documentation for employment in the State of {selectedState}.
+            Complete and sign the official state withholding certificate. Change state anytime using the selector on the right.
           </p>
         </div>
 
-        {/* State Switcher Tool for Repeated Testing */}
-        <div className="flex items-center gap-2">
-          <div className="w-48">
+        {/* Dynamic State Switcher Tool for Repeated Testing */}
+        <div className="flex items-center gap-2 min-w-[240px]">
+          <div className="w-full">
             <StunningSelect
+              label="Switch State Form"
               value={selectedState}
               onChange={(e) => handleConfirmState(e.target.value)}
               options={ALL_US_STATES}
@@ -342,7 +390,7 @@ const StateTaxPage = () => {
         </div>
       </div>
 
-      {/* State Tax Form Dispatcher */}
+      {/* State Tax Form Dispatcher (Loads the exact dynamic form for the selected state) */}
       <div className={`${cardClass} state-forms-theme-scope`}>
         <StateTaxFormDispatcher
           userState={selectedState}
@@ -354,53 +402,110 @@ const StateTaxPage = () => {
       {/* Success Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in">
-          <div className={`p-6 rounded-3xl border shadow-2xl flex flex-col items-center max-w-sm w-full text-center animate-in zoom-in-95 ${
+          <div className={`p-6 rounded-3xl border shadow-2xl flex flex-col items-center max-w-md w-full text-center animate-in zoom-in-95 ${
             isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-100 text-slate-800'
           }`}>
             <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-3 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
               <Check size={28} strokeWidth={3} />
             </div>
-            <h3 className="text-base font-bold mb-1">{selectedState} Tax Form Saved!</h3>
-            <p className={`text-xs mb-4 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
-              {successData.message || "Your state withholding certificate has been securely recorded."}
+            <h3 className="text-lg font-bold mb-1">{selectedState} Tax Form Saved & Generated!</h3>
+            <p className={`text-xs mb-4 leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+              {successData.message || "Your state withholding certificate has been generated and filed."}
             </p>
 
-            <div className="w-full space-y-2">
+            <div className="w-full space-y-2.5">
+              {/* PDF Preview / View Button */}
               {successData.pdf_url && (
-                <a
-                  href={successData.pdf_url.startsWith('http') ? successData.pdf_url : `http://techinnovatorsinc-6789.lvh.me:8000${successData.pdf_url}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`w-full py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                    isDarkMode ? 'border-zinc-700 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200' : 'border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  <FileText size={13} className="text-blue-500" />
-                  <span>View Generated Filled PDF</span>
-                  <ExternalLink size={12} className="opacity-60" />
-                </a>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewPdfOpen(true)}
+                    className="flex-1 py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20 transition-all"
+                  >
+                    <Eye size={14} />
+                    <span>Preview Filled PDF</span>
+                  </button>
+                  <a
+                    href={successData.pdf_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center transition-all ${
+                      isDarkMode ? 'border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700' : 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                    title="Open PDF in new tab"
+                  >
+                    <ExternalLink size={14} />
+                  </a>
+                </div>
               )}
 
+              {/* Retest Another State Button */}
               <button
                 type="button"
-                onClick={() => setModalOpen(false)}
-                className={`w-full py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                  isDarkMode ? 'border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-300' : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700'
+                onClick={() => {
+                  setModalOpen(false);
+                }}
+                className={`w-full py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                  isDarkMode ? 'border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-200' : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700'
                 }`}
               >
-                <RefreshCw size={12} />
+                <RefreshCw size={13} />
                 <span>Test Another State Form</span>
               </button>
 
+              {/* Continue Progression */}
               <button
                 type="button"
                 onClick={() => goToNextStep()}
                 style={{ backgroundColor: activeHexColor }}
                 className="w-full py-2.5 px-3 rounded-xl text-white font-bold text-xs shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-1.5"
               >
-                <span>Continue to Next Step</span>
-                <ArrowRight size={13} />
+                <span>Continue to Next Step (Direct Deposit)</span>
+                <ArrowRight size={14} />
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Embedded PDF Full Preview Modal */}
+      {previewPdfOpen && successData.pdf_url && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className={`rounded-3xl border shadow-2xl flex flex-col w-full max-w-4xl h-[90vh] overflow-hidden ${
+            isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-200 text-slate-800'
+          }`}>
+            <div className={`flex items-center justify-between p-4 border-b ${
+              isDarkMode ? 'border-zinc-800 bg-zinc-900/50' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-2">
+                <FileText size={18} className="text-blue-500" />
+                <h3 className="text-sm font-bold">{selectedState} Filled Withholding Certificate Preview</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={successData.pdf_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 bg-blue-500/10 border-blue-500/20 text-blue-500 hover:bg-blue-500/20 transition-all"
+                >
+                  <Download size={13} />
+                  <span>Download</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewPdfOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-zinc-700/50 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 w-full bg-zinc-900">
+              <iframe
+                src={successData.pdf_url}
+                title="Filled State Tax PDF"
+                className="w-full h-full border-0"
+              />
             </div>
           </div>
         </div>
