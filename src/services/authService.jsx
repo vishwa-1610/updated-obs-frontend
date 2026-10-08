@@ -2,24 +2,29 @@ import api from './api';
 
 export const authService = {
   // --- AUTHENTICATION ---
-  
-  // 1. Login (Missing in your code, required by authSlice)
   login: (credentials) => api.post('/users/login/', credentials),
+  verify2FALogin: (data) => api.post('/users/2fa/verify-login/', data),
+  sendEmailOTP: (data) => api.post('/users/2fa/send-email-otp/', data),
+  forgotPassword: (data) => api.post('/users/forgot-password/', data),
+  resetPassword: (data) => api.post('/users/reset-password/', data),
+  signup: (data) => api.post('/users/signup/', data),
 
-  // 2. Fetch logged-in user profile
+  // --- USER PROFILE & IDENTITY ---
   getProfile: () => api.get('/users/profile/'),
-
-  // 3. Update profile details
+  getMe: () => api.get('/users/me/'),
   updateProfile: (data) => api.patch('/users/profile/', data),
-
-  // 4. Change Password
   changePassword: (data) => api.post('/users/change-password/', data),
 
-  // --- ADMIN DASHBOARD FUNCTIONS ---
+  // --- 2FA MANAGEMENT ---
+  setup2FA: () => api.post('/users/2fa/setup/'),
+  enable2FA: (data) => api.post('/users/2fa/enable/', data),
+  disable2FA: (data) => api.post('/users/2fa/disable/', data),
+  regenerateBackupCodes: () => api.post('/users/2fa/backup-codes/'),
 
-  // 5. Get All Users (For Admin Dashboard Table)
+  // --- ADMIN DASHBOARD ---
   getUsers: () => api.get('/users/'),
-
-  // 6. Delete User (For Admin Dashboard Actions)
   deleteUser: (id) => api.delete(`/users/${id}/`),
+  updateUserRole: (id, data) => api.patch(`/users/${id}/role/`, data),
 };
+
+export default authService;

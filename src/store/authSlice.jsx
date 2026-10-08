@@ -1,24 +1,22 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authService } from '../services/authService';
 
-// --- THUNKS ---
-
-// Login Action
+// Login Thunk
 export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async (credentials, { rejectWithValue }) => {
     try {
-      // Calls the new login method in authService
       const response = await authService.login(credentials);
-      return response.data; // Expected: { access, refresh, user: {...} }
+      return response.data;
     } catch (error) {
-      // Safely handle error messages from backend
-      return rejectWithValue(error.response?.data?.detail || 'Login failed');
+      return rejectWithValue(
+        error.response?.data?.error || 
+        error.response?.data?.detail || 
+        'Login failed. Please verify your credentials.'
+      );
     }
   }
 );
-
-// --- SLICE ---
 
 const initialState = {
   user: JSON.parse(localStorage.getItem('user')) || null,
@@ -27,12 +25,31 @@ const initialState = {
   loading: false,
   error: null,
   isAuthenticated: !!localStorage.getItem('access'),
+  twoFactorChallenge: null, // Holds { temp_token, method, email } when 2FA is required
 };
 
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
+    setLoginSuccess: (state, action) => {
+      state.loading = false;
+      state.isAuthenticated = true;
+      state.twoFactorChallenge = null;
+      state.user = action.payload.user;
+      state.accessToken = action.payload.access;
+      state.refreshToken = action.payload.refresh;
+
+      if (action.payload.user) localStorage.setItem('user', JSON.stringify(action.payload.user));
+      if (action.payload.access) localStorage.setItem('access', action.payload.access);
+      if (action.payload.refresh) localStorage.setItem('refresh', action.payload.refresh);
+    },
+    setTwoFactorChallenge: (state, action) => {
+      state.twoFactorChallenge = action.payload;
+    },
+    clearTwoFactorChallenge: (state) => {
+      state.twoFactorChallenge = null;
+    },
     updateUser: (state, action) => {
       state.user = { ...state.user, ...action.payload };
       localStorage.setItem('user', JSON.stringify(state.user));
@@ -42,8 +59,11 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.refreshToken = null;
       state.isAuthenticated = false;
+      state.twoFactorChallenge = null;
       state.error = null;
-      localStorage.clear();
+      localStorage.removeItem('access');
+      localStorage.removeItem('refresh');
+      localStorage.removeItem('user');
     },
     clearAuthError: (state) => {
       state.error = null;
@@ -57,22 +77,29 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.isAuthenticated = true;
-        state.user = action.payload.user;
-        state.accessToken = action.payload.access;
-        state.refreshToken = action.payload.refresh;
+        if (action.payload.requires_2fa) {
+          state.twoFactorChallenge = {
+            temp_token: action.payload.temp_token,
+            method: action.payload.method || 'TOTP',
+            email: action.payload.email
+          };
+        } else {
+          state.isAuthenticated = true;
+          state.user = action.payload.user;
+          state.accessToken = action.payload.access;
+          state.refreshToken = action.payload.refresh;
 
-        // Persist to LocalStorage
-        localStorage.setItem('user', JSON.stringify(action.payload.user));
-        localStorage.setItem('access', action.payload.access);
-        localStorage.setItem('refresh', action.payload.refresh);
+          if (action.payload.user) localStorage.setItem('user', JSON.stringify(action.payload.user));
+          if (action.payload.access) localStorage.setItem('access', action.payload.access);
+          if (action.payload.refresh) localStorage.setItem('refresh', action.payload.refresh);
+        }
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload; // Contains the error message
+        state.error = action.payload;
       });
   },
 });
 
-export const { updateUser, logout, clearAuthError } = authSlice.actions;
+export const { setLoginSuccess, setTwoFactorChallenge, clearTwoFactorChallenge, updateUser, logout, clearAuthError } = authSlice.actions;
 export default authSlice.reducer;

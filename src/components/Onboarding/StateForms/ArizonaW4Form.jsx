@@ -221,8 +221,8 @@ const ArizonaW4Form = ({ initialData, onSubmit }) => {
         return; 
     }
 
-    // Required fields check including Token
-    if (!localData.first_name || !localData.last_name || !localData.ssn || !localData.token) {
+    // Required fields check
+    if (!localData.first_name || !localData.last_name || !localData.ssn) {
         setErrorState({
             isOpen: true,
             title: "Missing Information",

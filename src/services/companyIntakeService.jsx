@@ -1,12 +1,26 @@
-import api from '../api'; // Your axios instance from api.js
+import api from './api';
 
 export const companyIntakeService = {
-
-  // --- REGISTRATION ---
+  // --- REGISTRATION & PUBLIC ---
   registerCompany: (data) => api.post('register-company/', data),
 
+  // --- UNIFIED PROFILE & BRANDING ---
+  getUnifiedProfile: () => api.get('/company/profile/'),
+  updateUnifiedProfile: (data) => api.patch('/company/profile/', data),
+  getBranding: () => api.get('/company/branding/'),
+  saveBranding: (formData) => api.patch('/company/branding/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+
+  // --- MULTI-ENTITY HIERARCHY ---
+  getEntities: (params) => api.get('/company/entities/', { params }),
+  createEntity: (data) => api.post('/company/entities/', data),
+  getBranches: (params) => api.get('/company/branches/', { params }),
+  createBranch: (data) => api.post('/company/branches/', data),
+  getDepartments: (params) => api.get('/company/departments/', { params }),
+
   // --- USER MANAGEMENT ---
-  getUsers: () => api.get('users/'), 
+  getUsers: () => api.get('users/'),
   createUser: (data) => api.post('users/signup/', data),
   updateUser: (id, data) => api.patch(`users/${id}/`, data),
   deleteUser: (id) => api.delete(`users/${id}/`),
@@ -19,52 +33,38 @@ export const companyIntakeService = {
   getCompanyType: () => api.get('company-type/'),
   setCompanyType: (data) => api.patch('company-type/', data),
 
-  // --- WORKFLOW (Screen 6) ---
+  // --- WORKFLOW ---
   getWorkflowSteps: async () => {
     const response = await api.get('workflow-steps/');
-    // ✅ SAFETY FIX: Handle Pagination vs List
-    // If backend returns { results: [...] }, use that. Otherwise use data directly.
     const data = Array.isArray(response.data) ? response.data : (response.data?.results || []);
-    return { data }; // Return standardized structure
+    return { data };
   },
-  
   toggleWorkflowStep: (id, isActive) => api.patch(`workflow-step/${id}/`, { is_active: isActive }),
   reorderWorkflowSteps: (orderList) => api.post('workflow-reorder/', orderList),
 
   // --- DOCUMENTS ---
   getCompanyDocuments: async () => {
     const response = await api.get('company-docs/');
-    // ✅ SAFETY FIX: Handle Pagination vs List
     const data = Array.isArray(response.data) ? response.data : (response.data?.results || []);
     return { data };
   },
-  
   uploadCompanyDocument: (formData) => api.post('company-docs/upload/', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
 
   // --- SIGNATURE ---
-  getDigitalSignature: () => api.get('digital-signatures/'), 
-
-  // 2. Create New (POST + FormData)
+  getDigitalSignature: () => api.get('digital-signatures/'),
   createDigitalSignature: (formData) => api.post('digital-signatures/', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
-
-  // 3. Update Existing (PATCH + FormData + ID)
   updateDigitalSignature: (id, formData) => api.patch(`digital-signatures/${id}/`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   saveDigitalSignature: (data) => api.patch('digital-signature/', data),
 
-  // --- BRANDING ---
-  // ✅ FIX: Added getBranding for consistency
-  getBranding: () => api.get('branding/'), 
-  saveBranding: (formData) => api.patch('branding/', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
-
   // --- PAYMENT & HOSTING ---
   savePayment: (data) => api.patch('payment-setup/', data),
   saveHosting: (data) => api.patch('hosting/', data),
 };
+
+export default companyIntakeService;

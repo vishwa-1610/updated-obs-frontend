@@ -1,42 +1,25 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { onboardingService } from '../services/onboardingService';
+import onboardingService from '../services/onboardingService';
 
-// =================================================================
-// 1. ASYNC THUNKS
-// =================================================================
-
-// --- A. Fetch Notifications (For Navbar Bell) ---
-// This always fetches Pending & In Progress items, independent of the current view.
-export const fetchNotifications = createAsyncThunk(
-  'onboarding/fetchNotifications',
+// Candidate Lifecycle Thunks
+export const fetchAllOnboardings = createAsyncThunk(
+  'onboarding/fetchAllOnboardings',
   async (_, { rejectWithValue }) => {
     try {
-      // Re-use the pending endpoint but force no search param to get all actionable items
-      const response = await onboardingService.getPendingOnboardings({ search: '' });
+      const response = await onboardingService.getAllOnboardings();
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
+export const fetchOnboardings = fetchAllOnboardings;
 
-// --- B. Fetch Table Data (For Main Page) ---
-// Handles switching between tabs
-export const fetchOnboardings = createAsyncThunk(
-  'onboarding/fetchOnboardings',
-  async ({ tab, params }, { rejectWithValue }) => {
+export const fetchPendingOnboardings = createAsyncThunk(
+  'onboarding/fetchPendingOnboardings',
+  async (_, { rejectWithValue }) => {
     try {
-      let response;
-      if (tab === 'pending') {
-        response = await onboardingService.getPendingOnboardings(params);
-      } else if (tab === 'confirmed') {
-        response = await onboardingService.getConfirmedOnboardings(params);
-      } else if (tab === 'inprogress') {
-        response = await onboardingService.getInProgressOnboardings(params);
-      } else {
-        // Fallback or 'all'
-        response = await onboardingService.getOnboardings(params);
-      }
+      const response = await onboardingService.getPendingOnboardings();
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -44,10 +27,32 @@ export const fetchOnboardings = createAsyncThunk(
   }
 );
 
-// --- C. CRUD Operations ---
+export const fetchInProgressOnboardings = createAsyncThunk(
+  'onboarding/fetchInProgressOnboardings',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await onboardingService.getInProgressOnboardings();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
 
-export const createOnboarding = createAsyncThunk(
-  'onboarding/createOnboarding',
+export const fetchConfirmedOnboardings = createAsyncThunk(
+  'onboarding/fetchConfirmedOnboardings',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await onboardingService.getConfirmedOnboardings();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const createNewOnboarding = createAsyncThunk(
+  'onboarding/createNewOnboarding',
   async (data, { rejectWithValue }) => {
     try {
       const response = await onboardingService.createOnboarding(data);
@@ -57,9 +62,10 @@ export const createOnboarding = createAsyncThunk(
     }
   }
 );
+export const createOnboarding = createNewOnboarding;
 
-export const updateOnboarding = createAsyncThunk(
-  'onboarding/updateOnboarding',
+export const updateOnboardingRecord = createAsyncThunk(
+  'onboarding/updateOnboardingRecord',
   async ({ id, data }, { rejectWithValue }) => {
     try {
       const response = await onboardingService.updateOnboarding(id, data);
@@ -69,9 +75,10 @@ export const updateOnboarding = createAsyncThunk(
     }
   }
 );
+export const updateOnboarding = updateOnboardingRecord;
 
-export const deleteOnboarding = createAsyncThunk(
-  'onboarding/deleteOnboarding',
+export const deleteOnboardingRecord = createAsyncThunk(
+  'onboarding/deleteOnboardingRecord',
   async (id, { rejectWithValue }) => {
     try {
       await onboardingService.deleteOnboarding(id);
@@ -82,175 +89,270 @@ export const deleteOnboarding = createAsyncThunk(
   }
 );
 
-// --- D. Bank Details ---
-
-export const fetchBankDetails = createAsyncThunk(
-  'onboarding/fetchBankDetails',
-  async (onboardingId, { rejectWithValue }) => {
+export const convertToEmployeeAction = createAsyncThunk(
+  'onboarding/convertToEmployeeAction',
+  async ({ id, data }, { rejectWithValue }) => {
     try {
-      const response = await onboardingService.getBankDetails(onboardingId);
-      return response.data.bank_accounts; 
+      const response = await onboardingService.convertToEmployee(id, data);
+      return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
 
-// --- E. Reminders ---
-
-export const remindOnboarding = createAsyncThunk(
-  'onboarding/remindOnboarding',
+export const remindCandidateAction = createAsyncThunk(
+  'onboarding/remindCandidateAction',
   async (id, { rejectWithValue }) => {
     try {
       const response = await onboardingService.remindOnboarding(id);
-      return response.data; 
+      return { id, result: response.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+export const remindOnboarding = remindCandidateAction;
+
+export const regretCandidateAction = createAsyncThunk(
+  'onboarding/regretCandidateAction',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await onboardingService.regretOnboarding(id);
+      return { id, result: response.data };
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
 
-// =================================================================
-// 2. SLICE DEFINITION
-// =================================================================
+export const confirmOnboarding = createAsyncThunk(
+  'onboarding/confirmOnboarding',
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const response = await onboardingService.convertToEmployee(id, data);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const fetchBankDetails = createAsyncThunk(
+  'onboarding/fetchBankDetails',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await onboardingService.getOnboardingDetail(id);
+      return response.data?.bank_details || null;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const fetchNotifications = createAsyncThunk(
+  'onboarding/fetchNotifications',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await onboardingService.getDocumentExpirations();
+      return response.data || [];
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+// Enterprise Suite Thunks
+export const fetchBenefitPlans = createAsyncThunk(
+  'onboarding/fetchBenefitPlans',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await onboardingService.getBenefitPlans();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const createBenefitPlan = createAsyncThunk(
+  'onboarding/createBenefitPlan',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await onboardingService.createBenefitPlan(data);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const fetchCompanyPolicies = createAsyncThunk(
+  'onboarding/fetchCompanyPolicies',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await onboardingService.getCompanyPolicies();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const createCompanyPolicy = createAsyncThunk(
+  'onboarding/createCompanyPolicy',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await onboardingService.createCompanyPolicy(data);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const fetchDocumentExpirations = createAsyncThunk(
+  'onboarding/fetchDocumentExpirations',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await onboardingService.getDocumentExpirations();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+const initialState = {
+  allOnboardings: [],
+  onboardings: [],
+  pendingOnboardings: [],
+  inProgressOnboardings: [],
+  confirmedOnboardings: [],
+  benefitPlans: [],
+  companyPolicies: [],
+  documentExpirations: [],
+  notifications: [],
+  selectedOnboarding: null,
+  currentOnboarding: null,
+  bankDetails: null,
+  page: 1,
+  totalPages: 1,
+  loading: false,
+  error: null,
+  successMessage: null,
+  success: null
+};
 
 const onboardingSlice = createSlice({
   name: 'onboarding',
-  initialState: {
-    // Main Data
-    onboardings: [],      // Data for the Table
-    notifications: [],    // Data for the Navbar Bell (Pending/In Progress only)
-    currentOnboarding: null,
-    
-    // UI States
-    loading: false,
-    error: null,
-    success: null,
-    
-    // Pagination
-    pagination: {
-      count: 0,
-      next: null,
-      previous: null,
-      currentPage: 1,
-      pageSize: 10,
-    },
-
-    // Sub-data
-    bankDetails: [],
-    bankLoading: false,
-  },
-  
+  initialState,
   reducers: {
-    clearError: (state) => { state.error = null; },
-    clearSuccess: (state) => { state.success = null; },
-    setCurrentOnboarding: (state, action) => { state.currentOnboarding = action.payload; },
-    clearCurrentOnboarding: (state) => { state.currentOnboarding = null; },
-    setPage: (state, action) => { state.pagination.currentPage = action.payload; },
-    clearBankDetails: (state) => { state.bankDetails = []; },
+    setSelectedOnboarding: (state, action) => {
+      state.selectedOnboarding = action.payload;
+      state.currentOnboarding = action.payload;
+    },
+    setCurrentOnboarding: (state, action) => {
+      state.currentOnboarding = action.payload;
+      state.selectedOnboarding = action.payload;
+    },
+    clearCurrentOnboarding: (state) => {
+      state.currentOnboarding = null;
+      state.selectedOnboarding = null;
+    },
+    clearBankDetails: (state) => {
+      state.bankDetails = null;
+    },
+    setPage: (state, action) => {
+      state.page = action.payload;
+    },
+    clearOnboardingError: (state) => {
+      state.error = null;
+    },
+    clearOnboardingSuccess: (state) => {
+      state.successMessage = null;
+      state.success = null;
+    },
+    clearSuccess: (state) => {
+      state.successMessage = null;
+      state.success = null;
+    }
   },
-
   extraReducers: (builder) => {
     builder
-      // --- 1. Fetch Onboardings (Table) ---
-      .addCase(fetchOnboardings.pending, (state) => { 
-        state.loading = true; 
-        state.error = null; 
-        state.onboardings = []; // Clear table to prevent stale data flash
-      })
-      .addCase(fetchOnboardings.fulfilled, (state, action) => {
+      // All
+      .addCase(fetchAllOnboardings.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchAllOnboardings.fulfilled, (state, action) => {
         state.loading = false;
-        // Handle DRF Pagination ({ count: ..., results: [] }) vs Flat Array
-        const results = action.payload.results || action.payload;
-        state.onboardings = results;
-        
-        if (action.payload.count !== undefined) {
-          state.pagination = {
-            ...state.pagination,
-            count: action.payload.count,
-            next: action.payload.next,
-            previous: action.payload.previous,
-          };
-        }
+        const list = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
+        state.allOnboardings = list;
+        state.onboardings = list;
       })
-      .addCase(fetchOnboardings.rejected, (state, action) => { 
-        state.loading = false; 
-        state.error = action.payload; 
-      })
-
-      // --- 2. Fetch Notifications (Navbar) ---
-      .addCase(fetchNotifications.fulfilled, (state, action) => {
-        const results = action.payload.results || action.payload;
-        // Strictly filter to ensure only actionable items appear in dropdown
-        state.notifications = results.filter(o => 
-            ['Pending', 'PENDING', 'IN_PROGRESS', 'In Progress', 'False', false].includes(o.status)
-        );
-      })
-
-      // --- 3. Create ---
-      .addCase(createOnboarding.fulfilled, (state, action) => {
-        state.loading = false;
-        state.success = 'Onboarding initiated successfully!';
-        // Add to main list
-        state.onboardings.unshift(action.payload);
-        state.pagination.count += 1;
-        // Add to notifications list immediately
-        state.notifications.unshift(action.payload);
-      })
-
-      // --- 4. Update ---
-      .addCase(updateOnboarding.fulfilled, (state, action) => {
-        state.loading = false;
-        state.success = 'Onboarding updated successfully!';
-        
-        // Update in main list
-        const index = state.onboardings.findIndex(o => o.id === action.payload.id);
-        if (index !== -1) state.onboardings[index] = action.payload;
-        
-        // Update in notifications list
-        const notifIndex = state.notifications.findIndex(o => o.id === action.payload.id);
-        if (notifIndex !== -1) state.notifications[notifIndex] = action.payload;
-
-        if (state.currentOnboarding?.id === action.payload.id) state.currentOnboarding = action.payload;
-      })
-
-      // --- 5. Delete ---
-      .addCase(deleteOnboarding.fulfilled, (state, action) => {
-        state.success = 'Onboarding deleted successfully!';
-        // Remove from both lists
-        state.onboardings = state.onboardings.filter(o => o.id !== action.payload);
-        state.notifications = state.notifications.filter(o => o.id !== action.payload);
-        
-        if(state.pagination.count > 0) state.pagination.count -= 1;
-        state.currentOnboarding = null;
-      })
-
-      // --- 6. Bank Details ---
-      .addCase(fetchBankDetails.pending, (state) => { state.bankLoading = true; })
-      .addCase(fetchBankDetails.fulfilled, (state, action) => {
-        state.bankLoading = false;
-        state.bankDetails = action.payload;
-      })
-      .addCase(fetchBankDetails.rejected, (state, action) => {
-        state.bankLoading = false;
-      })
-
-      // --- 7. Reminders ---
-      .addCase(remindOnboarding.pending, (state) => { state.loading = true; })
-      .addCase(remindOnboarding.fulfilled, (state, action) => {
-        state.loading = false;
-        state.success = action.payload.message || 'Reminder sent successfully!';
-      })
-      .addCase(remindOnboarding.rejected, (state, action) => {
+      .addCase(fetchAllOnboardings.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      // Pending
+      .addCase(fetchPendingOnboardings.fulfilled, (state, action) => {
+        state.pendingOnboardings = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
+      })
+      // InProgress
+      .addCase(fetchInProgressOnboardings.fulfilled, (state, action) => {
+        state.inProgressOnboardings = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
+      })
+      // Confirmed
+      .addCase(fetchConfirmedOnboardings.fulfilled, (state, action) => {
+        state.confirmedOnboardings = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
+      })
+      // Create
+      .addCase(createNewOnboarding.fulfilled, (state, action) => {
+        state.allOnboardings.unshift(action.payload);
+        state.onboardings.unshift(action.payload);
+        state.successMessage = 'Candidate enrolled in onboarding successfully!';
+        state.success = true;
+      })
+      // Bank details
+      .addCase(fetchBankDetails.fulfilled, (state, action) => {
+        state.bankDetails = action.payload;
+      })
+      // Notifications
+      .addCase(fetchNotifications.fulfilled, (state, action) => {
+        state.notifications = Array.isArray(action.payload) ? action.payload : [];
+      })
+      // Benefit Plans
+      .addCase(fetchBenefitPlans.fulfilled, (state, action) => {
+        state.benefitPlans = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
+      })
+      .addCase(createBenefitPlan.fulfilled, (state, action) => {
+        state.benefitPlans.unshift(action.payload);
+        state.successMessage = 'Benefit plan added successfully!';
+        state.success = true;
+      })
+      // Policies
+      .addCase(fetchCompanyPolicies.fulfilled, (state, action) => {
+        state.companyPolicies = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
+      })
+      .addCase(createCompanyPolicy.fulfilled, (state, action) => {
+        state.companyPolicies.unshift(action.payload);
+        state.successMessage = 'Company policy uploaded successfully!';
+        state.success = true;
+      })
+      // Document Expirations
+      .addCase(fetchDocumentExpirations.fulfilled, (state, action) => {
+        state.documentExpirations = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
       });
-  },
+  }
 });
 
-export const { 
-  clearError, clearSuccess, setCurrentOnboarding, 
-  clearCurrentOnboarding, setPage, clearBankDetails 
+export const {
+  setSelectedOnboarding,
+  setCurrentOnboarding,
+  clearCurrentOnboarding,
+  clearBankDetails,
+  setPage,
+  clearOnboardingError,
+  clearOnboardingSuccess,
+  clearSuccess
 } = onboardingSlice.actions;
 
 export default onboardingSlice.reducer;

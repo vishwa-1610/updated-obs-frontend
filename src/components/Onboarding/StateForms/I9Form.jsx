@@ -1,241 +1,56 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import SignatureCanvas from 'react-signature-canvas';
 import { 
   User, Shield, MapPin, Mail, Phone, Calendar, 
   CheckCircle, FileText, ChevronDown, ChevronLeft, ChevronRight, 
   Briefcase, Globe, PenTool, Eraser, Save, AlertCircle, Loader2,
-  ShieldCheck, Zap, FileJson, Sparkles, Check,ArrowRight 
+  ShieldCheck, Zap, FileJson, Sparkles, Check, ArrowRight, RotateCcw
 } from 'lucide-react';
-
 import api from '../../../api';
-
-// 1. IMPORT CONTEXT HOOK
 import { useOnboarding } from '../../../context/OnboardingContext';
+import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';
+import StunningDatePicker from '../../common/StunningDatePicker';
+import StunningSelect from '../../common/StunningSelect';
 
-// --- CONFIGURATION ---
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
-
-// --- STYLES ---
-const INPUT_BASE = "w-full pl-4 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-white text-gray-900 text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all duration-200 placeholder-gray-400 hover:border-blue-300 shadow-sm disabled:bg-gray-50 disabled:text-gray-500";
-const LABEL_STYLE = "block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1";
-const CARD_STYLE = "w-full bg-white p-5 md:p-8 rounded-3xl border border-gray-100 shadow-xl shadow-slate-200/50 relative transition-all duration-300 hover:shadow-2xl hover:shadow-blue-900/5";
-const SECTION_HEADER_STYLE = "flex items-center gap-3 mb-6 pb-4 border-b border-gray-100";
-
-// --- COMPONENTS ---
-
-const StepIndicator = ({ currentStep, totalSteps }) => (
-  <div className="flex items-center gap-2 mb-8 px-1 overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
-    {[...Array(totalSteps)].map((_, i) => (
-      <div key={i} className={`h-1.5 rounded-full transition-all duration-500 shrink-0 ${i < currentStep ? 'w-8 bg-blue-600' : 'w-2 bg-slate-200'}`} />
-    ))}
-    <span className="ml-2 text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Step {currentStep} of {totalSteps}</span>
-  </div>
-);
-
-const FeatureItem = ({ icon: Icon, title, desc }) => (
-  <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/10 transition-colors duration-300">
-    <div className="p-2.5 bg-blue-500/20 rounded-xl text-blue-300 shadow-inner shrink-0">
-      <Icon size={20} />
-    </div>
-    <div>
-      <h4 className="font-bold text-white text-sm">{title}</h4>
-      <p className="text-slate-400 text-xs mt-1 leading-relaxed">{desc}</p>
-    </div>
-  </div>
-);
-
-const SuccessModal = ({ isOpen, onClose, message, pdfUrl, onNext }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100 animate-in zoom-in-95 duration-200 border border-white/50">
-        <div className="bg-green-50 p-8 flex flex-col items-center justify-center border-b border-green-100">
-          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-green-500/20">
-            <Check size={40} strokeWidth={3} />
-          </div>
-          <h3 className="text-2xl font-bold text-slate-900 mb-2">I-9 Submitted!</h3>
-          <p className="text-sm text-slate-500 mb-0 leading-relaxed text-center">{message || "Your Employment Eligibility form has been successfully generated."}</p>
-        </div>
-        <div className="p-6 space-y-3">
-            <button type="button" className="w-full px-4 py-3.5 text-lg font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 shadow-lg transition-colors flex items-center justify-center" onClick={onNext}>
-              Continue <ArrowRight className="ml-2 h-5 w-5" />
-            </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- CUSTOM DATE PICKER (FIXED Z-INDEX & MOBILE CENTERING) ---
-const CustomDatePicker = ({ label, name, value, onChange, placeholder }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [menuStyle, setMenuStyle] = useState({});
-  const triggerRef = useRef(null);
-  const calendarRef = useRef(null);
-
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-  // Handle outside clicks
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (triggerRef.current && !triggerRef.current.contains(event.target) && calendarRef.current && !calendarRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Update position on open
-  useEffect(() => {
-    if (isOpen && triggerRef.current) {
-        const updatePosition = () => {
-            const rect = triggerRef.current.getBoundingClientRect();
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
-            
-            let style = { position: 'fixed', zIndex: 10005 }; // High Z-Index to stay on top
-
-            if (viewportWidth < 768) {
-                // MOBILE: Dead Center
-                style.top = '50%';
-                style.left = '50%';
-                style.transform = 'translate(-50%, -50%)';
-                style.width = '320px';
-                style.maxWidth = '90vw';
-            } else {
-                // DESKTOP: Align to input
-                style.left = `${rect.left}px`;
-                style.width = '320px';
-                style.transform = 'none';
-
-                // Check space below
-                const spaceBelow = viewportHeight - rect.bottom;
-                if (spaceBelow < 350 && rect.top > 350) {
-                    // Open UPWARDS if no space below
-                    style.bottom = `${viewportHeight - rect.top + 8}px`;
-                    style.top = 'auto';
-                } else {
-                    // Open DOWNWARDS
-                    style.top = `${rect.bottom + 8}px`;
-                    style.bottom = 'auto';
-                }
-            }
-            setMenuStyle(style);
-        };
-        
-        updatePosition();
-        window.addEventListener('resize', updatePosition);
-        window.addEventListener('scroll', updatePosition, true);
-        return () => {
-            window.removeEventListener('resize', updatePosition);
-            window.removeEventListener('scroll', updatePosition, true);
-        };
-    }
-  }, [isOpen]);
-
-  useEffect(() => { if (value) setCurrentDate(new Date(value)); }, [value]);
-
-  const handleDateClick = (day) => {
-    const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
-    const dayStr = day.toString().padStart(2, '0');
-    onChange({ target: { name, value: `${currentDate.getFullYear()}-${month}-${dayStr}` } });
-    setIsOpen(false);
-  };
-
-  const changeMonth = (offset) => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1));
-  const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-  const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
-
-  return (
-    <div className="relative w-full" ref={triggerRef}>
-      <label className={LABEL_STYLE}>{label}</label>
-      <div className="relative cursor-pointer group">
-        {/* Added pr-12 to prevent text overlapping icon */}
-        <input 
-            readOnly 
-            type="text" 
-            value={value || ''} 
-            placeholder={placeholder || "YYYY-MM-DD"} 
-            className={`${INPUT_BASE} pr-12 cursor-pointer group-hover:border-blue-400`} 
-            onClick={() => setIsOpen(!isOpen)} 
-        />
-        <Calendar 
-            size={20} 
-            className={`absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${isOpen ? 'text-blue-600' : 'text-slate-400'}`} 
-        />
-      </div>
-      
-      {isOpen && (
-        <>
-         {/* Backdrop for Mobile */}
-         <div className="fixed inset-0 bg-black/40 z-[10004]" onClick={() => setIsOpen(false)}></div>
-         
-         <div ref={calendarRef} style={menuStyle} className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-5 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-4">
-               <button type="button" onClick={() => changeMonth(-1)} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><ChevronLeft size={20}/></button>
-               <span className="font-bold text-gray-800 text-lg">{months[currentDate.getMonth()]} {currentDate.getFullYear()}</span>
-               <button type="button" onClick={() => changeMonth(1)} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><ChevronRight size={20}/></button>
-            </div>
-            <div className="grid grid-cols-7 gap-1 text-center mb-2">
-               {['S','M','T','W','T','F','S'].map(d=><span key={d} className="text-xs text-gray-400 font-bold uppercase">{d}</span>)}
-            </div>
-            <div className="grid grid-cols-7 gap-1">
-               {Array(firstDay).fill(null).map((_,i)=><div key={`e-${i}`}/>)}
-               {Array.from({length: daysInMonth}, (_,i)=>i+1).map(d => (
-                  <button 
-                    key={d} 
-                    type="button" 
-                    onClick={() => handleDateClick(d)} 
-                    className={`h-9 w-9 text-sm rounded-lg flex items-center justify-center font-medium transition-all ${
-                        value && parseInt(value.split('-')[2]) === d && new Date(value).getMonth() === currentDate.getMonth()
-                        ? 'bg-blue-600 text-white shadow-md shadow-blue-200' 
-                        : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-                    }`}
-                  >
-                    {d}
-                  </button>
-               ))}
-            </div>
-         </div>
-        </>
-      )}
-    </div>
-  );
-};
-
-// --- MAIN PAGE ---
+const US_STATES = [
+  { value: 'AL', label: 'AL - Alabama' }, { value: 'AK', label: 'AK - Alaska' }, { value: 'AZ', label: 'AZ - Arizona' },
+  { value: 'AR', label: 'AR - Arkansas' }, { value: 'CA', label: 'CA - California' }, { value: 'CO', label: 'CO - Colorado' },
+  { value: 'CT', label: 'CT - Connecticut' }, { value: 'DE', label: 'DE - Delaware' }, { value: 'DC', label: 'DC - District of Columbia' },
+  { value: 'FL', label: 'FL - Florida' }, { value: 'GA', label: 'GA - Georgia' }, { value: 'HI', label: 'HI - Hawaii' },
+  { value: 'ID', label: 'ID - Idaho' }, { value: 'IL', label: 'IL - Illinois' }, { value: 'IN', label: 'IN - Indiana' },
+  { value: 'IA', label: 'IA - Iowa' }, { value: 'KS', label: 'KS - Kansas' }, { value: 'KY', label: 'KY - Kentucky' },
+  { value: 'LA', label: 'LA - Louisiana' }, { value: 'ME', label: 'ME - Maine' }, { value: 'MD', label: 'MD - Maryland' },
+  { value: 'MA', label: 'MA - Massachusetts' }, { value: 'MI', label: 'MI - Michigan' }, { value: 'MN', label: 'MN - Minnesota' },
+  { value: 'MS', label: 'MS - Mississippi' }, { value: 'MO', label: 'MO - Missouri' }, { value: 'MT', label: 'MT - Montana' },
+  { value: 'NE', label: 'NE - Nebraska' }, { value: 'NV', label: 'NV - Nevada' }, { value: 'NH', label: 'NH - New Hampshire' },
+  { value: 'NJ', label: 'NJ - New Jersey' }, { value: 'NM', label: 'NM - New Mexico' }, { value: 'NY', label: 'NY - New York' },
+  { value: 'NC', label: 'NC - North Carolina' }, { value: 'ND', label: 'ND - North Dakota' }, { value: 'OH', label: 'OH - Ohio' },
+  { value: 'OK', label: 'OK - Oklahoma' }, { value: 'OR', label: 'OR - Oregon' }, { value: 'PA', label: 'PA - Pennsylvania' },
+  { value: 'RI', label: 'RI - Rhode Island' }, { value: 'SC', label: 'SC - South Carolina' }, { value: 'SD', label: 'SD - South Dakota' },
+  { value: 'TN', label: 'TN - Tennessee' }, { value: 'TX', label: 'TX - Texas' }, { value: 'UT', label: 'UT - Utah' },
+  { value: 'VT', label: 'VT - Vermont' }, { value: 'VA', label: 'VA - Virginia' }, { value: 'WA', label: 'WA - Washington' },
+  { value: 'WV', label: 'WV - West Virginia' }, { value: 'WI', label: 'WI - Wisconsin' }, { value: 'WY', label: 'WY - Wyoming' }
+];
 
 const I9FormPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  
-  // 1. GET TOKEN
   const token = searchParams.get('token');
 
-  // 2. USE CONTEXT FOR WORKFLOW
-  const { goToNextStep, workflow } = useOnboarding();
+  const { isDarkMode, accentColor } = useTheme();
+  const activeHexColor = THEME_COLORS.find(c => c.id === accentColor)?.color || '#2563eb';
+  const { goToNextStep } = useOnboarding();
 
-  const sigCanvasRef = useRef({});
+  const sigCanvasRef = useRef(null);
   const containerRef = useRef(null);
 
-  // States
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [successData, setSuccessData] = useState({});
   const [error, setError] = useState(null);
 
-  // 3. DYNAMIC STEP CALCULATION
-  const stepName = 'I9'; 
-  const currentStepIndex = workflow.findIndex(s => s.step_name === stepName);
-  const currentStepNumber = currentStepIndex !== -1 ? currentStepIndex + 1 : 5;
-  const totalSteps = workflow.length > 0 ? workflow.length : 5;
-
-  // Form State
   const [formData, setFormData] = useState({
     first_name: '', last_name: '', middle_initial: '', other_last_names: '',
     address: '', apt_number: '', city: '', state: '', zipcode: '',
@@ -254,33 +69,39 @@ const I9FormPage = () => {
     signature_image: null
   });
 
-  // 4. Fetch Data using Token
+  // Pre-fill user data from onboarding
   useEffect(() => {
     if (!token) return;
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Use the public validate endpoint
-        const res = await api.get(`/onboarding/validate/${token}/`);
-        const data = res.data;
+        const [validateRes, personalRes] = await Promise.allSettled([
+          api.get(`/onboarding/validate/${token}/`),
+          api.get(`/personal-details/?token=${token}`)
+        ]);
+
+        const data = validateRes.status === 'fulfilled' ? validateRes.value.data : {};
+        const pData = personalRes.status === 'fulfilled' ? personalRes.value.data : {};
         
         setFormData(prev => ({
           ...prev,
-          first_name: data.first_name || '',
-          last_name: data.last_name || '',
-          email: data.email || '',
-          phone: data.phone_no || '', 
-          address: data.address || '',
-          city: data.city || '',
-          state: data.state || '',
-          zipcode: data.zipcode || '',
-          employer_name: 'HR Manager', 
-          company_name: data.client_name || 'Tech Corp',
+          first_name: pData.first_name || data.first_name || '',
+          last_name: pData.last_name || data.last_name || '',
+          middle_initial: pData.middle_initial || '',
+          email: pData.email || data.email || '',
+          phone: pData.phone_no || '', 
+          address: pData.address || '',
+          city: pData.city || '',
+          state: pData.state || '',
+          zipcode: pData.zipcode || '',
+          dob: pData.dob || '',
+          ssn: pData.ssn || '',
+          employer_name: 'HR Team', 
+          company_name: data.client_name || 'Enterprise',
           first_day_employment: data.start_date || ''
         }));
       } catch (err) {
-        console.error(err);
-        setError("Failed to load user data.");
+        console.warn("I-9 profile load notice:", err);
       } finally {
         setLoading(false);
       }
@@ -288,22 +109,24 @@ const I9FormPage = () => {
     fetchData();
   }, [token]);
 
-  // 5. Resize Canvas
+  // Resize Canvas
   useEffect(() => {
     const resizeCanvas = () => {
-        if (containerRef.current && sigCanvasRef.current) {
-            const canvas = sigCanvasRef.current.getCanvas();
-            const rect = containerRef.current.getBoundingClientRect();
-            if (canvas.width !== rect.width || canvas.height !== rect.height) {
-                const saved = sigCanvasRef.current.isEmpty() ? null : sigCanvasRef.current.toDataURL();
-                canvas.width = rect.width; canvas.height = rect.height;
-                if (saved) sigCanvasRef.current.fromDataURL(saved);
-            }
+      if (containerRef.current && sigCanvasRef.current) {
+        const canvas = sigCanvasRef.current.getCanvas();
+        const rect = containerRef.current.getBoundingClientRect();
+        if (canvas.width !== rect.width || canvas.height !== rect.height) {
+          canvas.width = rect.width; 
+          canvas.height = rect.height;
         }
+      }
     };
-    setTimeout(resizeCanvas, 200);
+    const timer = setTimeout(resizeCanvas, 150);
     window.addEventListener('resize', resizeCanvas);
-    return () => window.removeEventListener('resize', resizeCanvas);
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      clearTimeout(timer);
+    };
   }, []);
 
   const handleChange = (e) => {
@@ -313,238 +136,530 @@ const I9FormPage = () => {
 
   const handleSignatureEnd = () => {
     if (sigCanvasRef.current && !sigCanvasRef.current.isEmpty()) {
-       setFormData(prev => ({ ...prev, is_signed: true, signature_image: sigCanvasRef.current.getCanvas().toDataURL('image/png') }));
+      setFormData(prev => ({ 
+        ...prev, 
+        is_signed: true, 
+        signature_image: sigCanvasRef.current.getCanvas().toDataURL('image/png') 
+      }));
     }
   };
 
   const clearSignature = () => {
-    sigCanvasRef.current.clear();
+    if (sigCanvasRef.current) {
+      sigCanvasRef.current.clear();
+    }
     setFormData(prev => ({ ...prev, is_signed: false, signature_image: null }));
   };
 
-  const handleSubmit = async () => {
-    if (!formData.is_signed) { alert("Please sign the form before submitting."); return; }
+  const handleSubmit = async (e) => {
+    e?.preventDefault?.();
+    if (!formData.is_signed || !formData.signature_image) { 
+      setError("Please provide your digital signature in the signature box."); 
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return; 
+    }
 
     setSubmitting(true);
+    setError(null);
     try {
-      // Send TOKEN instead of ID
       const payload = { ...formData, token: token };
       const res = await api.post('/submit-i9/', payload);
-      setSuccessData(res.data);
+      setSuccessData(res.data || {});
       setModalOpen(true);
     } catch (err) {
-      alert("Submission failed. Check console.");
       console.error(err);
+      let msg = "Failed to submit Form I-9. Please verify required fields.";
+      if (err.response?.data) {
+        if (typeof err.response.data === 'object') {
+          if (err.response.data.error) {
+            msg = typeof err.response.data.error === 'object'
+              ? Object.entries(err.response.data.error).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ')
+              : err.response.data.error;
+          } else if (err.response.data.message) {
+            msg = err.response.data.message;
+          } else {
+            msg = Object.entries(err.response.data)
+              .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+              .join(' | ');
+          }
+        } else if (typeof err.response.data === 'string') {
+          msg = err.response.data;
+        }
+      } else if (err.message) {
+        msg = err.message;
+      }
+      setError(msg);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleNext = () => {
-      // 6. DYNAMIC NAVIGATION
-      // Finds the next active step in the company workflow
-      goToNextStep();
+    goToNextStep();
   };
 
-  // Add scrollbar styles
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      .hide-scrollbar::-webkit-scrollbar { display: none; }
-      .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      .animate-in { animation-duration: 150ms; animation-fill-mode: both; }
-      .fade-in { animation-name: fadeIn; }
-    `;
-    document.head.appendChild(style);
-    return () => { document.head.removeChild(style); };
-  }, []);
+  const inputClass = `w-full px-3 py-2 rounded-xl border text-xs font-medium outline-none transition-all duration-200 ${
+    isDarkMode 
+      ? 'bg-[#181a20] border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20' 
+      : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-sm'
+  }`;
+
+  const labelClass = `block text-[10px] font-bold uppercase tracking-wider mb-1 ${
+    isDarkMode ? 'text-zinc-400' : 'text-slate-600'
+  }`;
+
+  const cardClass = `p-4 sm:p-5 rounded-2xl border transition-all ${
+    isDarkMode ? 'bg-[#131722] border-zinc-800/80 shadow-md' : 'bg-white border-slate-200/80 shadow-sm'
+  }`;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-200 relative">
-      <SuccessModal 
-        isOpen={modalOpen} 
-        onClose={() => setModalOpen(false)} 
-        message={successData.message} 
-        pdfUrl={successData.pdf_url} 
-        onNext={handleNext} 
-      />
-
-      <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row min-h-screen">
-        
-        {/* --- LEFT SIDE (Hidden on Mobile) --- */}
-        <div className="hidden lg:flex lg:w-5/12 p-16 sticky top-0 h-screen flex-col bg-slate-900 text-white relative overflow-hidden z-0">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-600/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
-            <div className="relative z-10 flex items-center gap-3 mb-12">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/50"><Sparkles size={20} className="text-white" /></div>
-                <span className="font-bold text-xl tracking-tight text-white">Onboarding Portal</span>
-            </div>
-            <div className="relative z-10 flex-1 flex flex-col justify-center">
-                <h1 className="text-5xl font-extrabold leading-tight mb-6 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">I-9 Verification.</h1>
-                <p className="text-slate-400 text-lg leading-relaxed mb-10 max-w-md">Verify your identity and employment authorization. This is the final step.</p>
-                <div className="space-y-4 mb-8">
-                    <FeatureItem icon={ShieldCheck} title="Identity Verified" desc="Secure verification for employment eligibility." />
-                    <FeatureItem icon={FileJson} title="Homeland Security" desc="Official Form I-9 Generation." />
-                    <FeatureItem icon={Zap} title="Instant Processing" desc="Submits directly to HR records." />
-                </div>
-                <div className="w-full max-w-sm mt-4 transform hover:scale-105 transition-transform duration-500 opacity-80">
-                    <img src="https://illustrations.popsy.co/amber/security.svg" alt="I-9 Illustration" className="w-full h-auto drop-shadow-2xl"/>
-                </div>
-            </div>
+    <div className="w-full space-y-4">
+      {/* Title Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1">
+        <div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <span 
+              className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider"
+              style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+            >
+              Step 5 • Employment Eligibility
+            </span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+            Form I-9 (USCIS Verification)
+          </h1>
+          <p className={`text-xs ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+            U.S. Citizenship and Immigration Services Employment Eligibility Verification.
+          </p>
         </div>
 
-        {/* --- RIGHT SIDE --- */}
-        <div className="w-full lg:w-7/12 p-6 lg:p-12 bg-slate-50 flex flex-col relative z-0">
-            
-            {/* Mobile Header */}
-            <div className="lg:hidden mb-8 text-center mt-6">
-                <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-900 rounded-2xl mb-4 shadow-lg text-white"><Shield size={28} /></div>
-                <h1 className="text-3xl font-extrabold text-slate-900">Form I-9</h1>
-                <p className="text-slate-500 mt-2 text-sm px-6">Employment Eligibility Verification.</p>
-            </div>
-
-            <div className="w-full relative max-w-3xl mx-auto">
-                <div className="hidden lg:flex justify-between items-end mb-6">
-                    <div><h2 className="text-3xl font-bold text-slate-900">Employment Eligibility (I-9)</h2><p className="text-slate-500 mt-1">Please complete all sections accurately.</p></div>
-                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
-                        Step {currentStepNumber}/{totalSteps}
-                    </span>
-                </div>
-                
-                {/* DYNAMIC INDICATOR */}
-                <StepIndicator currentStep={currentStepNumber} totalSteps={totalSteps} />
-                
-                {error && <div className="mb-8 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-700 flex items-center gap-3 animate-in fade-in"><AlertCircle className="shrink-0" /> <p className="font-medium text-sm">{error}</p></div>}
-
-                <div className="space-y-8 w-full">
-                    
-                    {/* --- CARD 1: EMPLOYEE INFO --- */}
-                    <div className={CARD_STYLE}>
-                        <div className={SECTION_HEADER_STYLE}>
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><User size={20} /></div>
-                            <h3 className="text-lg font-bold text-gray-900">Section 1: Employee Information</h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <input className={INPUT_BASE} name="first_name" value={formData.first_name} onChange={handleChange} placeholder="First Name" />
-                            <input className={INPUT_BASE} name="last_name" value={formData.last_name} onChange={handleChange} placeholder="Last Name" />
-                            <input className={INPUT_BASE} name="middle_initial" value={formData.middle_initial} onChange={handleChange} placeholder="M.I." maxLength="1" />
-                        </div>
-                        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <input className={INPUT_BASE} name="other_last_names" value={formData.other_last_names} onChange={handleChange} placeholder="Other Last Names Used" />
-                            <input className={INPUT_BASE} name="ssn" value={formData.ssn} onChange={handleChange} placeholder="SSN (XXX-XX-XXXX)" />
-                        </div>
-                        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-6">
-                            <div className="md:col-span-2"><input className={INPUT_BASE} name="address" value={formData.address} onChange={handleChange} placeholder="Address" /></div>
-                            <input className={INPUT_BASE} name="apt_number" value={formData.apt_number} onChange={handleChange} placeholder="Apt #" />
-                            <input className={INPUT_BASE} name="city" value={formData.city} onChange={handleChange} placeholder="City" />
-                        </div>
-                        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-6">
-                            <input className={INPUT_BASE} name="state" value={formData.state} onChange={handleChange} placeholder="State" maxLength="2" />
-                            <input className={INPUT_BASE} name="zipcode" value={formData.zipcode} onChange={handleChange} placeholder="Zip Code" />
-                            <div className="md:col-span-2"><CustomDatePicker label="Date of Birth" name="dob" value={formData.dob} onChange={handleChange} /></div>
-                        </div>
-                        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <input className={INPUT_BASE} name="email" value={formData.email} onChange={handleChange} placeholder="Email" />
-                            <input className={INPUT_BASE} name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone Number" />
-                        </div>
-                    </div>
-
-                    {/* --- CARD 2: CITIZENSHIP --- */}
-                    <div className={CARD_STYLE}>
-                        <div className={SECTION_HEADER_STYLE}>
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Globe size={20} /></div>
-                            <h3 className="text-lg font-bold text-gray-900">Citizenship Status</h3>
-                        </div>
-                        <div className="space-y-3">
-                            {[
-                                {v:'citizen', l:'1. A citizen of the United States'},
-                                {v:'noncitizen_national', l:'2. A noncitizen national of the United States'},
-                                {v:'lawful_permanent_resident', l:'3. A lawful permanent resident'},
-                                {v:'alien_authorized', l:'4. A noncitizen authorized to work'}
-                            ].map((opt) => (
-                                <label key={opt.v} className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${formData.citizenship_status === opt.v ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50 border border-transparent'}`}>
-                                    <input type="radio" name="citizenship_status" value={opt.v} checked={formData.citizenship_status === opt.v} onChange={handleChange} className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-gray-300" />
-                                    <span className="ml-3 font-medium text-gray-800">{opt.l}</span>
-                                </label>
-                            ))}
-                        </div>
-                        {['lawful_permanent_resident', 'alien_authorized'].includes(formData.citizenship_status) && (
-                            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
-                                {formData.citizenship_status === 'alien_authorized' && <CustomDatePicker label="Authorized Until Date" name="auth_expire_date" value={formData.auth_expire_date} onChange={handleChange} />}
-                                <div className={formData.citizenship_status !== 'alien_authorized' ? "md:col-span-2" : ""}><input className={INPUT_BASE} name="uscis_a_number" value={formData.uscis_a_number} onChange={handleChange} placeholder="USCIS / A-Number" /></div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* --- CARD 3: DOCUMENTS --- */}
-                    <div className={CARD_STYLE}>
-                        <div className={SECTION_HEADER_STYLE}>
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Briefcase size={20} /></div>
-                            <h3 className="text-lg font-bold text-gray-900">Section 2: Documents</h3>
-                        </div>
-                        <div className="mb-6 flex gap-4">
-                            <button type="button" onClick={() => setFormData(p => ({...p, document_list_type: 'A'}))} className={`flex-1 py-3 px-4 rounded-xl border-2 font-bold text-sm transition-all ${formData.document_list_type === 'A' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>List A (Identity & Auth)</button>
-                            <button type="button" onClick={() => setFormData(p => ({...p, document_list_type: 'BC'}))} className={`flex-1 py-3 px-4 rounded-xl border-2 font-bold text-sm transition-all ${formData.document_list_type === 'BC' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>List B + List C</button>
-                        </div>
-                        {formData.document_list_type === 'A' ? (
-                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 animate-in fade-in">
-                                <h4 className="text-sm font-bold text-slate-700 uppercase mb-4">List A Document (e.g. Passport)</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="md:col-span-2"><input className={INPUT_BASE} name="document_title" value={formData.document_title} onChange={handleChange} placeholder="Document Title" /></div>
-                                    <input className={INPUT_BASE} name="issuing_authority" value={formData.issuing_authority} onChange={handleChange} placeholder="Issuing Authority" />
-                                    <input className={INPUT_BASE} name="document_number" value={formData.document_number} onChange={handleChange} placeholder="Document Number" />
-                                    <div className="md:col-span-2"><CustomDatePicker label="Expiration Date" name="expiration_date" value={formData.expiration_date} onChange={handleChange} /></div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
-                                <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                                    <h4 className="text-sm font-bold text-slate-700 uppercase mb-4">List B (Identity)</h4>
-                                    <div className="space-y-4">
-                                        <input className={INPUT_BASE} name="doc_title_b" value={formData.doc_title_b} onChange={handleChange} placeholder="Title (e.g. License)" />
-                                        <input className={INPUT_BASE} name="doc_authority_b" value={formData.doc_authority_b} onChange={handleChange} placeholder="Authority" />
-                                        <input className={INPUT_BASE} name="doc_number_b" value={formData.doc_number_b} onChange={handleChange} placeholder="Number" />
-                                        <CustomDatePicker label="Expiration" name="doc_expire_b" value={formData.doc_expire_b} onChange={handleChange} />
-                                    </div>
-                                </div>
-                                <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                                    <h4 className="text-sm font-bold text-slate-700 uppercase mb-4">List C (Authorization)</h4>
-                                    <div className="space-y-4">
-                                        <input className={INPUT_BASE} name="doc_title_c" value={formData.doc_title_c} onChange={handleChange} placeholder="Title (e.g. SS Card)" />
-                                        <input className={INPUT_BASE} name="doc_authority_c" value={formData.doc_authority_c} onChange={handleChange} placeholder="Authority" />
-                                        <input className={INPUT_BASE} name="doc_number_c" value={formData.doc_number_c} onChange={handleChange} placeholder="Number" />
-                                        <CustomDatePicker label="Expiration" name="doc_expire_c" value={formData.doc_expire_c} onChange={handleChange} />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* --- CARD 4: SIGNATURE --- */}
-                    <div className={CARD_STYLE}>
-                        <div className={SECTION_HEADER_STYLE}>
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><PenTool size={20} /></div>
-                            <h3 className="text-lg font-bold text-gray-900">Sign Here</h3>
-                        </div>
-                        <div ref={containerRef} className="border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-white hover:border-blue-500 transition-all h-48 w-full relative cursor-crosshair">
-                            <SignatureCanvas ref={sigCanvasRef} penColor="black" velocityFilterWeight={0.7} canvasProps={{ className: 'w-full h-full' }} onEnd={handleSignatureEnd} />
-                            {!formData.signature_image && <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none text-gray-400 font-medium">Sign in this box</div>}
-                        </div>
-                        <button type="button" onClick={clearSignature} className="text-sm text-red-500 font-bold mt-3 hover:text-red-700 transition-colors flex items-center gap-1"><Eraser size={14}/> Clear Signature</button>
-                    </div>
-
-                    {/* --- ACTION BAR --- */}
-                    <div className="pt-4 flex justify-end relative z-0">
-                        <button type="button" onClick={handleSubmit} disabled={submitting} className="group relative inline-flex items-center justify-center gap-3 bg-slate-900 hover:bg-blue-600 text-white w-full md:w-auto px-10 py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 disabled:opacity-70 disabled:transform-none disabled:cursor-not-allowed z-10">
-                            {submitting ? <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</> : <>Submit I-9 <Save size={20} className="group-hover:translate-x-1 transition-transform" /></>}
-                        </button>
-                    </div>
-
-                </div>
-            </div>
+        <div className={`self-start sm:self-auto flex items-center gap-2 px-2.5 py-1.5 rounded-xl border ${
+          isDarkMode ? 'bg-zinc-900/60 border-zinc-800 text-zinc-300' : 'bg-blue-50/60 border-blue-100 text-blue-800'
+        }`}>
+          <ShieldCheck size={14} className="text-blue-500 shrink-0" />
+          <span className="text-[10px] font-bold">Section 1 Attestation</span>
         </div>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 flex items-center gap-2 animate-in fade-in">
+          <AlertCircle size={16} className="shrink-0" />
+          <p className="text-xs font-semibold">{error}</p>
+        </div>
+      )}
+
+      {/* Main Form I-9 */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Card 1: Section 1 Employee Information */}
+        <div className={cardClass}>
+          <div className="flex items-center gap-2 mb-3.5 pb-2 border-b border-zinc-800/40 dark:border-zinc-800 light:border-slate-100">
+            <div 
+              className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs"
+              style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+            >
+              <User size={13} />
+            </div>
+            <div>
+              <h2 className="text-xs sm:text-sm font-bold">Section 1: Employee Information and Attestation</h2>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+            <div>
+              <label className={labelClass}>First Name</label>
+              <input type="text" name="first_name" value={formData.first_name} onChange={handleChange} required className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Last Name</label>
+              <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} required className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Middle Initial</label>
+              <input type="text" name="middle_initial" value={formData.middle_initial} onChange={handleChange} maxLength={2} placeholder="N/A" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Other Last Names (If any)</label>
+              <input type="text" name="other_last_names" value={formData.other_last_names} onChange={handleChange} placeholder="N/A" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>SSN</label>
+              <input type="text" name="ssn" value={formData.ssn} onChange={handleChange} placeholder="XXX-XX-XXXX" required className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Street Address</label>
+              <input type="text" name="address" value={formData.address} onChange={handleChange} required className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Apt / Suite #</label>
+              <input type="text" name="apt_number" value={formData.apt_number} onChange={handleChange} placeholder="Apt 101" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>City</label>
+              <input type="text" name="city" value={formData.city} onChange={handleChange} required className={inputClass} />
+            </div>
+            <div>
+              <StunningSelect
+                name="state"
+                label="State"
+                value={formData.state}
+                onChange={handleChange}
+                options={US_STATES}
+                searchable
+                required
+                placeholder="Select State..."
+                icon={MapPin}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>ZIP Code</label>
+              <input type="text" name="zipcode" value={formData.zipcode} onChange={handleChange} required className={inputClass} />
+            </div>
+            <div>
+              <StunningDatePicker
+                name="dob"
+                label="Date of Birth"
+                value={formData.dob}
+                onChange={handleChange}
+                required
+                placeholder="Select Date of Birth"
+                minYear={1940}
+                maxYear={new Date().getFullYear() - 15}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Email Address</label>
+              <input type="email" name="email" value={formData.email} onChange={handleChange} required className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Phone Number</label>
+              <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required className={inputClass} />
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Citizenship Status Attestation */}
+        <div className={cardClass}>
+          <div className="flex items-center gap-2 mb-3.5 pb-2 border-b border-zinc-800/40 dark:border-zinc-800 light:border-slate-100">
+            <div 
+              className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs"
+              style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+            >
+              <Globe size={13} />
+            </div>
+            <div>
+              <h2 className="text-xs sm:text-sm font-bold">Citizenship & Employment Authorization Status</h2>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {[
+              { v: 'citizen', l: '1. A citizen of the United States' },
+              { v: 'noncitizen_national', l: '2. A noncitizen national of the United States (8 U.S.C. 1101(a)(22))' },
+              { v: 'lawful_permanent_resident', l: '3. A lawful permanent resident (Enter USCIS / A-Number)' },
+              { v: 'alien_authorized', l: '4. An alien authorized to work in the United States' }
+            ].map((opt) => {
+              const isSelected = formData.citizenship_status === opt.v;
+              return (
+                <label
+                  key={opt.v}
+                  className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                    isSelected
+                      ? isDarkMode ? 'bg-blue-500/10 border-blue-500/60 text-white' : 'bg-blue-50/70 border-blue-400 text-blue-950 font-medium'
+                      : isDarkMode ? 'bg-[#181a20] border-zinc-800 hover:border-zinc-700 text-zinc-300' : 'bg-slate-50/50 border-slate-200 hover:border-slate-300 text-slate-700'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="citizenship_status"
+                    value={opt.v}
+                    checked={isSelected}
+                    onChange={handleChange}
+                    className="w-3.5 h-3.5 text-blue-600 focus:ring-0 mt-0.5"
+                  />
+                  <span className="text-xs font-semibold">{opt.l}</span>
+                </label>
+              );
+            })}
+          </div>
+
+          {['lawful_permanent_resident', 'alien_authorized'].includes(formData.citizenship_status) && (
+            <div className="mt-3.5 pt-3 border-t border-zinc-800/40 dark:border-zinc-800 light:border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3.5 animate-in fade-in">
+              <div>
+                <label className={labelClass}>USCIS / A-Number</label>
+                <input
+                  type="text"
+                  name="uscis_a_number"
+                  value={formData.uscis_a_number}
+                  onChange={handleChange}
+                  placeholder="e.g. A123456789"
+                  className={inputClass}
+                />
+              </div>
+
+              {formData.citizenship_status === 'alien_authorized' && (
+                <div>
+                  <StunningDatePicker
+                    name="auth_expire_date"
+                    label="Work Authorization Expiration Date"
+                    value={formData.auth_expire_date}
+                    onChange={handleChange}
+                    placeholder="Select Expiration Date"
+                    minYear={new Date().getFullYear()}
+                    maxYear={new Date().getFullYear() + 20}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Card 3: Document Verification (List A or List B + C) */}
+        <div className={cardClass}>
+          <div className="flex items-center justify-between gap-2 mb-3.5 pb-2 border-b border-zinc-800/40 dark:border-zinc-800 light:border-slate-100">
+            <div className="flex items-center gap-2">
+              <div 
+                className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs"
+                style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+              >
+                <Briefcase size={13} />
+              </div>
+              <div>
+                <h2 className="text-xs sm:text-sm font-bold">Document Identification</h2>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-2 mb-3.5">
+            <button
+              type="button"
+              onClick={() => setFormData(p => ({ ...p, document_list_type: 'A' }))}
+              className={`flex-1 py-2 px-3 rounded-xl border font-bold text-xs transition-all ${
+                formData.document_list_type === 'A'
+                  ? 'bg-blue-500/15 border-blue-500 text-blue-500'
+                  : isDarkMode ? 'bg-zinc-800/60 border-zinc-700/60 text-zinc-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+              }`}
+            >
+              List A (Identity & Employment)
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormData(p => ({ ...p, document_list_type: 'BC' }))}
+              className={`flex-1 py-2 px-3 rounded-xl border font-bold text-xs transition-all ${
+                formData.document_list_type === 'BC'
+                  ? 'bg-blue-500/15 border-blue-500 text-blue-500'
+                  : isDarkMode ? 'bg-zinc-800/60 border-zinc-700/60 text-zinc-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+              }`}
+            >
+              List B (Identity) + List C (Authorization)
+            </button>
+          </div>
+
+          {formData.document_list_type === 'A' ? (
+            <div className={`p-3.5 rounded-xl border space-y-3 ${
+              isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'
+            }`}>
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-blue-500">List A Document (e.g., U.S. Passport or Permanent Resident Card)</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className={labelClass}>Document Title</label>
+                  <input type="text" name="document_title" value={formData.document_title} onChange={handleChange} placeholder="e.g. U.S. Passport" className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Issuing Authority</label>
+                  <input type="text" name="issuing_authority" value={formData.issuing_authority} onChange={handleChange} placeholder="e.g. Dept of State" className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Document Number</label>
+                  <input type="text" name="document_number" value={formData.document_number} onChange={handleChange} placeholder="e.g. 123456789" className={inputClass} />
+                </div>
+                <div>
+                  <StunningDatePicker
+                    name="expiration_date"
+                    label="Expiration Date"
+                    value={formData.expiration_date}
+                    onChange={handleChange}
+                    placeholder="Select Expiration"
+                    minYear={new Date().getFullYear()}
+                    maxYear={new Date().getFullYear() + 20}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className={`p-3.5 rounded-xl border space-y-2.5 ${
+                isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-blue-500">List B (Identity)</h4>
+                <div>
+                  <label className={labelClass}>Document Title</label>
+                  <input type="text" name="doc_title_b" value={formData.doc_title_b} onChange={handleChange} placeholder="Driver's License" className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Issuing Authority</label>
+                  <input type="text" name="doc_authority_b" value={formData.doc_authority_b} onChange={handleChange} placeholder="State DMV" className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Document Number</label>
+                  <input type="text" name="doc_number_b" value={formData.doc_number_b} onChange={handleChange} placeholder="DL Number" className={inputClass} />
+                </div>
+                <div>
+                  <StunningDatePicker
+                    name="doc_expire_b"
+                    label="Expiration Date"
+                    value={formData.doc_expire_b}
+                    onChange={handleChange}
+                    placeholder="Select Expiration"
+                    minYear={new Date().getFullYear()}
+                    maxYear={new Date().getFullYear() + 20}
+                  />
+                </div>
+              </div>
+
+              <div className={`p-3.5 rounded-xl border space-y-2.5 ${
+                isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-blue-500">List C (Authorization)</h4>
+                <div>
+                  <label className={labelClass}>Document Title</label>
+                  <input type="text" name="doc_title_c" value={formData.doc_title_c} onChange={handleChange} placeholder="Social Security Card" className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Issuing Authority</label>
+                  <input type="text" name="doc_authority_c" value={formData.doc_authority_c} onChange={handleChange} placeholder="SSA" className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Document Number</label>
+                  <input type="text" name="doc_number_c" value={formData.doc_number_c} onChange={handleChange} placeholder="Card / Doc Number" className={inputClass} />
+                </div>
+                <div>
+                  <StunningDatePicker
+                    name="doc_expire_c"
+                    label="Expiration Date"
+                    value={formData.doc_expire_c}
+                    onChange={handleChange}
+                    placeholder="Select Expiration"
+                    minYear={new Date().getFullYear()}
+                    maxYear={new Date().getFullYear() + 20}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Card 4: Digital Signature */}
+        <div className={cardClass}>
+          <div className="flex items-center justify-between gap-2 mb-3.5 pb-2 border-b border-zinc-800/40 dark:border-zinc-800 light:border-slate-100">
+            <div className="flex items-center gap-2">
+              <div 
+                className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs"
+                style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+              >
+                <PenTool size={13} />
+              </div>
+              <div>
+                <h2 className="text-xs sm:text-sm font-bold">Employee Attestation & Digital Signature</h2>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={clearSignature}
+              className={`px-2 py-0.5 rounded-lg text-[11px] font-semibold border flex items-center gap-1 transition-all ${
+                isDarkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <RotateCcw size={11} /> Clear
+            </button>
+          </div>
+
+          <div
+            ref={containerRef}
+            className={`border-2 border-dashed rounded-xl h-32 relative cursor-crosshair transition-all overflow-hidden ${
+              isDarkMode 
+                ? 'bg-zinc-900/60 border-zinc-700 hover:border-zinc-500' 
+                : 'bg-slate-50/80 border-slate-300 hover:border-blue-400'
+            }`}
+          >
+            <SignatureCanvas
+              ref={sigCanvasRef}
+              penColor={isDarkMode ? '#60a5fa' : '#0f172a'}
+              velocityFilterWeight={0.7}
+              canvasProps={{ className: 'w-full h-full' }}
+              onEnd={handleSignatureEnd}
+            />
+            {!formData.signature_image && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none text-[11px] text-slate-400">
+                <PenTool size={16} className="mb-0.5 opacity-50" />
+                <span>Draw your signature inside this box</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between mt-2.5 text-[11px]">
+            <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>
+              Attestation Date: <strong>{formData.signature_date}</strong> • USCIS Form I-9
+            </span>
+            {formData.signature_image && (
+              <span className="inline-flex items-center gap-1 font-bold text-emerald-500">
+                <Check size={13} /> Signature Verified
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Submit Action */}
+        <div className="flex items-center justify-end pt-1">
+          <button
+            type="submit"
+            disabled={submitting}
+            style={{ backgroundColor: activeHexColor }}
+            className="w-full sm:w-auto px-6 py-3 rounded-xl text-white font-bold text-xs sm:text-sm shadow-md hover:opacity-95 hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+          >
+            {submitting ? (
+              <>
+                <Loader2 size={15} className="animate-spin" />
+                <span>Submitting Form I-9...</span>
+              </>
+            ) : (
+              <>
+                <span>Save & Submit Form I-9</span>
+                <ArrowRight size={15} />
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+
+      {/* Success Modal */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in">
+          <div className={`p-6 rounded-3xl border shadow-2xl flex flex-col items-center max-w-xs w-full text-center animate-in zoom-in-95 ${
+            isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-100 text-slate-800'
+          }`}>
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-3 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
+              <Check size={28} strokeWidth={3} />
+            </div>
+            <h3 className="text-base font-bold mb-1">Form I-9 Completed!</h3>
+            <p className={`text-xs mb-4 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+              {successData.message || "Your Employment Eligibility Verification Section 1 has been recorded."}
+            </p>
+
+            <button
+              type="button"
+              onClick={handleNext}
+              style={{ backgroundColor: activeHexColor }}
+              className="w-full py-2.5 px-3 rounded-xl text-white font-bold text-xs shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-1.5"
+            >
+              <span>Continue to Next Step</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

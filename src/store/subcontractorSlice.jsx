@@ -1,10 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { subcontractorService } from '../services/subcontractorService';
 
-// ==========================================
-// 1. EXISTING THUNKS
-// ==========================================
-
+// 1. Subcontractors
 export const fetchSubcontractors = createAsyncThunk(
   'subcontractor/fetchSubcontractors',
   async (params, { rejectWithValue }) => {
@@ -65,9 +62,93 @@ export const deleteSubcontractor = createAsyncThunk(
   }
 );
 
-// ==========================================
-// 2. ✅ NEW THUNKS (Work Locations)
-// ==========================================
+// 2. Placements
+export const fetchPlacements = createAsyncThunk(
+  'subcontractor/fetchPlacements',
+  async (params, { rejectWithValue }) => {
+    try {
+      const response = await subcontractorService.getPlacements(params);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const createPlacement = createAsyncThunk(
+  'subcontractor/createPlacement',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await subcontractorService.createPlacement(data);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+// 3. Invoices
+export const fetchInvoices = createAsyncThunk(
+  'subcontractor/fetchInvoices',
+  async (params, { rejectWithValue }) => {
+    try {
+      const response = await subcontractorService.getInvoices(params);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const createInvoice = createAsyncThunk(
+  'subcontractor/createInvoice',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await subcontractorService.createInvoice(data);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+// 4. W-9 Forms
+export const fetchW9Forms = createAsyncThunk(
+  'subcontractor/fetchW9Forms',
+  async (params, { rejectWithValue }) => {
+    try {
+      const response = await subcontractorService.getW9Forms(params);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const createW9Form = createAsyncThunk(
+  'subcontractor/createW9Form',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await subcontractorService.createW9Form(data);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+// 5. Contacts & Locations
+export const fetchContacts = createAsyncThunk(
+  'subcontractor/fetchContacts',
+  async (params, { rejectWithValue }) => {
+    try {
+      const response = await subcontractorService.getContacts(params);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
 
 export const fetchWorkLocations = createAsyncThunk(
   'subcontractor/fetchWorkLocations',
@@ -81,135 +162,124 @@ export const fetchWorkLocations = createAsyncThunk(
   }
 );
 
-export const createWorkLocation = createAsyncThunk(
-  'subcontractor/createWorkLocation',
-  async (data, { rejectWithValue }) => {
-    try {
-      const response = await subcontractorService.createWorkLocation(data);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
-    }
+const initialState = {
+  subcontractors: [],
+  placements: [],
+  invoices: [],
+  w9Forms: [],
+  contacts: [],
+  workLocations: [],
+  currentSubcontractor: null,
+  loading: false,
+  error: null,
+  success: null,
+  pagination: {
+    count: 0,
+    totalPages: 1,
+    currentPage: 1,
   }
-);
-
-export const deleteWorkLocation = createAsyncThunk(
-  'subcontractor/deleteWorkLocation',
-  async (id, { rejectWithValue }) => {
-    try {
-      await subcontractorService.deleteWorkLocation(id);
-      return id;
-    } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
-    }
-  }
-);
-
-// ==========================================
-// 3. SLICE DEFINITION
-// ==========================================
+};
 
 const subcontractorSlice = createSlice({
   name: 'subcontractor',
-  initialState: {
-    subcontractors: [],
-    currentSubcontractor: null,
-    
-    // ✅ NEW STATE for Dropdowns
-    workLocations: [], 
-    
-    loading: false,
-    error: null,
-    success: null,
-    pagination: {
-      count: 0,
-      next: null,
-      previous: null,
-      currentPage: 1,
-      totalPages: 1,
-      pageSize: 10,
-    },
-  },
+  initialState,
   reducers: {
-    clearError: (state) => { state.error = null; },
-    clearSuccess: (state) => { state.success = null; },
-    setCurrentSubcontractor: (state, action) => { state.currentSubcontractor = action.payload; },
-    clearCurrentSubcontractor: (state) => { state.currentSubcontractor = null; },
-    setPage: (state, action) => { state.pagination.currentPage = action.payload; },
+    clearError: (state) => {
+      state.error = null;
+    },
+    clearSuccess: (state) => {
+      state.success = null;
+    },
+    setCurrentSubcontractor: (state, action) => {
+      state.currentSubcontractor = action.payload;
+    },
+    clearCurrentSubcontractor: (state) => {
+      state.currentSubcontractor = null;
+    },
+    setPage: (state, action) => {
+      state.pagination.currentPage = action.payload;
+    }
   },
   extraReducers: (builder) => {
     builder
-      // Fetch
-      .addCase(fetchSubcontractors.pending, (state) => { state.loading = true; state.error = null; })
+      // Subcontractors
+      .addCase(fetchSubcontractors.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchSubcontractors.fulfilled, (state, action) => {
         state.loading = false;
-        state.subcontractors = action.payload.results || action.payload;
-        if (action.payload.count !== undefined) {
-          state.pagination = {
-            ...state.pagination,
-            count: action.payload.count,
-            next: action.payload.next,
-            previous: action.payload.previous,
-            totalPages: Math.ceil(action.payload.count / state.pagination.pageSize),
-          };
+        if (action.payload && action.payload.results) {
+          state.subcontractors = action.payload.results;
+          state.pagination.count = action.payload.count || action.payload.results.length;
+        } else {
+          state.subcontractors = Array.isArray(action.payload) ? action.payload : [];
+          state.pagination.count = state.subcontractors.length;
         }
       })
-      .addCase(fetchSubcontractors.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
-      
-      // Fetch By ID
+      .addCase(fetchSubcontractors.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
       .addCase(fetchSubcontractorById.fulfilled, (state, action) => {
-        state.loading = false;
         state.currentSubcontractor = action.payload;
-        // Populate locations if nested
-        if (action.payload.work_locations) {
-            state.workLocations = action.payload.work_locations;
-        }
       })
-
-      // Create
       .addCase(createSubcontractor.fulfilled, (state, action) => {
-        state.loading = false;
-        state.success = 'Subcontractor created successfully!';
         state.subcontractors.unshift(action.payload);
-        state.pagination.count += 1;
+        state.success = 'Subcontractor registered successfully!';
       })
-      
-      // Update
       .addCase(updateSubcontractor.fulfilled, (state, action) => {
-        state.loading = false;
-        state.success = 'Subcontractor updated successfully!';
-        const index = state.subcontractors.findIndex(sub => sub.id === action.payload.id);
-        if (index !== -1) state.subcontractors[index] = action.payload;
-        if (state.currentSubcontractor?.id === action.payload.id) state.currentSubcontractor = action.payload;
+        const index = state.subcontractors.findIndex(s => s.id === action.payload.id);
+        if (index !== -1) {
+          state.subcontractors[index] = action.payload;
+        }
+        state.currentSubcontractor = action.payload;
+        state.success = 'Subcontractor profile updated!';
       })
-      
-      // Delete
       .addCase(deleteSubcontractor.fulfilled, (state, action) => {
-        state.success = 'Subcontractor deleted successfully!';
-        state.subcontractors = state.subcontractors.filter(sub => sub.id !== action.payload);
-        state.currentSubcontractor = null;
-        if (state.pagination.count > 0) state.pagination.count -= 1;
+        state.subcontractors = state.subcontractors.filter(s => s.id !== action.payload);
+        state.success = 'Subcontractor removed.';
       })
-
-      // ✅ NEW: Work Location Handlers
+      // Placements
+      .addCase(fetchPlacements.fulfilled, (state, action) => {
+        state.placements = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
+      })
+      .addCase(createPlacement.fulfilled, (state, action) => {
+        state.placements.unshift(action.payload);
+        state.success = '1099 Placement recorded successfully!';
+      })
+      // Invoices
+      .addCase(fetchInvoices.fulfilled, (state, action) => {
+        state.invoices = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
+      })
+      .addCase(createInvoice.fulfilled, (state, action) => {
+        state.invoices.unshift(action.payload);
+        state.success = 'Vendor invoice submitted!';
+      })
+      // W-9
+      .addCase(fetchW9Forms.fulfilled, (state, action) => {
+        state.w9Forms = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
+      })
+      .addCase(createW9Form.fulfilled, (state, action) => {
+        state.w9Forms.unshift(action.payload);
+        state.success = 'Form W-9 certified and registered!';
+      })
+      // Contacts & Locations
+      .addCase(fetchContacts.fulfilled, (state, action) => {
+        state.contacts = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
+      })
       .addCase(fetchWorkLocations.fulfilled, (state, action) => {
-        state.workLocations = action.payload.results || action.payload;
-      })
-      .addCase(createWorkLocation.fulfilled, (state, action) => {
-        state.workLocations.push(action.payload);
-        if (state.currentSubcontractor && state.currentSubcontractor.id === action.payload.subcontractor) {
-             if (!state.currentSubcontractor.work_locations) state.currentSubcontractor.work_locations = [];
-             state.currentSubcontractor.work_locations.push(action.payload);
-        }
-      })
-      .addCase(deleteWorkLocation.fulfilled, (state, action) => {
-        state.workLocations = state.workLocations.filter(loc => loc.id !== action.payload);
-        if (state.currentSubcontractor && state.currentSubcontractor.work_locations) {
-            state.currentSubcontractor.work_locations = state.currentSubcontractor.work_locations.filter(loc => loc.id !== action.payload);
-        }
+        state.workLocations = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
       });
-  },
+  }
 });
 
-export const { clearError, clearSuccess, setCurrentSubcontractor, clearCurrentSubcontractor, setPage } = subcontractorSlice.actions;
+export const {
+  clearError,
+  clearSuccess,
+  setCurrentSubcontractor,
+  clearCurrentSubcontractor,
+  setPage
+} = subcontractorSlice.actions;
+
 export default subcontractorSlice.reducer;

@@ -68,53 +68,57 @@ const FormField = ({
         />
       ) : type === 'select' ? (
         // Select Dropdown
-        <div className="relative">
+        <div className="relative group">
           <select
             name={name}
             value={inputValue}
             onChange={onChange}
             disabled={disabled}
             className={`
-              w-full pl-3 pr-10 py-2 rounded-lg border appearance-none cursor-pointer
-              focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all
+              w-full pl-3.5 pr-10 py-2.5 rounded-xl border text-xs font-semibold appearance-none cursor-pointer
+              focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none shadow-sm
 
               ${
                 error
-                  ? 'border-red-500'
+                  ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20'
                   : isDarkMode
-                  ? 'border-gray-600'
-                  : 'border-gray-300'
+                  ? 'border-zinc-700 bg-[#181a20] text-zinc-100 hover:border-zinc-600 focus:bg-[#131722]'
+                  : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
               }
 
               ${
                 disabled
                   ? isDarkMode
-                    ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                    : 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                  : isDarkMode
-                  ? 'bg-gray-800 text-white'
-                  : 'bg-white text-gray-900'
+                    ? 'bg-zinc-800/50 text-zinc-500 cursor-not-allowed border-zinc-800'
+                    : 'bg-slate-100 text-slate-400 cursor-not-allowed border-slate-200'
+                  : ''
               }
             `}
           >
-            <option value="">Select {label}</option>
+            <option value="" className={isDarkMode ? 'bg-[#181a20] text-zinc-400' : 'bg-white text-slate-400'}>Select {label}</option>
             {options.map((option) => (
-              <option key={option.value} value={option.value}>
+              <option 
+                key={option.value} 
+                value={option.value}
+                className={isDarkMode ? 'bg-[#181a20] text-zinc-100' : 'bg-white text-slate-800'}
+              >
                 {option.label}
               </option>
             ))}
           </select>
 
           {/* Custom Arrow */}
-          <svg
-            className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none text-gray-500 dark:text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-          >
-            <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400 group-hover:text-blue-500 transition-colors">
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              viewBox="0 0 24 24"
+            >
+              <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
       ) : (
         // Normal input

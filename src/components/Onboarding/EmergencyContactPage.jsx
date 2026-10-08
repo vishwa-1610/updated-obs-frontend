@@ -3,93 +3,36 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Users, Phone, Mail, Heart, UserPlus, 
   ArrowRight, Loader2, AlertCircle, MapPin, 
-  ShieldCheck, Zap, FileCheck, Sparkles, Check
+  ShieldCheck, Zap, FileCheck, Sparkles, Check,
+  Home, Plus, Trash2, Shield
 } from 'lucide-react';
-
 import api from '../../api';
-
-// 1. IMPORT CONTEXT HOOK
 import { useOnboarding } from '../../context/OnboardingContext';
+import { useTheme, THEME_COLORS } from '../Theme/ThemeProvider';
+import StunningSelect from '../common/StunningSelect';
 
-// --- CONFIGURATION ---
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL; 
-
-// --- STYLES ---
-const INPUT_BASE = "w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-white text-gray-900 text-base font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all duration-200 placeholder-gray-400 hover:border-blue-300 shadow-sm appearance-none";
-const LABEL_STYLE = "block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1";
-const CARD_STYLE = "bg-white p-5 md:p-8 rounded-3xl border border-gray-100 shadow-xl shadow-slate-200/50 relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-blue-900/5";
-
-// --- COMPONENTS ---
-
-const SuccessModal = () => (
-  <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300 p-4">
-    <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full transform animate-in zoom-in-95 duration-300 border border-white/50">
-      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 text-green-600 shadow-lg shadow-green-500/20">
-        <Check size={32} strokeWidth={3} />
-      </div>
-      <h3 className="text-2xl font-bold text-slate-900 mb-2">Contacts Saved!</h3>
-      <p className="text-slate-500 text-center mb-2">Proceeding to next step...</p>
-      <div className="flex gap-1 mt-2">
-        <span className="w-2 h-2 bg-green-500 rounded-full animate-bounce delay-0"></span>
-        <span className="w-2 h-2 bg-green-500 rounded-full animate-bounce delay-100"></span>
-        <span className="w-2 h-2 bg-green-500 rounded-full animate-bounce delay-200"></span>
-      </div>
-    </div>
-  </div>
-);
-
-const StepIndicator = ({ currentStep, totalSteps }) => (
-  <div className="flex items-center gap-2 mb-8 px-1 overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
-    {[...Array(totalSteps)].map((_, i) => (
-      <div key={i} className={`h-1.5 rounded-full transition-all duration-500 shrink-0 ${i < currentStep ? 'w-8 bg-blue-600' : 'w-2 bg-slate-200'}`} />
-    ))}
-    <span className="ml-2 text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Step {currentStep} of {totalSteps}</span>
-  </div>
-);
-
-const FeatureItem = ({ icon: Icon, title, desc }) => (
-  <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/10 transition-colors duration-300">
-    <div className="p-2.5 bg-blue-500/20 rounded-xl text-blue-300 shadow-inner shrink-0">
-      <Icon size={20} />
-    </div>
-    <div>
-      <h4 className="font-bold text-white text-sm">{title}</h4>
-      <p className="text-slate-400 text-xs mt-1 leading-relaxed">{desc}</p>
-    </div>
-  </div>
-);
-
-const InputField = ({ label, name, value, onChange, type = "text", placeholder, icon: Icon, required }) => (
-  <div className="space-y-1 w-full">
-    <label className={LABEL_STYLE}>
-      {label} {required && <span className="text-blue-600">*</span>}
-    </label>
-    <div className="relative group">
-      <input
-        type={type} name={name} value={value} onChange={onChange} placeholder={placeholder}
-        className={INPUT_BASE}
-      />
-      {Icon && (
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors duration-200 pointer-events-none">
-            <Icon size={20} strokeWidth={2.5} />
-        </div>
-      )}
-    </div>
-  </div>
-);
-
-// --- MAIN PAGE ---
+const RELATIONSHIP_OPTIONS = [
+  { value: 'Spouse', label: 'Spouse' },
+  { value: 'Parent', label: 'Parent' },
+  { value: 'Sibling', label: 'Sibling' },
+  { value: 'Child', label: 'Child' },
+  { value: 'Partner', label: 'Partner' },
+  { value: 'Friend', label: 'Friend' },
+  { value: 'Other', label: 'Other' }
+];
 
 const EmergencyContactPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token'); 
   
-  // 2. GET WORKFLOW DATA
-  const { goToNextStep, workflow } = useOnboarding();
+  const { isDarkMode, accentColor } = useTheme();
+  const activeHexColor = THEME_COLORS.find(c => c.id === accentColor)?.color || '#2563eb';
+  const { goToNextStep } = useOnboarding();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showSecondary, setShowSecondary] = useState(false);
   const [error, setError] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -97,24 +40,39 @@ const EmergencyContactPage = () => {
     ec2_name: '', ec2_relationship: '', ec2_phone: '', ec2_email: '', ec2_address: ''
   });
 
-  // 3. CALCULATE DYNAMIC STEP NUMBER
-  // We match the name 'Emergency Contact' with the backend step name
-  const stepName = 'Emergency Contact';
-  const currentStepIndex = workflow.findIndex(s => s.step_name === stepName);
-  const currentStepNumber = currentStepIndex !== -1 ? currentStepIndex + 1 : 2; // Default to 2 if not found
-  const totalSteps = workflow.length > 0 ? workflow.length : 5;
+  // Fetch pre-existing emergency contact details if any
+  useEffect(() => {
+    if (!token) return;
+    api.get(`/emergency-contact/?token=${token}`)
+      .then(res => {
+        if (res.data && Object.keys(res.data).length > 0) {
+          setFormData(prev => ({ ...prev, ...res.data }));
+          if (res.data.ec2_name || res.data.ec2_phone) {
+            setShowSecondary(true);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [token]);
 
-  const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const setRelationship = (field, rel) => {
+    setFormData(prev => ({ ...prev, [field]: rel }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.ec1_name || !formData.ec1_relationship || !formData.ec1_phone) {
-        setError("Please complete the Primary Contact section.");
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
+      setError("Please complete all required fields for your Primary Emergency Contact.");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
 
     setIsSubmitting(true);
+    setError(null);
     
     try {
       await api.post('/emergency-contact/', { 
@@ -124,170 +82,332 @@ const EmergencyContactPage = () => {
         
       setShowSuccessModal(true);
 
-      // 4. USE DYNAMIC NAVIGATION
       setTimeout(() => {
-          goToNextStep(); // Automatically finds the next active step
-      }, 1500);
+        goToNextStep();
+      }, 1000);
 
     } catch (err) {
-        console.error(err);
-        setError("Connection failed. Please try again.");
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        setIsSubmitting(false);
+      console.error(err);
+      setError(err.response?.data?.error || err.response?.data?.message || "Failed to save emergency contact info. Please try again.");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setIsSubmitting(false);
     }
   };
 
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      .hide-scrollbar::-webkit-scrollbar { display: none; }
-      .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      .animate-in { animation-duration: 150ms; animation-fill-mode: both; }
-      .fade-in { animation-name: fadeIn; }
-    `;
-    document.head.appendChild(style);
-    return () => { document.head.removeChild(style); };
-  }, []);
+  const inputClass = `w-full pl-9 pr-3 py-2.5 rounded-xl border text-xs font-medium outline-none transition-all duration-200 ${
+    isDarkMode 
+      ? 'bg-[#181a20] border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20' 
+      : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-sm'
+  }`;
+
+  const labelClass = `block text-[10px] font-bold uppercase tracking-wider mb-1 ${
+    isDarkMode ? 'text-zinc-400' : 'text-slate-600'
+  }`;
+
+  const cardClass = `p-4 sm:p-5 rounded-2xl border transition-all ${
+    isDarkMode ? 'bg-[#131722] border-zinc-800/80 shadow-md' : 'bg-white border-slate-200/80 shadow-sm'
+  }`;
+
+  const relationshipPresets = ['Spouse', 'Parent', 'Sibling', 'Child', 'Partner', 'Friend'];
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-200 relative">
-      
-      {showSuccessModal && <SuccessModal />}
-
-      <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row min-h-screen">
-        
-        {/* --- LEFT SIDE: HIDDEN ON MOBILE (< lg) --- */}
-        <div className="hidden lg:flex lg:w-5/12 p-16 sticky top-0 h-screen flex-col bg-slate-900 text-white relative overflow-hidden z-0">
-            
-            <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-600/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
-
-            <div className="relative z-10 flex items-center gap-3 mb-12">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/50">
-                    <Sparkles size={20} className="text-white" />
-                </div>
-                <span className="font-bold text-xl tracking-tight text-white">Onboarding Portal</span>
-            </div>
-
-            <div className="relative z-10 flex-1 flex flex-col justify-center">
-                <h1 className="text-5xl font-extrabold leading-tight mb-6 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
-                    Emergency <br/> Contacts.
-                </h1>
-                <p className="text-slate-400 text-lg leading-relaxed mb-10 max-w-md">
-                    Who should we contact in case of an emergency? Please provide at least one primary contact.
-                </p>
-
-                <div className="space-y-4 mb-8">
-                    <FeatureItem icon={ShieldCheck} title="Privacy First" desc="This info is only accessed in emergencies." />
-                    <FeatureItem icon={Zap} title="Quick Access" desc="Available to HR and management instantly." />
-                </div>
-                
-                <div className="w-full max-w-sm mt-4 transform hover:scale-105 transition-transform duration-500 opacity-90">
-                    <img 
-                        src="https://illustrations.popsy.co/amber/social-media.svg"
-                        alt="Contact Illustration" 
-                        className="w-full h-auto drop-shadow-2xl"
-                    />
-                </div>
-            </div>
+    <div className="w-full space-y-4">
+      {/* Title Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1">
+        <div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <span 
+              className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider"
+              style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+            >
+              Step 2 • Safety & Care
+            </span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+            Emergency Contacts
+          </h1>
+          <p className={`text-xs ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+            Who should your employer contact in case of an urgent medical emergency or critical notice?
+          </p>
         </div>
 
-        {/* --- RIGHT SIDE: FORM (Full Width on Mobile) --- */}
-        <div className="w-full lg:w-7/12 p-4 md:p-8 lg:p-16 xl:p-24 bg-slate-50 flex flex-col relative z-0">
-            
-            {/* Mobile Header (Visible < lg) */}
-            <div className="lg:hidden mb-8 text-center mt-6">
-                <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-900 rounded-2xl mb-4 shadow-lg text-white">
-                    <Users size={28} />
-                </div>
-                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Emergency Info</h1>
-                <p className="text-slate-500 mt-2 text-sm px-4">Please provide contacts we can reach in case of an emergency.</p>
-            </div>
-
-            <div className="max-w-3xl w-full mx-auto relative">
-                {/* Desktop Header */}
-                <div className="hidden lg:flex justify-between items-end mb-6">
-                    <div>
-                        <h2 className="text-3xl font-bold text-slate-900">Emergency Contacts</h2>
-                        <p className="text-slate-500 mt-1">Please provide accurate contact details.</p>
-                    </div>
-                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
-                        Step {currentStepNumber}/{totalSteps}
-                    </span>
-                </div>
-                
-                <StepIndicator currentStep={currentStepNumber} totalSteps={totalSteps} />
-
-                {error && (
-                    <div className="mb-8 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-700 flex items-center gap-3 animate-in fade-in">
-                        <AlertCircle className="shrink-0" /> <p className="font-medium text-sm">{error}</p>
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8 relative">
-                    
-                    {/* --- PRIMARY CONTACT (CARD 1) --- */}
-                    <div className={`${CARD_STYLE} ring-4 ring-blue-50/50`}>
-                        <div className="absolute top-0 left-0 w-full h-1.5 bg-blue-500"></div>
-                        
-                        <div className="flex items-center gap-3 mb-6 md:mb-8">
-                            <span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0">1</span>
-                            <h3 className="text-lg md:text-xl font-bold text-slate-900">Primary Contact (Required)</h3>
-                        </div>
-
-                        {/* MOBILE: grid-cols-1, DESKTOP: grid-cols-2 */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-                            <div className="col-span-1 md:col-span-2">
-                                <InputField label="Full Name" name="ec1_name" value={formData.ec1_name} onChange={handleChange} icon={UserPlus} required placeholder="e.g. Jane Doe" />
-                            </div>
-                            <InputField label="Relationship" name="ec1_relationship" value={formData.ec1_relationship} onChange={handleChange} icon={Heart} required placeholder="Spouse" />
-                            <InputField label="Phone Number" name="ec1_phone" type="tel" value={formData.ec1_phone} onChange={handleChange} icon={Phone} required placeholder="(555)..." />
-                            <InputField label="Email Address" name="ec1_email" type="email" value={formData.ec1_email} onChange={handleChange} icon={Mail} placeholder="Optional" />
-                            <InputField label="Address" name="ec1_address" value={formData.ec1_address} onChange={handleChange} icon={MapPin} placeholder="Optional" />
-                        </div>
-                    </div>
-
-                    {/* --- SECONDARY CONTACT (CARD 2) --- */}
-                    <div className={CARD_STYLE}>
-                        <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-200"></div>
-
-                        <div className="flex items-center gap-3 mb-6 md:mb-8">
-                            <span className="bg-slate-100 text-slate-600 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0">2</span>
-                            <h3 className="text-lg md:text-xl font-bold text-slate-900">Secondary Contact</h3>
-                            <span className="ml-auto text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wide bg-slate-50 px-2 py-1 rounded border border-slate-100">Optional</span>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 opacity-90">
-                            <div className="col-span-1 md:col-span-2">
-                                <InputField label="Full Name" name="ec2_name" value={formData.ec2_name} onChange={handleChange} icon={UserPlus} placeholder="e.g. John Doe" />
-                            </div>
-                            <InputField label="Relationship" name="ec2_relationship" value={formData.ec2_relationship} onChange={handleChange} icon={Heart} placeholder="Parent" />
-                            <InputField label="Phone Number" name="ec2_phone" type="tel" value={formData.ec2_phone} onChange={handleChange} icon={Phone} placeholder="(555)..." />
-                            <InputField label="Email Address" name="ec2_email" type="email" value={formData.ec2_email} onChange={handleChange} icon={Mail} placeholder="Optional" />
-                            <InputField label="Address" name="ec2_address" value={formData.ec2_address} onChange={handleChange} icon={MapPin} placeholder="Optional" />
-                        </div>
-                    </div>
-
-                    {/* SUBMIT BUTTON */}
-                    <div className="pt-4 flex justify-end relative z-0">
-                        <button 
-                            type="submit" 
-                            disabled={isSubmitting}
-                            className="group relative inline-flex items-center justify-center gap-3 bg-slate-900 hover:bg-blue-600 text-white w-full md:w-auto px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 disabled:opacity-70 disabled:transform-none disabled:cursor-not-allowed z-10"
-                        >
-                            {isSubmitting ? (
-                                <><Loader2 className="w-5 h-5 animate-spin" /> Saving...</>
-                            ) : (
-                                <>Save & Continue <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" /></>
-                            )}
-                        </button>
-                    </div>
-
-                </form>
-            </div>
+        <div className={`self-start sm:self-auto flex items-center gap-2 px-2.5 py-1.5 rounded-xl border ${
+          isDarkMode ? 'bg-zinc-900/60 border-zinc-800 text-zinc-300' : 'bg-emerald-50/60 border-emerald-100 text-emerald-800'
+        }`}>
+          <Shield size={14} className="text-emerald-500 shrink-0" />
+          <span className="text-[10px] font-bold">Strict Confidentiality</span>
         </div>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 flex items-center gap-2 animate-in fade-in">
+          <AlertCircle size={16} className="shrink-0" />
+          <p className="text-xs font-semibold">{error}</p>
+        </div>
+      )}
+
+      {/* Main Form */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Card 1: Primary Emergency Contact (Required) */}
+        <div className={cardClass}>
+          <div className="flex items-center justify-between gap-2 mb-3.5 pb-2 border-b border-zinc-800/40 dark:border-zinc-800 light:border-slate-100">
+            <div className="flex items-center gap-2">
+              <div 
+                className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs"
+                style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+              >
+                <Users size={13} />
+              </div>
+              <div>
+                <h2 className="text-xs sm:text-sm font-bold">Primary Emergency Contact</h2>
+              </div>
+            </div>
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20">
+              Required
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+            {/* Full Name */}
+            <div>
+              <label className={labelClass}>
+                Contact Full Name <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="ec1_name"
+                  value={formData.ec1_name}
+                  onChange={handleChange}
+                  placeholder="e.g. Jane Doe"
+                  required
+                  className={inputClass}
+                />
+                <UserPlus size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
+              </div>
+            </div>
+
+            {/* Relationship (Custom StunningSelect) */}
+            <div>
+              <StunningSelect
+                name="ec1_relationship"
+                label="Relationship"
+                value={formData.ec1_relationship}
+                onChange={handleChange}
+                options={RELATIONSHIP_OPTIONS}
+                required
+                placeholder="Select Relationship..."
+                icon={Heart}
+              />
+            </div>
+
+            {/* Phone Number */}
+            <div>
+              <label className={labelClass}>
+                Phone Number <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  name="ec1_phone"
+                  value={formData.ec1_phone}
+                  onChange={handleChange}
+                  placeholder="(555) 000-0000"
+                  required
+                  className={inputClass}
+                />
+                <Phone size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
+              </div>
+            </div>
+
+            {/* Email Address */}
+            <div>
+              <label className={labelClass}>Email Address (Optional)</label>
+              <div className="relative">
+                <input
+                  type="email"
+                  name="ec1_email"
+                  value={formData.ec1_email}
+                  onChange={handleChange}
+                  placeholder="contact@example.com"
+                  className={inputClass}
+                />
+                <Mail size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
+              </div>
+            </div>
+
+            {/* Address */}
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Address (Optional)</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="ec1_address"
+                  value={formData.ec1_address}
+                  onChange={handleChange}
+                  placeholder="City, State or Full Address"
+                  className={inputClass}
+                />
+                <MapPin size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: Secondary Emergency Contact (Optional) */}
+        <div className={cardClass}>
+          <div className="flex items-center justify-between gap-2 mb-3.5 pb-2 border-b border-zinc-800/40 dark:border-zinc-800 light:border-slate-100">
+            <div className="flex items-center gap-2">
+              <div 
+                className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs"
+                style={{ backgroundColor: isDarkMode ? '#27272a' : '#f1f5f9', color: isDarkMode ? '#a1a1aa' : '#64748b' }}
+              >
+                <Users size={13} />
+              </div>
+              <div>
+                <h2 className="text-xs sm:text-sm font-bold">Secondary Emergency Contact (Optional)</h2>
+              </div>
+            </div>
+            
+            <button
+              type="button"
+              onClick={() => setShowSecondary(!showSecondary)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1 ${
+                showSecondary
+                  ? 'bg-zinc-800 border-zinc-700 text-zinc-300'
+                  : 'bg-blue-500/10 border-blue-500/30 text-blue-500 hover:bg-blue-500/20'
+              }`}
+            >
+              {showSecondary ? 'Collapse' : '+ Add Backup Contact'}
+            </button>
+          </div>
+
+          {showSecondary ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 animate-in fade-in">
+              {/* Full Name */}
+              <div>
+                <label className={labelClass}>Contact Full Name</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="ec2_name"
+                    value={formData.ec2_name}
+                    onChange={handleChange}
+                    placeholder="e.g. John Doe"
+                    className={inputClass}
+                  />
+                  <UserPlus size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
+                </div>
+              </div>
+
+              {/* Relationship */}
+              <div>
+                <StunningSelect
+                  name="ec2_relationship"
+                  label="Relationship"
+                  value={formData.ec2_relationship}
+                  onChange={handleChange}
+                  options={RELATIONSHIP_OPTIONS}
+                  placeholder="Select Relationship..."
+                  icon={Heart}
+                />
+              </div>
+
+              {/* Phone Number */}
+              <div>
+                <label className={labelClass}>Phone Number</label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    name="ec2_phone"
+                    value={formData.ec2_phone}
+                    onChange={handleChange}
+                    placeholder="(555) 000-0000"
+                    className={inputClass}
+                  />
+                  <Phone size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
+                </div>
+              </div>
+
+              {/* Email Address */}
+              <div>
+                <label className={labelClass}>Email Address (Optional)</label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    name="ec2_email"
+                    value={formData.ec2_email}
+                    onChange={handleChange}
+                    placeholder="contact@example.com"
+                    className={inputClass}
+                  />
+                  <Mail size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
+                </div>
+              </div>
+
+              {/* Address */}
+              <div className="sm:col-span-2">
+                <label className={labelClass}>Address (Optional)</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="ec2_address"
+                    value={formData.ec2_address}
+                    onChange={handleChange}
+                    placeholder="City, State or Full Address"
+                    className={inputClass}
+                  />
+                  <MapPin size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className={`text-[11px] ${isDarkMode ? 'text-zinc-500' : 'text-slate-500'}`}>
+              Click <strong>+ Add Backup Contact</strong> above if you wish to provide a second emergency contact.
+            </p>
+          )}
+        </div>
+
+        {/* Action Button */}
+        <div className="flex items-center justify-end pt-1">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            style={{ backgroundColor: activeHexColor }}
+            className="w-full sm:w-auto px-6 py-3 rounded-xl text-white font-bold text-xs sm:text-sm shadow-md hover:opacity-95 hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 size={15} className="animate-spin" />
+                <span>Saving Contacts...</span>
+              </>
+            ) : (
+              <>
+                <span>Save & Continue to Next Step</span>
+                <ArrowRight size={15} />
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+
+      {/* Celebratory Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in">
+          <div className={`p-6 rounded-3xl border shadow-2xl flex flex-col items-center max-w-xs w-full text-center animate-in zoom-in-95 ${
+            isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-100 text-slate-800'
+          }`}>
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-3 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
+              <Check size={28} strokeWidth={3} />
+            </div>
+            <h3 className="text-base font-bold mb-0.5">Emergency Contacts Saved!</h3>
+            <p className={`text-xs ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+              Proceeding to the next onboarding step...
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

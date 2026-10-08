@@ -1,37 +1,60 @@
 import api from './api';
 
-export const onboardingService = {
-  // --- 1. Tab-Based Fetching ---
-  getOnboardings: (params) => api.get('/onboarding/', { params }),
-  getPendingOnboardings: (params) => api.get('/pending-onboarding/', { params }),
-  getConfirmedOnboardings: (params) => api.get('/confirmed-onboarding/', { params }),
-  getInProgressOnboardings: (params) => api.get('/inprogress-onboarding/', { params }),
-
-  // ✅ NEW: Master List (Returns everything)
-  getAllOnboardings: (params) => api.get('/all-onboardings/', { params }),
-
-  // --- 2. CRUD Operations ---
-  getOnboardingById: (id) => api.get(`/onboarding/${id}/`),
+const onboardingService = {
+  // Candidate Lifecycle
+  getAllOnboardings: () => api.get('/all-onboardings/'),
+  getPendingOnboardings: () => api.get('/pending-onboarding/'),
+  getInProgressOnboardings: () => api.get('/inprogress-onboarding/'),
+  getConfirmedOnboardings: () => api.get('/confirmed-onboarding/'),
+  getOnboardingDetail: (id) => api.get(`/onboarding/${id}/`),
   createOnboarding: (data) => api.post('/onboarding/', data),
-  updateOnboarding: (id, data) => api.patch(`/onboarding/${id}/`, data),
+  updateOnboarding: (id, data) => api.put(`/onboarding/${id}/`, data),
   deleteOnboarding: (id) => api.delete(`/onboarding/${id}/`),
 
-  // --- 3. Bank Details ---
-  getBankDetails: (onboardingId) => 
-    api.get('/bank-details/get/', { params: { onboarding_id: onboardingId } }),
-
-  // --- 4. Actions (Reminders, Regret, Terminate) ---
-  
-  // Existing Reminder
+  // Actions
   remindOnboarding: (id) => api.post(`/onboarding/${id}/remind/`),
+  regretOnboarding: (id) => api.post(`/${id}/regret/`),
+  terminateOnboarding: (id, data) => api.post(`/${id}/terminate/`, data || {}),
+  convertToEmployee: (id, data) => api.post(`/onboarding/${id}/convert-to-employee/`, data || {}),
 
-  // ✅ NEW: Regret Action
-  // Matches Python: path('<int:pk>/regret/', ...)
-  // Usage: onboardingService.regretOnboarding(12, "Found another job")
-  regretOnboarding: (id, reason) => api.post(`/${id}/regret/`, { reason }),
+  // Form I-9 & Employer Verification
+  getI9Detail: (id) => api.get(`/onboarding/${id}/i9/`),
+  submitI9EmployerVerify: (id, data) => api.post(`/i9/${id}/employer-verify/`, data),
+  submitI9EmployerVerifyDirect: (data) => api.post('/i9/employer-verify/', data),
 
-  // ✅ NEW: Terminate Action
-  // Matches Python: path('<int:pk>/terminate/', ...)
-  // Usage: onboardingService.terminateOnboarding(12, "Contract ended")
-  terminateOnboarding: (id, reason) => api.post(`/${id}/terminate/`, { reason }),
+  // USCIS E-Verify & Background Screening
+  getEVerifyCase: (id) => api.get(`/onboarding/${id}/everify/`),
+  submitEVerifyCase: (id, data) => api.post(`/onboarding/${id}/everify/submit/`, data || {}),
+  closeEVerifyCase: (caseId, data) => api.post(`/everify/cases/${caseId}/close/`, data),
+  getBackgroundChecks: (id) => api.get(`/onboarding/${id}/background-checks/`),
+  triggerBackgroundCheck: (id, data) => api.post(`/onboarding/${id}/background-checks/`, data || {}),
+
+  // Benefit Plans
+  getBenefitPlans: () => api.get('/benefits/plans/'),
+  createBenefitPlan: (data) => api.post('/benefits/plans/', data),
+  updateBenefitPlan: (id, data) => api.put(`/benefits/plans/${id}/`, data),
+  deleteBenefitPlan: (id) => api.delete(`/benefits/plans/${id}/`),
+  getCandidateBenefits: (id) => api.get(`/onboarding/${id}/benefits/`),
+
+  // Company Policies & Handbook
+  getCompanyPolicies: () => api.get('/policies/'),
+  createCompanyPolicy: (data) => api.post('/policies/', data),
+  updateCompanyPolicy: (id, data) => api.put(`/policies/${id}/`, data),
+  deleteCompanyPolicy: (id) => api.delete(`/policies/${id}/`),
+  getCandidatePolicies: (id) => api.get(`/onboarding/${id}/policies/`),
+
+  // Document Expirations & Reverification Radar
+  getDocumentExpirations: () => api.get('/compliance/expirations/'),
+  scanDocumentExpirations: () => api.post('/compliance/expirations/scan/'),
+
+  // Payroll CSV Export & Bulk Import
+  exportPayrollCsv: (provider = 'ADP') =>
+    api.get(`/onboarding/export/payroll/?provider=${provider}`, { responseType: 'blob' }),
+  bulkImportCandidates: (formData) =>
+    api.post('/onboarding/bulk-import/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
 };
+
+export { onboardingService };
+export default onboardingService;

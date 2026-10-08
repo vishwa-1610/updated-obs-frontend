@@ -1,65 +1,468 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --primary-color: #2563eb;
+  --primary-rgb: 37, 99, 235;
+  --primary-hover: #1d4ed8;
+  --primary-light: rgba(37, 99, 235, 0.1);
+  --primary-glow: rgba(37, 99, 235, 0.25);
+}
+
+[data-theme="blue"] {
+  --primary-color: #2563eb;
+  --primary-rgb: 37, 99, 235;
+  --primary-hover: #1d4ed8;
+  --primary-light: rgba(37, 99, 235, 0.12);
+  --primary-glow: rgba(37, 99, 235, 0.25);
+}
+
+[data-theme="indigo"] {
+  --primary-color: #4f46e5;
+  --primary-rgb: 79, 70, 229;
+  --primary-hover: #4338ca;
+  --primary-light: rgba(79, 70, 229, 0.12);
+  --primary-glow: rgba(79, 70, 229, 0.25);
+}
+
+[data-theme="emerald"] {
+  --primary-color: #059669;
+  --primary-rgb: 5, 150, 105;
+  --primary-hover: #047857;
+  --primary-light: rgba(5, 150, 105, 0.12);
+  --primary-glow: rgba(5, 150, 105, 0.25);
+}
+
+[data-theme="purple"] {
+  --primary-color: #9333ea;
+  --primary-rgb: 147, 51, 234;
+  --primary-hover: #7e22ce;
+  --primary-light: rgba(147, 51, 234, 0.12);
+  --primary-glow: rgba(147, 51, 234, 0.25);
+}
+
+[data-theme="rose"] {
+  --primary-color: #e11d48;
+  --primary-rgb: 225, 29, 72;
+  --primary-hover: #be123c;
+  --primary-light: rgba(225, 29, 72, 0.12);
+  --primary-glow: rgba(225, 29, 72, 0.25);
+}
+
+[data-theme="amber"] {
+  --primary-color: #d97706;
+  --primary-rgb: 217, 119, 6;
+  --primary-hover: #b45309;
+  --primary-light: rgba(217, 119, 6, 0.12);
+  --primary-glow: rgba(217, 119, 6, 0.25);
+}
+
+.theme-bg-primary {
+  background-color: var(--primary-color) !important;
+}
+
+.theme-text-primary {
+  color: var(--primary-color) !important;
+}
+
+.theme-border-primary {
+  border-color: var(--primary-color) !important;
+}
+
+.theme-ring-primary {
+  --tw-ring-color: var(--primary-color) !important;
+}
+
+.theme-bg-light {
+  background-color: var(--primary-light) !important;
+}
+
+.theme-shadow-primary {
+  box-shadow: 0 4px 20px -2px var(--primary-glow) !important;
+}
+
+.hover\:theme-text-primary:hover {
+  color: var(--primary-color) !important;
+}
+
+.hover\:theme-bg-light:hover {
+  background-color: var(--primary-light) !important;
+}
+
+.focus\:theme-border:focus {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 2px var(--primary-light) !important;
+}
+
 /* Custom dark mode utilities */
 .dark {
   color-scheme: dark;
 }
 
-/* Custom scrollbar for dark mode */
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom sleek scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.dark ::-webkit-scrollbar-track {
-  background: #374151;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
+  background: #cbd5e1;
+  border-radius: 9999px;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #4b5563;
+  background: #27272a;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #94a3b8;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
+  background: #3f3f46;
 }
 
-/* Modal animations */
 @keyframes modalFadeIn {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-8px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes overlayFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
 .animate-modal {
-  animation: modalFadeIn 0.3s ease-out;
+  animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.animate-overlay {
-  animation: overlayFadeIn 0.3s ease-out;
+
+/* ========================================================= */
+/* UNIVERSAL INTERACTIVE CURSOR POINTER                     */
+/* ========================================================= */
+button,
+a,
+select,
+input[type="checkbox"],
+input[type="radio"],
+input[type="button"],
+input[type="submit"],
+[role="button"],
+[role="tab"],
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
+button:disabled,
+button[disabled] {
+  cursor: not-allowed !important;
+}
+
+/* ========================================================= */
+/* HIGH-DENSITY & THEMED STATE W-4 FORMS SCOPE               */
+/* ========================================================= */
+.state-forms-theme-scope {
+  position: relative;
+}
+
+.state-forms-theme-scope > div {
+  background: transparent !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+
+/* Hide redundant duplicate top headers inside state forms */
+.state-forms-theme-scope .mb-10.text-center,
+.state-forms-theme-scope .mb-8.text-center {
+  display: none !important;
+}
+
+/* Tight vertical spacing */
+.state-forms-theme-scope form {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.875rem !important;
+}
+
+.state-forms-theme-scope form > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Compact section cards */
+.state-forms-theme-scope section,
+.state-forms-theme-scope .rounded-2xl {
+  padding: 0.875rem 1rem !important;
+  border-radius: 0.875rem !important;
+  margin-bottom: 0 !important;
+  box-shadow: none !important;
+  border-width: 1px !important;
+  transition: all 0.2s ease !important;
+}
+
+.dark .state-forms-theme-scope section,
+.dark .state-forms-theme-scope .rounded-2xl:not(.bg-amber-500\/10):not(.bg-emerald-500\/10) {
+  background-color: #131722 !important;
+  border-color: rgba(39, 39, 42, 0.8) !important;
+}
+
+.state-forms-theme-scope section,
+.state-forms-theme-scope .rounded-2xl {
+  background-color: #ffffff;
+  border-color: rgba(226, 232, 240, 0.9);
+}
+
+/* Section headers */
+.state-forms-theme-scope h3 {
+  font-size: 0.8125rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.01em !important;
+  margin-bottom: 0.625rem !important;
+  padding-bottom: 0.4rem !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.7) !important;
+}
+
+.dark .state-forms-theme-scope h3 {
+  color: #f4f4f5 !important;
+  border-bottom-color: rgba(39, 39, 42, 0.8) !important;
+}
+
+.state-forms-theme-scope h3 svg {
+  width: 0.95rem !important;
+  height: 0.95rem !important;
+  color: var(--primary-color) !important;
+}
+
+/* Compact form labels */
+.state-forms-theme-scope label {
+  font-size: 0.6875rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  margin-bottom: 0.25rem !important;
+  line-height: 1.2 !important;
+}
+
+.dark .state-forms-theme-scope label {
+  color: #a1a1aa !important;
+}
+
+.state-forms-theme-scope label {
+  color: #64748b;
+}
+
+/* Form input fields */
+.state-forms-theme-scope input[type="text"],
+.state-forms-theme-scope input[type="number"],
+.state-forms-theme-scope input[type="email"],
+.state-forms-theme-scope input[type="tel"],
+.state-forms-theme-scope select {
+  height: 2.25rem !important;
+  min-height: 2.25rem !important;
+  padding: 0.375rem 0.625rem !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
+  border-radius: 0.625rem !important;
+  outline: none !important;
+  transition: all 0.15s ease !important;
+}
+
+.state-forms-theme-scope input.pl-10,
+.state-forms-theme-scope .relative input[type="text"].pl-10,
+.state-forms-theme-scope .relative input.pl-8 {
+  padding-left: 2rem !important;
+}
+
+.dark .state-forms-theme-scope input[type="text"],
+.dark .state-forms-theme-scope input[type="number"],
+.dark .state-forms-theme-scope input[type="email"],
+.dark .state-forms-theme-scope input[type="tel"],
+.dark .state-forms-theme-scope select {
+  background-color: #181a20 !important;
+  border: 1px solid #27272a !important;
+  color: #f4f4f5 !important;
+}
+
+.dark .state-forms-theme-scope input::placeholder {
+  color: #52525b !important;
+}
+
+.state-forms-theme-scope input[type="text"],
+.state-forms-theme-scope input[type="number"],
+.state-forms-theme-scope input[type="email"],
+.state-forms-theme-scope input[type="tel"],
+.state-forms-theme-scope select {
+  background-color: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.state-forms-theme-scope input:focus,
+.state-forms-theme-scope select:focus {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 2px var(--primary-light) !important;
+}
+
+.dark .state-forms-theme-scope input[readonly].bg-gray-100 {
+  background-color: #27272a !important;
+  color: #a1a1aa !important;
+}
+
+/* Radio & Checkbox Cards */
+.state-forms-theme-scope label.group,
+.state-forms-theme-scope label:has(input[type="radio"]),
+.state-forms-theme-scope label:has(input[type="checkbox"]) {
+  padding: 0.5rem 0.75rem !important;
+  border-radius: 0.625rem !important;
+  font-size: 0.8125rem !important;
+  transition: all 0.15s ease !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 0.625rem !important;
+  cursor: pointer !important;
+}
+
+.dark .state-forms-theme-scope label.group,
+.dark .state-forms-theme-scope label:has(input[type="radio"]),
+.dark .state-forms-theme-scope label:has(input[type="checkbox"]) {
+  background-color: #181a20 !important;
+  border: 1px solid #27272a !important;
+  color: #f4f4f5 !important;
+}
+
+.state-forms-theme-scope label.group,
+.state-forms-theme-scope label:has(input[type="radio"]),
+.state-forms-theme-scope label:has(input[type="checkbox"]) {
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.state-forms-theme-scope label:has(input[type="radio"]:checked),
+.state-forms-theme-scope label:has(input[type="checkbox"]:checked) {
+  border-color: var(--primary-color) !important;
+  background-color: var(--primary-light) !important;
+}
+
+.dark .state-forms-theme-scope label span,
+.dark .state-forms-theme-scope .text-gray-900 {
+  color: #f4f4f5 !important;
+}
+
+.dark .state-forms-theme-scope .text-gray-700 {
+  color: #e4e4e7 !important;
+}
+
+.dark .state-forms-theme-scope .text-gray-500,
+.dark .state-forms-theme-scope .text-gray-600 {
+  color: #a1a1aa !important;
+}
+
+.dark .state-forms-theme-scope .bg-gray-50,
+.dark .state-forms-theme-scope .bg-gray-50\/50 {
+  background-color: #181a20 !important;
+}
+
+.dark .state-forms-theme-scope .border-gray-100,
+.dark .state-forms-theme-scope .border-gray-200 {
+  border-color: #27272a !important;
+}
+
+/* Custom DatePicker Popover within State Forms */
+.state-forms-theme-scope [class*="w-72"],
+.state-forms-theme-scope [class*="w-64"] {
+  z-index: 50 !important;
+  border-radius: 0.875rem !important;
+}
+
+.dark .state-forms-theme-scope [class*="w-72"],
+.dark .state-forms-theme-scope [class*="w-64"] {
+  background-color: #181a20 !important;
+  border: 1px solid #27272a !important;
+  color: #f4f4f5 !important;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.6) !important;
+}
+
+.dark .state-forms-theme-scope [class*="w-72"] button,
+.dark .state-forms-theme-scope [class*="w-64"] button {
+  color: #f4f4f5 !important;
+}
+
+.dark .state-forms-theme-scope [class*="w-72"] button:hover,
+.dark .state-forms-theme-scope [class*="w-64"] button:hover {
+  background-color: var(--primary-light) !important;
+  color: var(--primary-color) !important;
+}
+
+/* Signature Canvas Area */
+.state-forms-theme-scope [class*="h-56"],
+.state-forms-theme-scope [class*="h-48"] {
+  height: 125px !important;
+  min-height: 125px !important;
+  border-radius: 0.75rem !important;
+  border-width: 2px !important;
+  border-style: dashed !important;
+  background-color: #ffffff !important;
+}
+
+.dark .state-forms-theme-scope [class*="h-56"],
+.dark .state-forms-theme-scope [class*="h-48"] {
+  border-color: #3f3f46 !important;
+}
+
+/* Submit Action Button */
+.state-forms-theme-scope button[type="submit"],
+.state-forms-theme-scope button:has(svg.lucide-save),
+.state-forms-theme-scope .flex.justify-end button {
+  padding: 0.55rem 1.25rem !important;
+  font-size: 0.8125rem !important;
+  font-weight: 700 !important;
+  border-radius: 0.625rem !important;
+  background: var(--primary-color) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px var(--primary-glow) !important;
+  transition: all 0.15s ease !important;
+}
+
+.state-forms-theme-scope button[type="submit"]:hover,
+.state-forms-theme-scope .flex.justify-end button:hover {
+  opacity: 0.95 !important;
+  transform: translateY(-1px) !important;
+}
+
+.state-forms-theme-scope .pt-6.flex.justify-end,
+.state-forms-theme-scope .flex.justify-end {
+  padding-top: 0.5rem !important;
+}
+
+/* Informational & Result Boxes */
+.dark .state-forms-theme-scope .bg-blue-50 {
+  background-color: rgba(37, 99, 235, 0.12) !important;
+  border-color: rgba(37, 99, 235, 0.25) !important;
+}
+
+.dark .state-forms-theme-scope .text-blue-700,
+.dark .state-forms-theme-scope .text-blue-600 {
+  color: #60a5fa !important;
 }

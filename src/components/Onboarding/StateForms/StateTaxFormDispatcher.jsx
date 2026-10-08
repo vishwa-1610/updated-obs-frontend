@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { FileQuestion, AlertTriangle, Copy, CheckCircle } from 'lucide-react';
+import { FileQuestion, AlertTriangle, Copy, CheckCircle2, ArrowRight, PenTool, ExternalLink } from 'lucide-react';
+import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';
 
 // --- 1. Import Forms ---
-import FederalTaxForm from './FederalTaxForm'; // Required for "Uses Federal" states
+import FederalTaxForm from '../Federal/FederalTaxForm'; // Uses the modernized Federal form
 import AlabamaW4Form from './AlabamaW4Form';
 import ArizonaW4Form from './ArizonaW4Form';
 import ArkansasW4Form from './ArkansasW4Form';
@@ -86,22 +87,22 @@ const FORM_MAP = {
 };
 
 // --- 3. CATEGORY B: States that USE the Federal Form ---
-// These states require a form, but accept the Federal W-4.
 const USES_FEDERAL_FORM = [
   'UT', // Utah
   'NM', // New Mexico
   'ND', // North Dakota
-  'CO'  // Colorado (Has own form, but often accepts Fed)
+  'CO'  // Colorado
 ];
 
 // --- 4. CATEGORY C: States with NO Income Tax ---
-// These states require NO form at all.
 const NO_TAX_STATES = [
   'AK', 'FL', 'NV', 'NH', 'SD', 'TN', 'TX', 'WA', 'WY'
 ];
 
 const StateTaxFormDispatcher = ({ userState, initialData, onSubmit }) => {
   const [showFedForm, setShowFedForm] = useState(false);
+  const { isDarkMode, accentColor } = useTheme();
+  const activeHexColor = THEME_COLORS.find(c => c.id === accentColor)?.color || '#2563eb';
   const code = userState ? userState.toUpperCase().trim() : '';
 
   // -----------------------------------------------------------
@@ -117,17 +118,15 @@ const StateTaxFormDispatcher = ({ userState, initialData, onSubmit }) => {
   // -----------------------------------------------------------
   if (USES_FEDERAL_FORM.includes(code)) {
     if (showFedForm) {
-      // If user clicked "Complete Form", show the Federal Form
       return (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-           <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg shadow-sm">
-            <div className="flex">
-              <div className="ml-3">
-                <p className="text-sm text-blue-700">
-                  You are completing the <strong>Federal W-4</strong> for <strong>{code}</strong> state withholding records.
-                </p>
-              </div>
-            </div>
+        <div className="space-y-4 animate-in fade-in">
+          <div className={`p-3.5 rounded-xl border flex items-center gap-3 ${
+            isDarkMode ? 'bg-blue-500/10 border-blue-500/20 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-800'
+          }`}>
+            <Copy size={16} className="text-blue-500 shrink-0" />
+            <p className="text-xs">
+              Completing the <strong>Federal W-4</strong> for <strong>{code}</strong> state withholding records.
+            </p>
           </div>
           <FederalTaxForm 
             initialData={{ ...initialData, state: code }} 
@@ -137,21 +136,25 @@ const StateTaxFormDispatcher = ({ userState, initialData, onSubmit }) => {
       );
     }
 
-    // Default View: Show the "Move to Federal" Button
     return (
-      <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-gray-100 shadow-sm text-center">
-        <div className="bg-blue-50 p-4 rounded-full mb-6">
-            <Copy size={40} className="text-blue-600" />
+      <div className={`flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl border text-center ${
+        isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'
+      }`}>
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 shadow-md" style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}>
+          <Copy size={24} />
         </div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-3">{code} Uses Federal W-4</h3>
-        <p className="text-gray-500 max-w-md mb-8 leading-relaxed">
-          The state of <span className="font-bold text-gray-800">{code}</span> accepts the Federal W-4 form for state tax withholding. You need to submit a copy for state records.
+        <h3 className="text-base font-extrabold mb-1">{code} Uses Federal W-4</h3>
+        <p className={`text-xs max-w-sm mb-5 leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+          The state of <strong className="text-current">{code}</strong> accepts the Federal W-4 form for state tax withholding.
         </p>
         <button 
           onClick={() => setShowFedForm(true)}
-          className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center gap-2"
+          style={{ backgroundColor: activeHexColor }}
+          className="px-5 py-2.5 text-white font-bold text-xs rounded-xl shadow-md hover:opacity-95 transition-all flex items-center gap-1.5"
         >
-          <Pen size={18} /> Complete State W-4
+          <PenTool size={14} />
+          <span>Complete State W-4 Copy</span>
+          <ArrowRight size={14} />
         </button>
       </div>
     );
@@ -162,24 +165,29 @@ const StateTaxFormDispatcher = ({ userState, initialData, onSubmit }) => {
   // -----------------------------------------------------------
   if (NO_TAX_STATES.includes(code)) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 bg-white rounded-2xl border border-gray-100 shadow-sm text-center">
-        <div className="bg-green-50 p-4 rounded-full mb-6">
-            <CheckCircle size={40} className="text-green-600" />
+      <div className={`flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl border text-center ${
+        isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'
+      }`}>
+        <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center mb-3">
+          <CheckCircle2 size={24} />
         </div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-3">No State Form Required</h3>
-        <p className="text-gray-500 max-w-md mb-8 leading-relaxed">
-          Good news! <span className="font-bold text-gray-800">{code}</span> does not have state income tax on wages. You do not need to file any additional forms.
+        <h3 className="text-base font-extrabold mb-1">No State Form Required</h3>
+        <p className={`text-xs max-w-sm mb-5 leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+          <strong className="text-current">{code}</strong> does not have state personal income tax on wages.
         </p>
         <button 
           onClick={() => onSubmit({ 
-              ...initialData,
-              state: code, 
-              no_form_required: true,
-              exempt: true 
+            ...initialData,
+            state: code, 
+            no_form_required: true,
+            exempt: true 
           })}
-          className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center gap-2"
+          style={{ backgroundColor: activeHexColor }}
+          className="px-5 py-2.5 text-white font-bold text-xs rounded-xl shadow-md hover:opacity-95 transition-all flex items-center gap-1.5"
         >
-          <CheckCircle size={18} /> Confirm & Continue
+          <CheckCircle2 size={14} />
+          <span>Confirm & Continue</span>
+          <ArrowRight size={14} />
         </button>
       </div>
     );
@@ -189,19 +197,22 @@ const StateTaxFormDispatcher = ({ userState, initialData, onSubmit }) => {
   // D. Fallback (Unknown State)
   // -----------------------------------------------------------
   return (
-    <div className="flex flex-col items-center justify-center p-12 bg-yellow-50 rounded-2xl border border-yellow-200 text-center">
-      <div className="bg-yellow-100 p-4 rounded-full mb-6">
-        <AlertTriangle size={32} className="text-yellow-600" />
+    <div className={`flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl border text-center ${
+      isDarkMode ? 'bg-amber-500/10 border-amber-500/20' : 'bg-amber-50 border-amber-200'
+    }`}>
+      <div className="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center mb-3">
+        <AlertTriangle size={24} />
       </div>
-      <h3 className="text-xl font-bold text-yellow-900 mb-2">Form Not Found</h3>
-      <p className="text-yellow-800 max-w-lg mb-8">
-        We do not currently have a specialized form for <span className="font-bold">{code || 'Unknown State'}</span>.
+      <h3 className="text-base font-extrabold mb-1 text-amber-600 dark:text-amber-400">Form Not Available</h3>
+      <p className={`text-xs max-w-sm mb-5 leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-slate-600'}`}>
+        We do not currently have an automated online withholding form for <strong>{code || 'Unknown State'}</strong>.
       </p>
       <button 
         onClick={() => window.open(`https://www.google.com/search?q=${code}+state+withholding+form`, '_blank')}
-        className="px-6 py-3 bg-white border-2 border-yellow-400 text-yellow-800 font-bold rounded-xl hover:bg-yellow-100 transition-colors"
+        className="px-4 py-2 bg-white dark:bg-zinc-800 border border-amber-300 dark:border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs font-bold rounded-xl hover:bg-amber-50 transition-all flex items-center gap-1.5 shadow-sm"
       >
-        Find Form Online
+        <span>Search Official Form Online</span>
+        <ExternalLink size={13} />
       </button>
     </div>
   );

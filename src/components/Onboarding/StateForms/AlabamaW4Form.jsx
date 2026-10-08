@@ -209,7 +209,7 @@ const AlabamaW4Form = ({ initialData, onSubmit }) => {
           return; 
       }
 
-      const required = ['first_name', 'last_name', 'ssn', 'address', 'city', 'zipcode', 'token']; 
+      const required = ['first_name', 'last_name', 'ssn', 'address', 'city', 'zipcode']; 
       const missing = required.filter(f => !localData[f]);
       
       if (missing.length > 0) {
@@ -227,6 +227,9 @@ const AlabamaW4Form = ({ initialData, onSubmit }) => {
           const safeZip = (localData.zipcode || '').slice(0, 5);
           const finalData = { 
               ...localData, 
+              state: 'AL',
+              status_letter: localData.status_letter || 'S',
+              confirmation_date: localData.confirmation_date || new Date().toISOString().split('T')[0],
               zipcode: safeZip, 
               signature_image: sigBase64 
           };

@@ -1,13 +1,24 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { templateService } from '../services/templateService';
 
-// --- 1. EXISTING THUNKS (Restored) ---
-
+// 1. Core CRUD Thunks
 export const fetchTemplates = createAsyncThunk(
   'template/fetchTemplates',
   async (params, { rejectWithValue }) => {
     try {
       const response = await templateService.getTemplates(params);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const fetchTemplateById = createAsyncThunk(
+  'template/fetchTemplateById',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await templateService.getTemplateById(id);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -51,105 +62,237 @@ export const deleteTemplate = createAsyncThunk(
   }
 );
 
-// --- 2. NEW PREVIEW THUNK (Added) ---
-
-export const fetchPreview = createAsyncThunk(
-  'template/fetchPreview',
-  async (id, { rejectWithValue }) => {
+// 2. Preset Library Thunks
+export const fetchPresets = createAsyncThunk(
+  'template/fetchPresets',
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await templateService.previewTemplate(id);
-      return response.data; // Expecting { html_content: "..." }
+      const response = await templateService.getPresets();
+      return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
 
-// --- 3. SLICE DEFINITION ---
+export const clonePreset = createAsyncThunk(
+  'template/clonePreset',
+  async (presetKey, { rejectWithValue }) => {
+    try {
+      const response = await templateService.clonePreset(presetKey);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+// 3. Live Preview & Merge Tag Context Thunk
+export const fetchPreview = createAsyncThunk(
+  'template/fetchPreview',
+  async ({ id, context = {} }, { rejectWithValue }) => {
+    try {
+      const response = await templateService.previewTemplate(id, context);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+// 4. Send Test Email Thunk
+export const sendTestEmail = createAsyncThunk(
+  'template/sendTestEmail',
+  async ({ id, recipient_email, context = {} }, { rejectWithValue }) => {
+    try {
+      const response = await templateService.sendTestEmail(id, { recipient_email, context });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+// Initial State
+const initialState = {
+  templates: [],
+  presets: [],
+  currentTemplate: null,
+  previewData: null,
+  loading: false,
+  actionLoading: false,
+  previewLoading: false,
+  error: null,
+  success: null,
+  pagination: {
+    count: 0,
+    next: null,
+    previous: null,
+    currentPage: 1,
+    totalPages: 1,
+  },
+};
 
 const templateSlice = createSlice({
   name: 'template',
-  initialState: {
-    templates: [],
-    currentTemplate: null,
-    previewHtml: null, // New state for preview
-    loading: false,
-    error: null,
-    success: null,
-    pagination: { count: 0, next: null, previous: null, currentPage: 1, totalPages: 1 },
-  },
+  initialState,
   reducers: {
-    clearError: (state) => { state.error = null; },
-    clearSuccess: (state) => { state.success = null; },
-    setCurrentTemplate: (state, action) => { state.currentTemplate = action.payload; },
-    clearCurrentTemplate: (state) => { state.currentTemplate = null; },
-    
-    // New action to clear preview
-    clearPreview: (state) => { state.previewHtml = null; } 
+    clearError: (state) => {
+      state.error = null;
+    },
+    clearSuccess: (state) => {
+      state.success = null;
+    },
+    setCurrentTemplate: (state, action) => {
+      state.currentTemplate = action.payload;
+    },
+    clearCurrentTemplate: (state) => {
+      state.currentTemplate = null;
+    },
+    clearPreviewData: (state) => {
+      state.previewData = null;
+    },
   },
   extraReducers: (builder) => {
     builder
       // Fetch Templates
-      .addCase(fetchTemplates.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchTemplates.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchTemplates.fulfilled, (state, action) => {
         state.loading = false;
-        state.templates = action.payload.results || action.payload;
-        if (action.payload.count !== undefined) {
-          state.pagination = {
-            count: action.payload.count,
-            next: action.payload.next,
-            previous: action.payload.previous,
-            currentPage: action.payload.current_page || 1,
-            totalPages: Math.ceil(action.payload.count / 10),
-          };
+        if (Array.isArray(action.payload)) {
+          state.templates = action.payload;
+          state.pagination.count = action.payload.length;
+        } else if (action.payload && action.payload.results) {
+          state.templates = action.payload.results;
+          state.pagination.count = action.payload.count || 0;
+          state.pagination.next = action.payload.next;
+          state.pagination.previous = action.payload.previous;
+          state.pagination.totalPages = Math.ceil((action.payload.count || 0) / 10) || 1;
+        } else {
+          state.templates = [];
         }
       })
-      .addCase(fetchTemplates.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
-      
-      // Create Template
-      .addCase(createTemplate.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(createTemplate.fulfilled, (state, action) => {
+      .addCase(fetchTemplates.rejected, (state, action) => {
         state.loading = false;
-        state.success = 'Template created successfully!';
-        state.templates.unshift(action.payload);
-      })
-      .addCase(createTemplate.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
-      
-      // Update Template
-      .addCase(updateTemplate.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(updateTemplate.fulfilled, (state, action) => {
-        state.loading = false;
-        state.success = 'Template updated successfully!';
-        const index = state.templates.findIndex(t => t.id === action.payload.id);
-        if (index !== -1) state.templates[index] = action.payload;
-        if (state.currentTemplate?.id === action.payload.id) state.currentTemplate = action.payload;
-      })
-      .addCase(updateTemplate.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
-      
-      // Delete Template
-      .addCase(deleteTemplate.fulfilled, (state, action) => {
-        state.success = 'Template deleted successfully!';
-        state.templates = state.templates.filter(t => t.id !== action.payload);
-        state.currentTemplate = null;
+        state.error = action.payload;
       })
 
-      // Fetch Preview (New)
-      .addCase(fetchPreview.pending, (state) => { 
-        state.loading = true; 
-        state.error = null; 
-        state.previewHtml = null; 
+      // Fetch Single Template
+      .addCase(fetchTemplateById.fulfilled, (state, action) => {
+        state.currentTemplate = action.payload;
+      })
+
+      // Create Template
+      .addCase(createTemplate.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(createTemplate.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const newTemp = action.payload.template || action.payload;
+        state.templates.unshift(newTemp);
+        state.success = 'Template created successfully!';
+      })
+      .addCase(createTemplate.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
+
+      // Update Template
+      .addCase(updateTemplate.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(updateTemplate.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const updated = action.payload.template || action.payload;
+        const index = state.templates.findIndex((t) => t.id === updated.id);
+        if (index !== -1) {
+          state.templates[index] = updated;
+        }
+        if (state.currentTemplate && state.currentTemplate.id === updated.id) {
+          state.currentTemplate = updated;
+        }
+        state.success = 'Template updated successfully!';
+      })
+      .addCase(updateTemplate.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
+
+      // Delete Template
+      .addCase(deleteTemplate.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteTemplate.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.templates = state.templates.filter((t) => t.id !== action.payload);
+        state.success = 'Template removed successfully.';
+      })
+      .addCase(deleteTemplate.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
+
+      // Presets
+      .addCase(fetchPresets.fulfilled, (state, action) => {
+        state.presets = action.payload.presets || action.payload || [];
+      })
+      .addCase(clonePreset.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(clonePreset.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const cloned = action.payload.template;
+        if (cloned) {
+          state.templates.unshift(cloned);
+        }
+        state.success = action.payload.message || 'Blueprint cloned successfully!';
+      })
+      .addCase(clonePreset.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
+      })
+
+      // Live Preview
+      .addCase(fetchPreview.pending, (state) => {
+        state.previewLoading = true;
       })
       .addCase(fetchPreview.fulfilled, (state, action) => {
-        state.loading = false;
-        // The API returns { template_name: "...", html_content: "..." }
-        state.previewHtml = action.payload.html_content; 
+        state.previewLoading = false;
+        state.previewData = action.payload;
       })
-      .addCase(fetchPreview.rejected, (state, action) => { 
-        state.loading = false; 
-        state.error = action.payload; 
+      .addCase(fetchPreview.rejected, (state, action) => {
+        state.previewLoading = false;
+        state.error = action.payload;
+      })
+
+      // Send Test Email
+      .addCase(sendTestEmail.pending, (state) => {
+        state.actionLoading = true;
+      })
+      .addCase(sendTestEmail.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.success = action.payload.message || 'Test email dispatched successfully!';
+      })
+      .addCase(sendTestEmail.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload;
       });
   },
 });
 
-export const { clearError, clearSuccess, setCurrentTemplate, clearCurrentTemplate, clearPreview } = templateSlice.actions;
+export const {
+  clearError,
+  clearSuccess,
+  setCurrentTemplate,
+  clearCurrentTemplate,
+  clearPreviewData,
+} = templateSlice.actions;
+
 export default templateSlice.reducer;

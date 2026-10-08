@@ -7,6 +7,11 @@ import onboardingReducer from './onboardingSlice';
 import companyIntakeReducer from './companyIntakeSlice';
 import authReducer from './authSlice';
 import reportReducer from './reportSlice';
+import attendanceReducer from './attendanceSlice';
+import taskReducer from './taskSlice';
+import ruleEngineReducer from './ruleEngineSlice';
+import jobReducer from './jobSlice';
+import documentReducer from './documentSlice';
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +23,11 @@ export const store = configureStore({
     companyIntake: companyIntakeReducer,
     reports: reportReducer,
     auth: authReducer,
+    attendance: attendanceReducer,
+    tasks: taskReducer,
+    ruleEngine: ruleEngineReducer,
+    jobs: jobReducer,
+    documents: documentReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

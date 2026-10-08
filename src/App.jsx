@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, BrowserRouter, Navigate } from 'react-router-dom';
 import Navbar from './components/Layout/Navbar';
 import Sidebar from './components/Layout/Sidebar';
-import { ThemeProvider } from './components/Theme/ThemeProvider';
+import { ThemeProvider, useTheme } from './components/Theme/ThemeProvider';
 
 // Guards
 import ProtectedRoute from './components/Auth/ProtectedRoute';
@@ -16,6 +16,7 @@ import Employee from './components/Layout/Employee';
 import Subcontractor from './components/Layout/Subcontractor';
 import Templates from './components/Layout/Templates';
 import Admin from './components/Layout/Admin';
+import AttendanceDashboard from './components/attendance/AttendanceDashboard';
 
 // Employee Forms
 import StateTaxPage from './components/Layout/StateTaxPage';
@@ -24,6 +25,7 @@ import FederalTaxForm from './components/Onboarding/Federal/FederalTaxForm';
 import PersonalDetailsPage from './components/Onboarding/PersonalDetailsPage';
 import EmergencyContactPage from './components/Onboarding/EmergencyContactPage';
 import DirectDepositPage from './components/Onboarding/DirectDepositPage';
+import OnboardingCompletePage from './components/Onboarding/OnboardingCompletePage';
 
 // Auth
 import LoginPage from './components/Auth/LoginPage';
@@ -39,8 +41,13 @@ import DigitalSignature from './components/companyIntake/DigitalSignature';
 import CompanyBranding from './components/companyIntake/CompanyBranding';
 import CompanyHosting from './components/companyIntake/CompanyHosting';
 import CompanyPayment from './components/companyIntake/CompnayPayment';
+
 import Profile from './components/Layout/Profile';
 import Reports from './components/Layout/Report';
+import RuleEngine from './components/Layout/RuleEngine';
+import Jobs from './components/Layout/Jobs';
+import Documents from './components/Layout/Documents';
+import TaskDashboard from './components/tasks/TaskDashboard';
 import { OnboardingProvider } from './context/OnboardingContext';
 
 // --- ScrollToTop Component ---
@@ -56,7 +63,10 @@ const ScrollToTop = () => {
 
 function AppContent() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  
   const location = useLocation();
+  const { isDarkMode } = useTheme();
 
   useEffect(() => { setIsMobileMenuOpen(false); }, [location]);
 
@@ -66,7 +76,7 @@ function AppContent() {
   const hideLayoutRoutes = [
     "/login", "/signup", "/landing",
     "/personal-details", "/emergency-contact", "/federal", 
-    "/state", "/i9", "/direct-deposit",
+    "/state", "/i9", "/direct-deposit", "/onboarding-completed",
     "/company-register", "/add-company-contacts", "/set-company-type",
     "/workflow-steps", "/company-documents", "/client-documents",
     "/digital-signature", "/branding", "/hosting", "/payment"
@@ -77,42 +87,62 @@ function AppContent() {
   );
 
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen antialiased transition-colors duration-150 font-sans ${
+      isDarkMode ? 'bg-[#09090b] text-[#f4f4f5]' : 'bg-[#f8fafc] text-[#0f172a]'
+    }`}>
       <ScrollToTop />
 
       {!hideLayout && (
         <>
           <Navbar isSidebarOpen={isMobileMenuOpen} toggleSidebar={toggleSidebar} />
+          
           <div className="hidden md:block">
-            <Sidebar isOpen={false} onToggle={toggleMobileMenu} />
+            <Sidebar 
+              isOpen={false} 
+              onToggle={toggleMobileMenu} 
+              isExpanded={isSidebarExpanded}
+              onToggleExpand={() => setIsSidebarExpanded(!isSidebarExpanded)}
+            />
           </div>
+          
           <div className="md:hidden">
             <Sidebar isOpen={isMobileMenuOpen} onToggle={toggleMobileMenu} />
           </div>
         </>
       )}
 
-      <main className={`min-h-screen ${hideLayout ? "" : "pt-16 md:pt-20 pb-16 md:pb-0"}`}>
+      {/* Main Content Area */}
+      <main className={`min-h-[calc(100vh-4rem)] transition-all duration-200 ease-in-out ${
+        hideLayout 
+          ? "" 
+          : `pb-16 md:pb-8 ${isSidebarExpanded ? 'md:ml-60' : 'md:ml-18'}`
+      }`}>
         <Routes>
-          
           {/* 1. PUBLIC ROUTES */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
 
-          {/* 2. PROTECTED HR ROUTES (Navbar VISIBLE) */}
+          {/* 2. PROTECTED HR ROUTES (With Navbar & Sidebar) */}
           <Route element={<ProtectedRoute />}>
               <Route path="/" element={<Home />} /> 
               <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/tasks/*" element={<TaskDashboard />} />
               <Route path="/client" element={<Client />} />
               <Route path="/employee" element={<Employee />} />
               <Route path="/subcontractor" element={<Subcontractor />} />
+              <Route path="/attendance" element={<AttendanceDashboard />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/documents" element={<Documents />} />
               <Route path="/templates" element={<Templates />} />
+              <Route path="/rules" element={<RuleEngine />} />
+              <Route path="/jobs" element={<Jobs />} />
+              <Route path="/careers" element={<Jobs />} />
+              <Route path="/rule-engine" element={<RuleEngine />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/profile" element={<Profile />} />
           </Route>
 
-          {/* 3. PROTECTED EMPLOYEE ROUTES (Navbar HIDDEN) */}
-          {/* ✅ FIX: Wrap the Layout component with the Provider inside the element prop */}
+          {/* 3. PROTECTED EMPLOYEE ONBOARDING ROUTES */}
           <Route element={
             <OnboardingProvider>
               <OnboardingLayout />
@@ -124,9 +154,10 @@ function AppContent() {
               <Route path="/state" element={<StateTaxPage />} />
               <Route path="/i9" element={<I9Form />} />
               <Route path="/direct-deposit" element={<DirectDepositPage />} />
+              <Route path="/onboarding-completed" element={<OnboardingCompletePage />} />
           </Route>
 
-          {/* 4. COMPANY INTAKE ROUTES (Navbar HIDDEN) */}
+          {/* 4. COMPANY INTAKE WIZARD */}
           <Route path="/landing" element={<LandingPage />} />
           <Route path="/company-register" element={<CompanyRegister />} />
           <Route path="/add-company-contacts" element={<CompanyContacts />} />
@@ -138,10 +169,11 @@ function AppContent() {
           <Route path="/branding" element={<CompanyBranding />} />
           <Route path="/hosting" element={<CompanyHosting />} />
           <Route path="/payment" element={<CompanyPayment />} />
-          <Route path="/profile" element={<Profile />} />
 
           <Route path="/onboarding-start" element={<Navigate to="/personal-details" replace />} />
-
+          
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>

@@ -4,92 +4,43 @@ import SignatureCanvas from 'react-signature-canvas';
 import { 
   User, DollarSign, Calculator, 
   PenTool, AlertCircle, Sparkles,
-  ArrowRight, Check, Loader2
+  ArrowRight, Check, Loader2, FileText,
+  ShieldCheck, HelpCircle, RotateCcw, Download, Eye, MapPin
 } from 'lucide-react';
 import api from '../../../api';
-
-// 1. IMPORT CONTEXT HOOK
 import { useOnboarding } from '../../../context/OnboardingContext';
+import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';
+import StunningSelect from '../../common/StunningSelect';
 
-// --- CONFIGURATION ---
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL; 
-
-// --- STYLES ---
-const INPUT_BASE = "w-full pl-4 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-white text-gray-900 text-base font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all duration-200 placeholder-gray-400 hover:border-blue-300 shadow-sm disabled:bg-gray-100 disabled:text-gray-500";
-const LABEL_STYLE = "block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1";
-const CARD_STYLE = "bg-white p-5 md:p-8 rounded-3xl border border-gray-100 shadow-xl shadow-slate-200/50 relative transition-all duration-300 hover:shadow-2xl hover:shadow-blue-900/5";
-
-// --- COMPONENTS ---
-
-const StepIndicator = ({ currentStep, totalSteps }) => (
-  <div className="flex items-center gap-2 mb-8 px-1 overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
-    {[...Array(totalSteps)].map((_, i) => (
-      <div key={i} className={`h-1.5 rounded-full transition-all duration-500 shrink-0 ${i < currentStep ? 'w-8 bg-blue-600' : 'w-2 bg-slate-200'}`} />
-    ))}
-    <span className="ml-2 text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Step {currentStep} of {totalSteps}</span>
-  </div>
-);
-
-const FeatureItem = ({ icon: Icon, title, desc }) => (
-  <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/10 transition-colors duration-300">
-    <div className="p-2.5 bg-blue-500/20 rounded-xl text-blue-300 shadow-inner shrink-0">
-      <Icon size={20} />
-    </div>
-    <div>
-      <h4 className="font-bold text-white text-sm">{title}</h4>
-      <p className="text-slate-400 text-xs mt-1 leading-relaxed">{desc}</p>
-    </div>
-  </div>
-);
-
-const SuccessModal = ({ isOpen, onContinue, pdfUrl }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden scale-100 animate-in zoom-in-95 duration-300 relative border border-white/50">
-        <div className="bg-green-50 p-8 flex flex-col items-center justify-center border-b border-green-100">
-          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-green-500/20">
-            <Check size={40} strokeWidth={3} />
-          </div>
-          <h3 className="text-2xl font-bold text-gray-900">Done</h3>
-          <p className="text-slate-500 mt-1 text-center">Your document has been securely signed.</p>
-        </div>
-        <div className="p-6 space-y-4">
-            <button type="button" onClick={onContinue} className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-lg shadow-lg shadow-slate-900/20 hover:bg-slate-800 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
-                <span>Continue </span>
-                <ArrowRight size={20} />
-            </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const InputField = ({ label, name, value, onChange, type = "text", placeholder, className = "", maxLength, disabled=false }) => (
-  <div className={`space-y-1 ${className}`}>
-    <label className={LABEL_STYLE}>{label}</label>
-    <div className="relative group">
-        <input 
-        type={type} name={name} value={value} onChange={onChange} 
-        placeholder={placeholder} maxLength={maxLength} disabled={disabled}
-        className={INPUT_BASE} 
-        />
-    </div>
-  </div>
-);
-
-// --- MAIN PAGE ---
+const US_STATES = [
+  { value: 'AL', label: 'AL - Alabama' }, { value: 'AK', label: 'AK - Alaska' }, { value: 'AZ', label: 'AZ - Arizona' },
+  { value: 'AR', label: 'AR - Arkansas' }, { value: 'CA', label: 'CA - California' }, { value: 'CO', label: 'CO - Colorado' },
+  { value: 'CT', label: 'CT - Connecticut' }, { value: 'DE', label: 'DE - Delaware' }, { value: 'DC', label: 'DC - District of Columbia' },
+  { value: 'FL', label: 'FL - Florida' }, { value: 'GA', label: 'GA - Georgia' }, { value: 'HI', label: 'HI - Hawaii' },
+  { value: 'ID', label: 'ID - Idaho' }, { value: 'IL', label: 'IL - Illinois' }, { value: 'IN', label: 'IN - Indiana' },
+  { value: 'IA', label: 'IA - Iowa' }, { value: 'KS', label: 'KS - Kansas' }, { value: 'KY', label: 'KY - Kentucky' },
+  { value: 'LA', label: 'LA - Louisiana' }, { value: 'ME', label: 'ME - Maine' }, { value: 'MD', label: 'MD - Maryland' },
+  { value: 'MA', label: 'MA - Massachusetts' }, { value: 'MI', label: 'MI - Michigan' }, { value: 'MN', label: 'MN - Minnesota' },
+  { value: 'MS', label: 'MS - Mississippi' }, { value: 'MO', label: 'MO - Missouri' }, { value: 'MT', label: 'MT - Montana' },
+  { value: 'NE', label: 'NE - Nebraska' }, { value: 'NV', label: 'NV - Nevada' }, { value: 'NH', label: 'NH - New Hampshire' },
+  { value: 'NJ', label: 'NJ - New Jersey' }, { value: 'NM', label: 'NM - New Mexico' }, { value: 'NY', label: 'NY - New York' },
+  { value: 'NC', label: 'NC - North Carolina' }, { value: 'ND', label: 'ND - North Dakota' }, { value: 'OH', label: 'OH - Ohio' },
+  { value: 'OK', label: 'OK - Oklahoma' }, { value: 'OR', label: 'OR - Oregon' }, { value: 'PA', label: 'PA - Pennsylvania' },
+  { value: 'RI', label: 'RI - Rhode Island' }, { value: 'SC', label: 'SC - South Carolina' }, { value: 'SD', label: 'SD - South Dakota' },
+  { value: 'TN', label: 'TN - Tennessee' }, { value: 'TX', label: 'TX - Texas' }, { value: 'UT', label: 'UT - Utah' },
+  { value: 'VT', label: 'VT - Vermont' }, { value: 'VA', label: 'VA - Virginia' }, { value: 'WA', label: 'WA - Washington' },
+  { value: 'WV', label: 'WV - West Virginia' }, { value: 'WI', label: 'WI - Wisconsin' }, { value: 'WY', label: 'WY - Wyoming' }
+];
 
 const FederalTaxPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
-  // 1. GET TOKEN AND STATE
   const token = searchParams.get('token');
   const urlState = searchParams.get('state') || '';
 
-  // 2. USE CONTEXT FOR WORKFLOW
-  const { goToNextStep, workflow } = useOnboarding();
+  const { isDarkMode, accentColor } = useTheme();
+  const activeHexColor = THEME_COLORS.find(c => c.id === accentColor)?.color || '#2563eb';
+  const { goToNextStep, candidateInfo } = useOnboarding();
 
   const sigCanvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -99,27 +50,27 @@ const FederalTaxPage = () => {
   const [pdfUrl, setPdfUrl] = useState(null);
 
   const [formData, setFormData] = useState({
-    // --- Personal ---
+    // Step 1: Personal
     first_name: '', last_name: '', middle_initial: '', ssn: '',
     address: '', city: '', state: urlState, zipcode: '',
     filing_status: '1', 
     
-    // --- Step 2 ---
+    // Step 2: Multiple Jobs
     multiple_jobs_two: false, 
-    use_step2b: false, // For worksheet
+    use_step2b: false,
     mj_higher_annual_wages: '',
     mj_lower_annual_wages: '',
     mj_pay_periods: 26,
     
-    // --- Step 3 ---
+    // Step 3: Dependents
     kids_under_17: 0, other_dependents: 0, other_credits: '',
 
-    // --- Step 4 ---
+    // Step 4: Other Adjustments
     step4_other_income: '', 
     step4_deductions: '', 
     step4_extra_withholding: '', 
 
-    // --- Deductions Worksheet ---
+    // Deductions Worksheet
     use_deductions_worksheet: false,
     deductions_1a: '', deductions_1b: '', deductions_1c: '',
     deductions_3a: '', deductions_3b: '',
@@ -127,19 +78,33 @@ const FederalTaxPage = () => {
     deductions_6a: '', deductions_6b: '', deductions_6c: '', deductions_6d: '', deductions_6e: '',
     deductions_8a: '', deductions_12: '', 
 
-    // --- Exemption ---
+    // Exemption & Signature
     federal_exempt: false,
-
     confirmation_date: new Date().toISOString().split('T')[0],
     signature_image: null
   });
 
-  // 3. DYNAMIC STEP CALCULATION
-  // Assumes backend step_name is "W2" based on context mapping, or "Federal W4"
-  const stepName = 'W2'; 
-  const currentStepIndex = workflow.findIndex(s => s.step_name === stepName);
-  const currentStepNumber = currentStepIndex !== -1 ? currentStepIndex + 1 : 3;
-  const totalSteps = workflow.length > 0 ? workflow.length : 5;
+  // Pre-populate data from Personal Details or Candidate Info
+  useEffect(() => {
+    if (!token) return;
+    api.get(`/personal-details/?token=${token}`)
+      .then(res => {
+        if (res.data && Object.keys(res.data).length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            first_name: prev.first_name || res.data.first_name || '',
+            last_name: prev.last_name || res.data.last_name || '',
+            middle_initial: prev.middle_initial || res.data.middle_initial || '',
+            ssn: prev.ssn || res.data.ssn || '',
+            address: prev.address || res.data.address || '',
+            city: prev.city || res.data.city || '',
+            state: prev.state || res.data.state || urlState || '',
+            zipcode: prev.zipcode || res.data.zipcode || '',
+          }));
+        }
+      })
+      .catch(() => {});
+  }, [token, urlState]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -147,18 +112,24 @@ const FederalTaxPage = () => {
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : finalValue }));
   };
 
-  // Signature handling
+  // Resize canvas dynamically
   useEffect(() => {
     const resizeCanvas = () => {
       if (containerRef.current && sigCanvasRef.current) {
         const canvas = sigCanvasRef.current.getCanvas();
         const rect = containerRef.current.getBoundingClientRect();
-        if (canvas.width !== rect.width || canvas.height !== rect.height) { canvas.width = rect.width; canvas.height = rect.height; }
+        if (canvas.width !== rect.width || canvas.height !== rect.height) { 
+          canvas.width = rect.width; 
+          canvas.height = rect.height; 
+        }
       }
     };
     window.addEventListener('resize', resizeCanvas);
-    setTimeout(resizeCanvas, 100);
-    return () => window.removeEventListener('resize', resizeCanvas);
+    const t = setTimeout(resizeCanvas, 150);
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+      clearTimeout(t);
+    };
   }, []);
 
   const handleSignatureEnd = () => {
@@ -168,42 +139,71 @@ const FederalTaxPage = () => {
   };
   
   const clearSignature = () => {
-    sigCanvasRef.current.clear();
+    if (sigCanvasRef.current) {
+      sigCanvasRef.current.clear();
+    }
     setFormData(prev => ({ ...prev, signature_image: null }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.signature_image) { setError("Please sign the document."); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
-    if (!formData.state) { setError("Please enter your State."); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    if (!formData.signature_image) { 
+      setError("Please sign the digital signature pad in Step 5."); 
+      window.scrollTo({ top: 0, behavior: 'smooth' }); 
+      return; 
+    }
+    if (!formData.state) { 
+      setError("Please specify your resident State."); 
+      window.scrollTo({ top: 0, behavior: 'smooth' }); 
+      return; 
+    }
 
     setIsSubmitting(true);
     setError(null);
     try {
-      const payload = { 
-          token: token, 
-          ...formData 
-      };
-      
-      const response = await api.post('/federal-tax/', payload, { 
-        responseType: 'blob', 
-        validateStatus: (status) => status < 500 
+      // Clean and sanitize payload to prevent null errors
+      const cleanedData = { ...formData };
+      Object.keys(cleanedData).forEach(k => {
+        if (cleanedData[k] === null || cleanedData[k] === undefined) {
+          cleanedData[k] = '';
+        }
       });
 
-      if (response.headers['content-type'].includes('application/json')) {
-          const text = await response.data.text();
-          throw new Error(JSON.parse(text).error || "Server Validation Failed");
-      }
+      const payload = { 
+        token: token || '', 
+        ...cleanedData 
+      };
+      
+      const response = await api.post('/federal-tax/', payload);
 
-      const file = new Blob([response.data], { type: 'application/pdf' });
-      setPdfUrl(URL.createObjectURL(file));
-      setShowSuccessModal(true);
+      if (response.data && response.data.pdf_url) {
+        setPdfUrl(response.data.pdf_url);
+        setShowSuccessModal(true);
+      } else if (response.data instanceof Blob) {
+        const file = new Blob([response.data], { type: 'application/pdf' });
+        setPdfUrl(URL.createObjectURL(file));
+        setShowSuccessModal(true);
+      } else {
+        setShowSuccessModal(true);
+      }
 
     } catch (err) {
       console.error(err);
-      let msg = err.message;
-      if (err.response && err.response.data instanceof Blob) { try { const t = await err.response.data.text(); msg = JSON.parse(t).error; } catch(e){} }
-      setError(`Failed to save: ${msg}`);
+      let msg = "Failed to generate Federal W-4 form.";
+      if (err.response?.data?.error) {
+        if (typeof err.response.data.error === 'object') {
+          msg = Object.entries(err.response.data.error)
+            .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+            .join(' | ');
+        } else {
+          msg = err.response.data.error;
+        }
+      } else if (err.response?.data?.message) {
+        msg = err.response.data.message;
+      } else if (err.message) {
+        msg = err.message;
+      }
+      setError(msg);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
@@ -211,234 +211,495 @@ const FederalTaxPage = () => {
   };
 
   const handleContinue = () => {
-      // 4. DYNAMIC NAVIGATION
-      // This automatically finds the next step configured in the company dashboard
-      goToNextStep();
+    goToNextStep();
   };
 
-  // Add scrollbar styles
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      .hide-scrollbar::-webkit-scrollbar { display: none; }
-      .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      .animate-in { animation-duration: 150ms; animation-fill-mode: both; }
-      .fade-in { animation-name: fadeIn; }
-    `;
-    document.head.appendChild(style);
-    return () => { document.head.removeChild(style); };
-  }, []);
+  const inputClass = `w-full px-3 py-2 rounded-xl border text-xs font-medium outline-none transition-all duration-200 ${
+    isDarkMode 
+      ? 'bg-[#181a20] border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20' 
+      : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-sm'
+  }`;
+
+  const labelClass = `block text-[10px] font-bold uppercase tracking-wider mb-1 ${
+    isDarkMode ? 'text-zinc-400' : 'text-slate-600'
+  }`;
+
+  const cardClass = `p-4 sm:p-5 rounded-2xl border transition-all ${
+    isDarkMode ? 'bg-[#131722] border-zinc-800/80 shadow-md' : 'bg-white border-slate-200/80 shadow-sm'
+  }`;
+
+  // Calculated Step 3 dependent credits
+  const totalDependentCredits = (Number(formData.kids_under_17 || 0) * 2000) + 
+                                (Number(formData.other_dependents || 0) * 500) + 
+                                Number(formData.other_credits || 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-200 relative">
-      <SuccessModal isOpen={showSuccessModal} onContinue={handleContinue} pdfUrl={pdfUrl} />
-      
-      <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row min-h-screen">
-        
-        {/* --- LEFT PANEL (Hidden on Mobile) --- */}
-        <div className="hidden lg:flex lg:w-5/12 p-16 sticky top-0 h-screen flex-col bg-slate-900 text-white relative overflow-hidden z-0">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-600/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
-            <div className="relative z-10 flex items-center gap-3 mb-12">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/50"><Sparkles size={20} className="text-white" /></div>
-                <span className="font-bold text-xl tracking-tight text-white">Onboarding Portal</span>
-            </div>
-            <div className="relative z-10 flex-1 flex flex-col justify-center">
-                <h1 className="text-5xl font-extrabold leading-tight mb-6 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">Federal Tax <br/> Setup.</h1>
-                <p className="text-slate-400 text-lg leading-relaxed mb-10 max-w-md">Complete your W-4 form accurately to ensure correct federal tax withholding.</p>
-                <div className="space-y-4 mb-8">
-                    <FeatureItem icon={Loader2} title="Auto-Generated PDF" desc="We create the official IRS W-4 form for you." />
-                    <FeatureItem icon={AlertCircle} title="Legally Binding" desc="Secure digital signature compliant." />
-                    <FeatureItem icon={Calculator} title="Tax Calculator" desc="Built-in worksheets for accuracy." />
-                </div>
-                <div className="w-full max-w-sm mt-4 transform hover:scale-105 transition-transform duration-500 opacity-80"><img src="https://illustrations.popsy.co/amber/finance.svg" alt="Finance Illustration" className="w-full h-auto drop-shadow-2xl"/></div>
-            </div>
+    <div className="w-full space-y-4">
+      {/* Title Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1">
+        <div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <span 
+              className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider"
+              style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+            >
+              Step 3 • Federal Compliance
+            </span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+            IRS Form W-4 (Federal Tax)
+          </h1>
+          <p className={`text-xs ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+            Employee's Withholding Certificate for federal income tax calculations.
+          </p>
         </div>
 
-        {/* --- RIGHT SIDE: FORM --- */}
-        <div className="w-full lg:w-7/12 p-4 md:p-8 lg:p-16 xl:p-24 bg-slate-50 flex flex-col relative z-0">
-            
-            {/* Mobile Header */}
-            <div className="lg:hidden mb-8 text-center mt-6">
-                <div className="inline-flex items-center justify-center w-14 h-14 bg-slate-900 rounded-2xl mb-4 shadow-lg text-white"><DollarSign size={28} /></div>
-                <h1 className="text-3xl font-extrabold text-slate-900">Federal W-4</h1>
-                <p className="text-slate-500 mt-2 text-sm px-6">Employee's Withholding Certificate.</p>
-            </div>
-
-            <div className="max-w-3xl w-full mx-auto relative">
-                {/* Desktop Header */}
-                <div className="hidden lg:flex justify-between items-end mb-6">
-                    <div><h2 className="text-3xl font-bold text-slate-900">Federal Tax (W-4)</h2><p className="text-slate-500 mt-1">Employee's Withholding Certificate.</p></div>
-                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
-                        Step {currentStepNumber}/{totalSteps}
-                    </span>
-                </div>
-                
-                {/* DYNAMIC INDICATOR */}
-                <StepIndicator currentStep={currentStepNumber} totalSteps={totalSteps} />
-                
-                {error && <div className="mb-8 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-700 flex items-center gap-3 animate-in fade-in"><AlertCircle className="shrink-0" /> <p className="font-medium text-sm">{error}</p></div>}
-
-                <form onSubmit={handleSubmit} className="space-y-8 relative">
-                    
-                    {/* --- STEP 1: PERSONAL INFO --- */}
-                    <div className={CARD_STYLE}>
-                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><User size={20} /></div>
-                            <h3 className="text-lg font-bold text-gray-900">Step 1: Personal Info</h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <InputField label="First Name" name="first_name" value={formData.first_name} onChange={handleChange} />
-                            <InputField label="Last Name" name="last_name" value={formData.last_name} onChange={handleChange} />
-                            <InputField label="Middle Initial" name="middle_initial" value={formData.middle_initial} onChange={handleChange} maxLength={3} className="md:w-1/2" />
-                            <InputField label="SSN" name="ssn" value={formData.ssn} onChange={handleChange} placeholder="XXX-XX-XXXX" />
-                            <div className="md:col-span-2"><InputField label="Address" name="address" value={formData.address} onChange={handleChange} /></div>
-                            <InputField label="City" name="city" value={formData.city} onChange={handleChange} />
-                            <div className="grid grid-cols-2 gap-4">
-                                <InputField label="State" name="state" value={formData.state} onChange={handleChange} maxLength={2} className="uppercase" />
-                                <InputField label="Zip Code" name="zipcode" value={formData.zipcode} onChange={handleChange} />
-                            </div>
-                        </div>
-                        <div className="mt-6 pt-4 border-t border-gray-100">
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Step 1(c): Filing Status</label>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {[{ id: '1', label: "Single / Sep." }, { id: '2', label: "Married Jointly" }, { id: '3', label: "Head of Household" }].map((s) => (
-                                    <label key={s.id} className={`flex flex-col items-center justify-center p-4 border-2 rounded-xl cursor-pointer transition-all ${formData.filing_status === s.id ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-100 hover:border-blue-200'}`}>
-                                        <input type="radio" name="filing_status" value={s.id} checked={formData.filing_status === s.id} onChange={handleChange} className="w-5 h-5 text-blue-600 mb-2" />
-                                        <span className="text-sm font-bold text-center">{s.label}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* --- STEP 2: MULTIPLE JOBS --- */}
-                    <div className={CARD_STYLE}>
-                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Calculator size={20} /></div>
-                            <h3 className="text-lg font-bold text-gray-900">Step 2: Multiple Jobs</h3>
-                        </div>
-                        <div className="space-y-4">
-                            <label className={`flex items-start gap-4 p-5 border-2 rounded-xl cursor-pointer transition-all ${formData.multiple_jobs_two ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 hover:bg-gray-50'}`}>
-                                <input type="checkbox" name="multiple_jobs_two" checked={formData.multiple_jobs_two} onChange={handleChange} className="w-6 h-6 rounded text-blue-600 mt-0.5" />
-                                <div><span className="font-bold text-gray-900 block text-sm">Step 2(c): Only two jobs total?</span><span className="text-xs text-gray-500">Check this if there are only two jobs total (you and spouse) with similar pay.</span></div>
-                            </label>
-
-                            {/* --- MULTIPLE JOBS WORKSHEET TOGGLE --- */}
-                            {!formData.multiple_jobs_two && (
-                                <div className="bg-blue-50 p-5 rounded-xl border border-blue-100 animate-in fade-in">
-                                    <label className="flex items-center gap-3 cursor-pointer mb-4">
-                                        <input type="checkbox" name="use_step2b" checked={formData.use_step2b} onChange={handleChange} className="w-5 h-5 text-blue-600 rounded" />
-                                        <span className="font-bold text-blue-900 text-sm">Use Multiple Jobs Worksheet?</span>
-                                    </label>
-                                    {formData.use_step2b && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <InputField label="Higher Job Wages ($)" name="mj_higher_annual_wages" value={formData.mj_higher_annual_wages} onChange={handleChange} type="number" placeholder="0.00" />
-                                            <InputField label="Lower Job Wages ($)" name="mj_lower_annual_wages" value={formData.mj_lower_annual_wages} onChange={handleChange} type="number" placeholder="0.00" />
-                                            <InputField label="Pay Periods (Year)" name="mj_pay_periods" value={formData.mj_pay_periods} onChange={handleChange} type="number" placeholder="52" />
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* --- STEP 3: DEPENDENTS --- */}
-                    <div className={CARD_STYLE}>
-                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><User size={20} /></div>
-                            <h3 className="text-lg font-bold text-gray-900">Step 3: Dependents</h3>
-                        </div>
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
-                                <label className="text-sm font-bold text-gray-700">Children &lt; 17 (x $2000)</label>
-                                <div className="w-24 md:w-32"><InputField name="kids_under_17" value={formData.kids_under_17} onChange={handleChange} type="number" /></div>
-                            </div>
-                            <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
-                                <label className="text-sm font-bold text-gray-700">Other Dependents (x $500)</label>
-                                <div className="w-24 md:w-32"><InputField name="other_dependents" value={formData.other_dependents} onChange={handleChange} type="number" /></div>
-                            </div>
-                            <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
-                                <label className="text-sm font-bold text-gray-700">Other Credits ($)</label>
-                                <div className="w-24 md:w-32"><InputField name="other_credits" value={formData.other_credits} onChange={handleChange} type="number" /></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* --- STEP 4: ADJUSTMENTS --- */}
-                    <div className={CARD_STYLE}>
-                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><DollarSign size={20} /></div>
-                            <h3 className="text-lg font-bold text-gray-900">Step 4: Other Adjustments</h3>
-                        </div>
-                        
-                        {/* --- DEDUCTIONS WORKSHEET TOGGLE --- */}
-                        <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                            <label className="flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" name="use_deductions_worksheet" checked={formData.use_deductions_worksheet} onChange={handleChange} className="w-5 h-5 text-blue-600 rounded" />
-                                <span className="font-bold text-slate-700 text-sm">Calculate Deductions using Worksheet?</span>
-                            </label>
-                            
-                            {formData.use_deductions_worksheet && (
-                                <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in">
-                                    <InputField label="1a: Tips" name="deductions_1a" value={formData.deductions_1a} onChange={handleChange} type="number" />
-                                    <InputField label="6a: Medical" name="deductions_6a" value={formData.deductions_6a} onChange={handleChange} type="number" />
-                                    <InputField label="6b: Taxes" name="deductions_6b" value={formData.deductions_6b} onChange={handleChange} type="number" />
-                                    <InputField label="6c: Mortgage" name="deductions_6c" value={formData.deductions_6c} onChange={handleChange} type="number" />
-                                    <InputField label="6d: Charity" name="deductions_6d" value={formData.deductions_6d} onChange={handleChange} type="number" />
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <InputField label="4(a): Other Income" name="step4_other_income" value={formData.step4_other_income} onChange={handleChange} type="number" placeholder="0.00" />
-                            <InputField 
-                                label={formData.use_deductions_worksheet ? "4(b): Deductions (Auto)" : "4(b): Deductions"} 
-                                name="step4_deductions" 
-                                value={formData.use_deductions_worksheet ? "" : formData.step4_deductions} 
-                                onChange={handleChange} 
-                                type="number" 
-                                placeholder={formData.use_deductions_worksheet ? "Calculated by System" : "0.00"}
-                                disabled={formData.use_deductions_worksheet} 
-                            />
-                            <InputField label="4(c): Extra Withholding" name="step4_extra_withholding" value={formData.step4_extra_withholding} onChange={handleChange} type="number" placeholder="0.00" />
-                        </div>
-                    </div>
-
-                    {/* --- EXEMPTION CARD --- */}
-                    <div className="bg-amber-50 p-5 md:p-6 rounded-3xl border border-amber-100 flex items-start gap-4">
-                        <input type="checkbox" name="federal_exempt" checked={formData.federal_exempt} onChange={handleChange} className="w-6 h-6 text-amber-600 rounded mt-1" />
-                        <div>
-                            <h4 className="font-bold text-amber-900 text-sm md:text-base">Claim Exemption</h4>
-                            <p className="text-xs md:text-sm text-amber-800/80 mt-1">I certify that I had no federal income tax liability in the previous year and I expect to have no federal income tax liability this year.</p>
-                        </div>
-                    </div>
-
-                    {/* --- SIGNATURE --- */}
-                    <div className={CARD_STYLE}>
-                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><PenTool size={20} /></div>
-                            <h3 className="text-lg font-bold text-gray-900">Step 5: Sign Here</h3>
-                        </div>
-                        <div ref={containerRef} className="border-2 border-dashed border-gray-300 rounded-xl h-40 md:h-48 relative bg-gray-50/50 cursor-crosshair hover:bg-gray-50 transition-colors">
-                            <SignatureCanvas ref={sigCanvasRef} penColor="black" velocityFilterWeight={0.7} canvasProps={{ className: 'w-full h-full' }} onEnd={handleSignatureEnd} />
-                            {!formData.signature_image && <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none text-gray-400 font-medium">Sign in this box</div>}
-                        </div>
-                        <button type="button" onClick={clearSignature} className="text-sm text-red-500 font-bold mt-3 hover:text-red-700 transition-colors">Clear Signature</button>
-                    </div>
-
-                    {/* --- ACTION BAR --- */}
-                    <div className="pt-4 flex justify-end relative z-0">
-                        <button type="submit" disabled={isSubmitting} className="group relative inline-flex items-center justify-center gap-3 bg-slate-900 hover:bg-blue-600 text-white w-full md:w-auto px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 disabled:opacity-70 disabled:transform-none disabled:cursor-not-allowed z-10">
-                            {isSubmitting ? <><Loader2 className="w-5 h-5 animate-spin" /> Saving...</> : <>Save & Generate W-4 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" /></>}
-                        </button>
-                    </div>
-
-                </form>
-            </div>
+        <div className={`self-start sm:self-auto flex items-center gap-2 px-2.5 py-1.5 rounded-xl border ${
+          isDarkMode ? 'bg-zinc-900/60 border-zinc-800 text-zinc-300' : 'bg-blue-50/60 border-blue-100 text-blue-800'
+        }`}>
+          <FileText size={14} className="text-blue-500 shrink-0" />
+          <span className="text-[10px] font-bold">Automated PDF Generator</span>
         </div>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 flex items-center gap-2 animate-in fade-in">
+          <AlertCircle size={16} className="shrink-0" />
+          <p className="text-xs font-semibold">{error}</p>
+        </div>
+      )}
+
+      {/* Main W-4 Form */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Step 1: Personal Information & Filing Status */}
+        <div className={cardClass}>
+          <div className="flex items-center gap-2 mb-3.5 pb-2 border-b border-zinc-800/40 dark:border-zinc-800 light:border-slate-100">
+            <div 
+              className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs"
+              style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+            >
+              <User size={13} />
+            </div>
+            <div>
+              <h2 className="text-xs sm:text-sm font-bold">Step 1: Personal Information & Filing Status</h2>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 mb-3.5">
+            <div>
+              <label className={labelClass}>First Name</label>
+              <input type="text" name="first_name" value={formData.first_name} onChange={handleChange} required className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Middle Initial</label>
+              <input type="text" name="middle_initial" value={formData.middle_initial} onChange={handleChange} maxLength={2} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Last Name</label>
+              <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} required className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>SSN</label>
+              <input type="text" name="ssn" value={formData.ssn} onChange={handleChange} placeholder="XXX-XX-XXXX" required className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Residential Address</label>
+              <input type="text" name="address" value={formData.address} onChange={handleChange} required className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>City</label>
+              <input type="text" name="city" value={formData.city} onChange={handleChange} required className={inputClass} />
+            </div>
+            <div>
+              <StunningSelect
+                name="state"
+                label="State"
+                value={formData.state}
+                onChange={handleChange}
+                options={US_STATES}
+                searchable
+                required
+                placeholder="Select State..."
+                icon={MapPin}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>ZIP Code</label>
+              <input type="text" name="zipcode" value={formData.zipcode} onChange={handleChange} maxLength={10} required className={inputClass} />
+            </div>
+          </div>
+
+          {/* Filing Status Selection */}
+          <div className="pt-3 border-t border-zinc-800/40 dark:border-zinc-800 light:border-slate-100">
+            <label className={labelClass}>Step 1(c): Marital & Filing Status</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-1.5">
+              {[
+                { id: '1', title: 'Single', desc: 'Single or Married filing separately' },
+                { id: '2', title: 'Married Jointly', desc: 'Married filing jointly / Qualifying widow(er)' },
+                { id: '3', title: 'Head of Household', desc: 'Unmarried and paying > half household costs' },
+              ].map((s) => {
+                const isSelected = formData.filing_status === s.id;
+                return (
+                  <label
+                    key={s.id}
+                    className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between ${
+                      isSelected
+                        ? isDarkMode
+                          ? 'border-blue-500 bg-blue-500/10 text-white'
+                          : 'border-blue-600 bg-blue-50/70 text-blue-950'
+                        : isDarkMode
+                          ? 'border-zinc-800 bg-[#181a20] hover:border-zinc-700 text-zinc-300'
+                          : 'border-slate-200 bg-slate-50/50 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-xs">{s.title}</span>
+                      <input
+                        type="radio"
+                        name="filing_status"
+                        value={s.id}
+                        checked={isSelected}
+                        onChange={handleChange}
+                        className="w-3.5 h-3.5 text-blue-600 focus:ring-0"
+                      />
+                    </div>
+                    <span className={`text-[10px] leading-tight ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                      {s.desc}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Step 2: Multiple Jobs or Spouse Works */}
+        <div className={cardClass}>
+          <div className="flex items-center gap-2 mb-3.5 pb-2 border-b border-zinc-800/40 dark:border-zinc-800 light:border-slate-100">
+            <div 
+              className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs"
+              style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+            >
+              <Calculator size={13} />
+            </div>
+            <div>
+              <h2 className="text-xs sm:text-sm font-bold">Step 2: Multiple Jobs or Spouse Works</h2>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+              formData.multiple_jobs_two
+                ? isDarkMode ? 'bg-blue-500/10 border-blue-500/50' : 'bg-blue-50 border-blue-300'
+                : isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'
+            }`}>
+              <input
+                type="checkbox"
+                name="multiple_jobs_two"
+                checked={formData.multiple_jobs_two}
+                onChange={handleChange}
+                className="w-4 h-4 text-blue-600 rounded mt-0.5"
+              />
+              <div>
+                <span className="font-bold text-xs block">Step 2(c): Two Jobs Total with Similar Pay</span>
+                <span className={`text-[11px] ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                  Check this box if there are only two jobs total across your household with similar wage levels.
+                </span>
+              </div>
+            </label>
+
+            {!formData.multiple_jobs_two && (
+              <div className={`p-3 rounded-xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+                <label className="flex items-center gap-2.5 cursor-pointer mb-2">
+                  <input
+                    type="checkbox"
+                    name="use_step2b"
+                    checked={formData.use_step2b}
+                    onChange={handleChange}
+                    className="w-3.5 h-3.5 text-blue-600 rounded"
+                  />
+                  <span className="font-bold text-xs">Use Step 2(b) Multiple Jobs Worksheet?</span>
+                </label>
+
+                {formData.use_step2b && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2.5 border-t border-zinc-800/40 dark:border-zinc-800 light:border-slate-200 animate-in fade-in">
+                    <div>
+                      <label className={labelClass}>Higher Annual Wages ($)</label>
+                      <input type="number" name="mj_higher_annual_wages" value={formData.mj_higher_annual_wages} onChange={handleChange} placeholder="0.00" className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Lower Annual Wages ($)</label>
+                      <input type="number" name="mj_lower_annual_wages" value={formData.mj_lower_annual_wages} onChange={handleChange} placeholder="0.00" className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Pay Periods / Year</label>
+                      <input type="number" name="mj_pay_periods" value={formData.mj_pay_periods} onChange={handleChange} placeholder="26" className={inputClass} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Step 3: Claim Dependents */}
+        <div className={cardClass}>
+          <div className="flex items-center justify-between gap-2 mb-3.5 pb-2 border-b border-zinc-800/40 dark:border-zinc-800 light:border-slate-100">
+            <div className="flex items-center gap-2">
+              <div 
+                className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs"
+                style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+              >
+                <DollarSign size={13} />
+              </div>
+              <div>
+                <h2 className="text-xs sm:text-sm font-bold">Step 3: Claim Dependents & Child Tax Credit</h2>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-xs font-bold text-emerald-500">${totalDependentCredits.toLocaleString()} Credit</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className={`p-3 rounded-xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+              <label className="text-[11px] font-bold block mb-1">Children Under 17 ($2,000)</label>
+              <input
+                type="number"
+                min="0"
+                name="kids_under_17"
+                value={formData.kids_under_17}
+                onChange={handleChange}
+                className={inputClass}
+              />
+            </div>
+
+            <div className={`p-3 rounded-xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+              <label className="text-[11px] font-bold block mb-1">Other Dependents ($500)</label>
+              <input
+                type="number"
+                min="0"
+                name="other_dependents"
+                value={formData.other_dependents}
+                onChange={handleChange}
+                className={inputClass}
+              />
+            </div>
+
+            <div className={`p-3 rounded-xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+              <label className="text-[11px] font-bold block mb-1">Other Tax Credits ($)</label>
+              <input
+                type="number"
+                min="0"
+                name="other_credits"
+                value={formData.other_credits}
+                onChange={handleChange}
+                placeholder="0.00"
+                className={inputClass}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Step 4: Other Adjustments */}
+        <div className={cardClass}>
+          <div className="flex items-center gap-2 mb-3.5 pb-2 border-b border-zinc-800/40 dark:border-zinc-800 light:border-slate-100">
+            <div 
+              className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs"
+              style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+            >
+              <DollarSign size={13} />
+            </div>
+            <div>
+              <h2 className="text-xs sm:text-sm font-bold">Step 4: Other Adjustments (Optional)</h2>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div>
+              <label className={labelClass}>4(a) Other Income ($)</label>
+              <input
+                type="number"
+                name="step4_other_income"
+                value={formData.step4_other_income}
+                onChange={handleChange}
+                placeholder="0.00"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>4(b) Deductions ($)</label>
+              <input
+                type="number"
+                name="step4_deductions"
+                value={formData.step4_deductions}
+                onChange={handleChange}
+                placeholder="0.00"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>4(c) Extra Withholding ($)</label>
+              <input
+                type="number"
+                name="step4_extra_withholding"
+                value={formData.step4_extra_withholding}
+                onChange={handleChange}
+                placeholder="0.00"
+                className={inputClass}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Exemption Card */}
+        <div className={`p-3.5 rounded-xl border flex items-start gap-3 ${
+          formData.federal_exempt 
+            ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' 
+            : isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'
+        }`}>
+          <input
+            type="checkbox"
+            name="federal_exempt"
+            checked={formData.federal_exempt}
+            onChange={handleChange}
+            className="w-4 h-4 text-amber-600 rounded mt-0.5"
+          />
+          <div>
+            <h4 className="font-bold text-xs">Claim Exemption from Withholding</h4>
+            <p className={`text-[10px] leading-tight mt-0.5 ${isDarkMode ? 'text-zinc-400' : 'text-slate-600'}`}>
+              I certify under penalties of perjury that I had no federal income tax liability in the previous tax year and I expect to have no federal income tax liability this year.
+            </p>
+          </div>
+        </div>
+
+        {/* Step 5: Digital Signature Pad */}
+        <div className={cardClass}>
+          <div className="flex items-center justify-between gap-2 mb-3.5 pb-2 border-b border-zinc-800/40 dark:border-zinc-800 light:border-slate-100">
+            <div className="flex items-center gap-2">
+              <div 
+                className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs"
+                style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+              >
+                <PenTool size={13} />
+              </div>
+              <div>
+                <h2 className="text-xs sm:text-sm font-bold">Step 5: Sign & Certify (Penalties of Perjury)</h2>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={clearSignature}
+              className={`px-2 py-0.5 rounded-lg text-[11px] font-semibold border flex items-center gap-1 transition-all ${
+                isDarkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <RotateCcw size={11} /> Clear
+            </button>
+          </div>
+
+          <div
+            ref={containerRef}
+            className={`border-2 border-dashed rounded-xl h-32 relative cursor-crosshair transition-all overflow-hidden ${
+              isDarkMode 
+                ? 'bg-zinc-900/60 border-zinc-700 hover:border-zinc-500' 
+                : 'bg-slate-50/80 border-slate-300 hover:border-blue-400'
+            }`}
+          >
+            <SignatureCanvas
+              ref={sigCanvasRef}
+              penColor={isDarkMode ? '#60a5fa' : '#0f172a'}
+              velocityFilterWeight={0.7}
+              canvasProps={{ className: 'w-full h-full' }}
+              onEnd={handleSignatureEnd}
+            />
+            {!formData.signature_image && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none text-[11px] text-slate-400">
+                <PenTool size={16} className="mb-0.5 opacity-50" />
+                <span>Draw your digital signature inside this box</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between mt-2.5 text-[11px]">
+            <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>
+              Date: <strong>{formData.confirmation_date}</strong> • Digital e-Sign Verified
+            </span>
+            {formData.signature_image && (
+              <span className="inline-flex items-center gap-1 font-bold text-emerald-500">
+                <Check size={13} /> Recorded
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div className="flex items-center justify-end pt-1">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            style={{ backgroundColor: activeHexColor }}
+            className="w-full sm:w-auto px-6 py-3 rounded-xl text-white font-bold text-xs sm:text-sm shadow-md hover:opacity-95 hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 size={15} className="animate-spin" />
+                <span>Generating & Submitting W-4...</span>
+              </>
+            ) : (
+              <>
+                <span>Save & Generate Form W-4</span>
+                <ArrowRight size={15} />
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+
+      {/* Celebratory Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in">
+          <div className={`p-6 rounded-3xl border shadow-2xl flex flex-col items-center max-w-xs w-full text-center animate-in zoom-in-95 ${
+            isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-100 text-slate-800'
+          }`}>
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-3 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
+              <Check size={28} strokeWidth={3} />
+            </div>
+            <h3 className="text-base font-bold mb-1">Form W-4 Signed!</h3>
+            <p className={`text-xs mb-4 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+              Your IRS W-4 document has been securely stamped.
+            </p>
+
+            <div className="w-full space-y-2">
+              {pdfUrl && (
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`w-full py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                    isDarkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-200 hover:bg-zinc-700' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <Eye size={13} /> View Signed PDF
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={handleContinue}
+                style={{ backgroundColor: activeHexColor }}
+                className="w-full py-2.5 px-3 rounded-xl text-white font-bold text-xs shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>Continue to Next Step</span>
+                <ArrowRight size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

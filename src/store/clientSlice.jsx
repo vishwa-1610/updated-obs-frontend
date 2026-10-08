@@ -1,10 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { clientService } from '../services/clientService';
 
-// ==========================================
-// 1. EXISTING THUNKS (Clients)
-// ==========================================
-
+// 1. Clients
 export const fetchClients = createAsyncThunk(
   'client/fetchClients',
   async (params, { rejectWithValue }) => {
@@ -65,50 +62,7 @@ export const deleteClient = createAsyncThunk(
   }
 );
 
-// ==========================================
-// 2. WORK LOCATIONS THUNKS
-// ==========================================
-
-export const fetchWorkLocations = createAsyncThunk(
-  'client/fetchWorkLocations',
-  async (params, { rejectWithValue }) => {
-    try {
-      const response = await clientService.getWorkLocations(params);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
-    }
-  }
-);
-
-export const createWorkLocation = createAsyncThunk(
-  'client/createWorkLocation',
-  async (data, { rejectWithValue }) => {
-    try {
-      const response = await clientService.createWorkLocation(data);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
-    }
-  }
-);
-
-export const deleteWorkLocation = createAsyncThunk(
-  'client/deleteWorkLocation',
-  async (id, { rejectWithValue }) => {
-    try {
-      await clientService.deleteWorkLocation(id);
-      return id;
-    } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
-    }
-  }
-);
-
-// ==========================================
-// 3. ✅ NEW: CONTRACT DOCUMENTS THUNKS
-// ==========================================
-
+// 2. Contracts & SOWs
 export const fetchContractDocuments = createAsyncThunk(
   'client/fetchContractDocuments',
   async (params, { rejectWithValue }) => {
@@ -145,131 +99,199 @@ export const deleteContractDocument = createAsyncThunk(
   }
 );
 
+// 3. Rate Cards
+export const fetchRateCards = createAsyncThunk(
+  'client/fetchRateCards',
+  async (params, { rejectWithValue }) => {
+    try {
+      const response = await clientService.getRateCards(params);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
 
-// ==========================================
-// 4. SLICE DEFINITION
-// ==========================================
+export const createRateCard = createAsyncThunk(
+  'client/createRateCard',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await clientService.createRateCard(data);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const deleteRateCard = createAsyncThunk(
+  'client/deleteRateCard',
+  async (id, { rejectWithValue }) => {
+    try {
+      await clientService.deleteRateCard(id);
+      return id;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+// 4. Contacts & Locations & Verifications
+export const fetchClientContacts = createAsyncThunk(
+  'client/fetchClientContacts',
+  async (params, { rejectWithValue }) => {
+    try {
+      const response = await clientService.getClientContacts(params);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const fetchWorkLocations = createAsyncThunk(
+  'client/fetchWorkLocations',
+  async (params, { rejectWithValue }) => {
+    try {
+      const response = await clientService.getWorkLocations(params);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const fetchClientVerifications = createAsyncThunk(
+  'client/fetchClientVerifications',
+  async (params, { rejectWithValue }) => {
+    try {
+      const response = await clientService.getClientVerifications(params);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+const initialState = {
+  clients: [],
+  contracts: [],
+  rateCards: [],
+  contacts: [],
+  workLocations: [],
+  verifications: [],
+  currentClient: null,
+  loading: false,
+  error: null,
+  success: null,
+  pagination: {
+    count: 0,
+    totalPages: 1,
+    currentPage: 1,
+  }
+};
 
 const clientSlice = createSlice({
   name: 'client',
-  initialState: {
-    clients: [],
-    currentClient: null,
-    
-    // Helper Lists
-    workLocations: [], 
-    contractDocuments: [], // ✅ NEW
-    
-    loading: false,
-    error: null,
-    success: null,
-    pagination: {
-      count: 0,
-      next: null,
-      previous: null,
-      currentPage: 1,
-      totalPages: 1,
-      pageSize: 10,
-    },
-  },
+  initialState,
   reducers: {
-    clearError: (state) => { state.error = null; },
-    clearSuccess: (state) => { state.success = null; },
-    setCurrentClient: (state, action) => { state.currentClient = action.payload; },
-    clearCurrentClient: (state) => { state.currentClient = null; },
-    setPage: (state, action) => { state.pagination.currentPage = action.payload; },
+    clearError: (state) => {
+      state.error = null;
+    },
+    clearSuccess: (state) => {
+      state.success = null;
+    },
+    setCurrentClient: (state, action) => {
+      state.currentClient = action.payload;
+    },
+    clearCurrentClient: (state) => {
+      state.currentClient = null;
+    },
+    setPage: (state, action) => {
+      state.pagination.currentPage = action.payload;
+    }
   },
   extraReducers: (builder) => {
     builder
-      // --- Fetch Clients ---
-      .addCase(fetchClients.pending, (state) => { state.loading = true; state.error = null; })
+      // Clients
+      .addCase(fetchClients.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchClients.fulfilled, (state, action) => {
         state.loading = false;
-        state.clients = action.payload.results || action.payload;
-        if (action.payload.count !== undefined) {
-          state.pagination = {
-            ...state.pagination,
-            count: action.payload.count,
-            next: action.payload.next,
-            previous: action.payload.previous,
-            totalPages: Math.ceil(action.payload.count / state.pagination.pageSize),
-          };
+        if (action.payload && action.payload.results) {
+          state.clients = action.payload.results;
+          state.pagination.count = action.payload.count || action.payload.results.length;
+        } else {
+          state.clients = Array.isArray(action.payload) ? action.payload : [];
+          state.pagination.count = state.clients.length;
         }
       })
-      .addCase(fetchClients.rejected, (state, action) => { state.loading = false; state.error = action.payload; })
-      
-      // --- Fetch Client By ID (Includes Employees & Contracts) ---
-      .addCase(fetchClientById.fulfilled, (state, action) => {
+      .addCase(fetchClients.rejected, (state, action) => {
         state.loading = false;
-        state.currentClient = action.payload;
-        
-        // Populate helper lists if they exist in the response
-        if (action.payload.work_locations) state.workLocations = action.payload.work_locations;
-        if (action.payload.contract_documents) state.contractDocuments = action.payload.contract_documents;
+        state.error = action.payload;
       })
-      
-      // --- CRUD Client ---
+      .addCase(fetchClientById.fulfilled, (state, action) => {
+        state.currentClient = action.payload;
+      })
       .addCase(createClient.fulfilled, (state, action) => {
-        state.loading = false;
-        state.success = 'Client created successfully!';
         state.clients.unshift(action.payload);
-        state.pagination.count += 1;
+        state.success = 'Client account registered successfully!';
       })
       .addCase(updateClient.fulfilled, (state, action) => {
-        state.loading = false;
-        state.success = 'Client updated successfully!';
         const index = state.clients.findIndex(c => c.id === action.payload.id);
-        if (index !== -1) state.clients[index] = action.payload;
-        if (state.currentClient?.id === action.payload.id) state.currentClient = action.payload;
+        if (index !== -1) {
+          state.clients[index] = action.payload;
+        }
+        state.currentClient = action.payload;
+        state.success = 'Client account details updated!';
       })
       .addCase(deleteClient.fulfilled, (state, action) => {
-        state.loading = false;
-        state.success = 'Client deleted successfully!';
         state.clients = state.clients.filter(c => c.id !== action.payload);
-        state.currentClient = null;
-        if (state.pagination.count > 0) state.pagination.count -= 1;
+        state.success = 'Client account removed.';
       })
-
-      // --- Work Location Handlers ---
-      .addCase(fetchWorkLocations.fulfilled, (state, action) => {
-        state.workLocations = action.payload.results || action.payload;
-      })
-      .addCase(createWorkLocation.fulfilled, (state, action) => {
-        state.workLocations.push(action.payload);
-        if (state.currentClient && state.currentClient.id === action.payload.client) {
-             if (!state.currentClient.work_locations) state.currentClient.work_locations = [];
-             state.currentClient.work_locations.push(action.payload);
-        }
-      })
-      .addCase(deleteWorkLocation.fulfilled, (state, action) => {
-        state.workLocations = state.workLocations.filter(loc => loc.id !== action.payload);
-        if (state.currentClient && state.currentClient.work_locations) {
-            state.currentClient.work_locations = state.currentClient.work_locations.filter(loc => loc.id !== action.payload);
-        }
-      })
-
-      // --- ✅ NEW: Contract Document Handlers ---
+      // Contracts
       .addCase(fetchContractDocuments.fulfilled, (state, action) => {
-        state.contractDocuments = action.payload.results || action.payload;
+        state.contracts = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
       })
       .addCase(createContractDocument.fulfilled, (state, action) => {
-        state.contractDocuments.push(action.payload);
-        // Update Current Client view instantly
-        if (state.currentClient && state.currentClient.id === Number(action.payload.client)) {
-             if (!state.currentClient.contract_documents) state.currentClient.contract_documents = [];
-             state.currentClient.contract_documents.push(action.payload);
-        }
-        state.success = "Contract uploaded successfully!";
+        state.contracts.unshift(action.payload);
+        state.success = 'Contract agreement / SOW uploaded!';
       })
       .addCase(deleteContractDocument.fulfilled, (state, action) => {
-        state.contractDocuments = state.contractDocuments.filter(doc => doc.id !== action.payload);
-        if (state.currentClient && state.currentClient.contract_documents) {
-            state.currentClient.contract_documents = state.currentClient.contract_documents.filter(doc => doc.id !== action.payload);
-        }
-        state.success = "Contract deleted successfully!";
+        state.contracts = state.contracts.filter(c => c.id !== action.payload);
+      })
+      // Rate Cards
+      .addCase(fetchRateCards.fulfilled, (state, action) => {
+        state.rateCards = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
+      })
+      .addCase(createRateCard.fulfilled, (state, action) => {
+        state.rateCards.unshift(action.payload);
+        state.success = 'Client bill rate card added!';
+      })
+      .addCase(deleteRateCard.fulfilled, (state, action) => {
+        state.rateCards = state.rateCards.filter(r => r.id !== action.payload);
+      })
+      // Contacts & Locations & Verifications
+      .addCase(fetchClientContacts.fulfilled, (state, action) => {
+        state.contacts = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
+      })
+      .addCase(fetchWorkLocations.fulfilled, (state, action) => {
+        state.workLocations = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
+      })
+      .addCase(fetchClientVerifications.fulfilled, (state, action) => {
+        state.verifications = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
       });
-  },
+  }
 });
 
-export const { clearError, clearSuccess, setCurrentClient, clearCurrentClient, setPage } = clientSlice.actions;
+export const {
+  clearError,
+  clearSuccess,
+  setCurrentClient,
+  clearCurrentClient,
+  setPage
+} = clientSlice.actions;
+
 export default clientSlice.reducer;
