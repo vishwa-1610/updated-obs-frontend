@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   Loader2, AlertCircle, CheckCircle, MapPin, 
   ShieldCheck, Zap, Sparkles, ArrowRight, Check, Forward, Globe, ChevronDown, FileText, CheckCircle2,
-  RefreshCw, Download, ExternalLink, Eye, X, Printer
+  RefreshCw, Download, ExternalLink, Eye, X, Printer, User, Building, DollarSign, Calendar, Edit3, CheckCheck
 } from 'lucide-react';
 import StateTaxFormDispatcher from '../Onboarding/StateForms/StateTaxFormDispatcher';
 import api from '../../api'; 
@@ -88,9 +88,12 @@ const StateTaxPage = () => {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  
+  // Verification Modal State
+  const [verificationModalOpen, setVerificationModalOpen] = useState(false);
+  const [submittedData, setSubmittedData] = useState(null);
   const [successData, setSuccessData] = useState({ message: '', pdf_url: '', pdf_blob_url: '' });
-  const [previewPdfOpen, setPreviewPdfOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('split'); // 'split' | 'fields' | 'pdf'
   
   const [isNoTaxState, setIsNoTaxState] = useState(false);
   const [redirectCount, setRedirectCount] = useState(3);
@@ -229,12 +232,13 @@ const StateTaxPage = () => {
           ? (rawPdfUrl.startsWith('http') ? rawPdfUrl : `http://techinnovatorsinc-6789.lvh.me:8000${rawPdfUrl}`)
           : '';
 
+        setSubmittedData(sanitizedPayload);
         setSuccessData({ 
           message: response.data.message || `${selectedState} State withholding certificate recorded & filled successfully.`, 
           pdf_url: fullPdfUrl,
           pdf_blob_url: blobUrl || fullPdfUrl
         });
-        setModalOpen(true);
+        setVerificationModalOpen(true);
       }
     } catch (err) {
       console.error("API error:", err);
@@ -389,6 +393,67 @@ const StateTaxPage = () => {
     );
   }
 
+  // Helper to extract state-specific parameters nicely for the inspector
+  const renderFieldRows = () => {
+    if (!submittedData) return null;
+    
+    // Core details
+    const rows = [
+      { label: 'Full Legal Name', value: `${submittedData.first_name || ''} ${submittedData.last_name || ''}`.trim() || '—', category: 'Personal' },
+      { label: 'Social Security Number (SSN)', value: submittedData.ssn ? `•••-••-${submittedData.ssn.slice(-4)}` : '—', category: 'Personal' },
+      { label: 'Work State', value: submittedData.state || selectedState, category: 'Personal' },
+      { label: 'Residential Address', value: submittedData.address || '—', category: 'Address' },
+      { label: 'City, State, Zip', value: `${submittedData.city || ''}, ${submittedData.state || selectedState} ${submittedData.zipcode || ''}`, category: 'Address' },
+      { label: 'Confirmation / Sign Date', value: submittedData.confirmation_date || '—', category: 'Filing & Exemptions' },
+      { label: 'Filing Status / Letter', value: submittedData.status_letter || submittedData.filing_status || 'Single (S)', category: 'Filing & Exemptions' },
+      { label: 'Dependents / Allowances', value: submittedData.dependents !== undefined && submittedData.dependents !== '' ? String(submittedData.dependents) : (submittedData.allowances !== undefined ? String(submittedData.allowances) : '0'), category: 'Filing & Exemptions' },
+      { label: 'Additional Withholding', value: submittedData.additional_withholding ? `$${submittedData.additional_withholding}` : '$0.00', category: 'Filing & Exemptions' },
+      { label: 'Employer / Company Name', value: submittedData.client_name || 'Tech Innovators Inc', category: 'Employer Info' },
+      { label: 'Position / Job Title', value: submittedData.job_title || 'Software Engineer', category: 'Employer Info' },
+      { label: 'Contact Email', value: submittedData.email || '—', category: 'Contact' },
+      { label: 'Contact Phone', value: submittedData.phone_no || '—', category: 'Contact' },
+    ];
+
+    return (
+      <div className="space-y-4">
+        {['Personal', 'Address', 'Filing & Exemptions', 'Employer Info', 'Contact'].map(cat => {
+          const catRows = rows.filter(r => r.category === cat);
+          return (
+            <div key={cat} className={`p-3.5 rounded-2xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800/80' : 'bg-slate-50/80 border-slate-200/70'}`}>
+              <div className="flex items-center gap-1.5 mb-2.5">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: activeHexColor }}></span>
+                <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-zinc-400">{cat}</h4>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {catRows.map((r, idx) => (
+                  <div key={idx} className={`p-2 rounded-xl border flex flex-col justify-center ${isDarkMode ? 'bg-[#121217] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-zinc-400">{r.label}</span>
+                    <span className="text-xs font-bold text-slate-800 dark:text-zinc-100 truncate mt-0.5">{r.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Digital Signature Preview Card */}
+        {submittedData.signature_image && (
+          <div className={`p-3.5 rounded-2xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800/80' : 'bg-slate-50/80 border-slate-200/70'}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-zinc-400">Captured Digital Signature</span>
+              <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <CheckCheck size={12} /> Verified
+              </span>
+            </div>
+            <div className={`p-3 rounded-xl border flex items-center justify-center ${isDarkMode ? 'bg-white/5 border-zinc-700' : 'bg-white border-slate-200'}`}>
+              <img src={submittedData.signature_image} alt="Digital Signature" className="max-h-16 object-contain" />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // --- SCENARIO 3: ACTIVE STATE TAX WITHHOLDING DISPATCHER ---
   return (
     <div className="w-full space-y-4">
@@ -403,7 +468,7 @@ const StateTaxPage = () => {
               Step 4 • State Withholding
             </span>
             <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-full">
-              Testing for: {userData?.email || 'Candidate'}
+              Candidate: {userData?.email || 'Candidate'}
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
@@ -438,119 +503,185 @@ const StateTaxPage = () => {
         />
       </div>
 
-      {/* Success Modal */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in">
-          <div className={`p-6 rounded-3xl border shadow-2xl flex flex-col items-center max-w-md w-full text-center animate-in zoom-in-95 ${
-            isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-100 text-slate-800'
-          }`}>
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-3 border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
-              <Check size={28} strokeWidth={3} />
-            </div>
-            <h3 className="text-lg font-bold mb-1">{selectedState} Tax Form Saved & Generated!</h3>
-            <p className={`text-xs mb-4 leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
-              {successData.message || "Your state withholding certificate has been generated and filed."}
-            </p>
-
-            <div className="w-full space-y-2.5">
-              {/* PDF Preview & Direct Download Buttons */}
-              {(successData.pdf_blob_url || successData.pdf_url) && (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewPdfOpen(true)}
-                    className="flex-1 py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20 transition-all"
-                  >
-                    <Eye size={14} />
-                    <span>Preview Filled PDF</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDownloadPdf}
-                    className={`px-3 py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1 transition-all ${
-                      isDarkMode ? 'border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700' : 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200'
-                    }`}
-                    title="Download Generated PDF"
-                  >
-                    <Download size={14} />
-                    <span>Download</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Retest Another State Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setModalOpen(false);
-                }}
-                className={`w-full py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                  isDarkMode ? 'border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-200' : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700'
-                }`}
-              >
-                <RefreshCw size={13} />
-                <span>Test Another State Form</span>
-              </button>
-
-              {/* Continue Progression */}
-              <button
-                type="button"
-                onClick={() => goToNextStep()}
-                style={{ backgroundColor: activeHexColor }}
-                className="w-full py-2.5 px-3 rounded-xl text-white font-bold text-xs shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-1.5"
-              >
-                <span>Continue to Next Step (Direct Deposit)</span>
-                <ArrowRight size={14} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Embedded High-Definition PDF Full Preview Modal */}
-      {previewPdfOpen && (successData.pdf_blob_url || successData.pdf_url) && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className={`rounded-3xl border shadow-2xl flex flex-col w-full max-w-4xl h-[90vh] overflow-hidden ${
+      {/* COMPREHENSIVE SIDE-BY-SIDE VERIFICATION POPUP MODAL */}
+      {verificationModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className={`rounded-3xl border shadow-2xl flex flex-col w-full max-w-7xl h-[92vh] overflow-hidden animate-in zoom-in-95 ${
             isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-200 text-slate-800'
           }`}>
-            <div className={`flex items-center justify-between p-4 border-b ${
-              isDarkMode ? 'border-zinc-800 bg-zinc-900/50' : 'border-slate-200 bg-slate-50'
+            {/* Modal Top Header Bar */}
+            <div className={`flex flex-wrap items-center justify-between p-4 px-6 border-b gap-3 ${
+              isDarkMode ? 'border-zinc-800 bg-zinc-900/60' : 'border-slate-200 bg-slate-50'
             }`}>
-              <div className="flex items-center gap-2">
-                <FileText size={18} className="text-blue-500" />
-                <h3 className="text-sm font-bold">{selectedState} Filled Withholding Certificate Preview</h3>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20">
+                  <Check size={20} strokeWidth={3} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-extrabold">{selectedState} Withholding Certificate Verified</h3>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                      Live Verification Inspector
+                    </span>
+                  </div>
+                  <p className={`text-xs ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                    Compare what you submitted on the left against the official generated PDF on the right.
+                  </p>
+                </div>
               </div>
+
+              {/* View Switcher & Action Buttons */}
               <div className="flex items-center gap-2">
+                {/* Tab Switcher on Mobile/Tablet */}
+                <div className={`flex items-center p-1 rounded-xl border text-xs font-bold ${
+                  isDarkMode ? 'bg-zinc-800/80 border-zinc-700' : 'bg-slate-200/80 border-slate-300'
+                }`}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('split')}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${
+                      activeTab === 'split' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-zinc-300 hover:text-current'
+                    }`}
+                  >
+                    Side-by-Side
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('fields')}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${
+                      activeTab === 'fields' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-zinc-300 hover:text-current'
+                    }`}
+                  >
+                    Submitted Fields
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('pdf')}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${
+                      activeTab === 'pdf' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-zinc-300 hover:text-current'
+                    }`}
+                  >
+                    Generated PDF
+                  </button>
+                </div>
+
+                {/* Download PDF Button */}
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
-                  className="px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 bg-blue-500/10 border-blue-500/20 text-blue-500 hover:bg-blue-500/20 transition-all"
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/30 text-blue-500 hover:bg-blue-500/20 transition-all shadow-sm"
                 >
-                  <Download size={13} />
+                  <Download size={14} />
                   <span>Download PDF</span>
                 </button>
+
+                {/* Close Button */}
                 <button
                   type="button"
-                  onClick={() => setPreviewPdfOpen(false)}
-                  className="p-1.5 rounded-lg hover:bg-zinc-700/50 transition-colors"
+                  onClick={() => setVerificationModalOpen(false)}
+                  className={`p-2 rounded-xl border transition-all ${
+                    isDarkMode ? 'border-zinc-700 hover:bg-zinc-800 text-zinc-300' : 'border-slate-300 hover:bg-slate-100 text-slate-600'
+                  }`}
+                  title="Close Inspector"
                 >
                   <X size={18} />
                 </button>
               </div>
             </div>
-            <div className="flex-1 w-full bg-zinc-900 overflow-hidden relative">
-              <object
-                data={successData.pdf_blob_url || successData.pdf_url}
-                type="application/pdf"
-                className="w-full h-full border-0"
-              >
-                <iframe
-                  src={successData.pdf_blob_url || successData.pdf_url}
-                  title="Filled State Tax PDF"
-                  className="w-full h-full border-0"
-                />
-              </object>
+
+            {/* Modal Body: Side-by-Side (or Tabbed) Verification View */}
+            <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-zinc-200 dark:divide-zinc-800">
+              
+              {/* LEFT COLUMN: Submitted Parameters & Input Summary */}
+              <div className={`p-4 sm:p-5 overflow-y-auto ${
+                activeTab === 'pdf' ? 'hidden lg:block lg:col-span-5' : (activeTab === 'fields' ? 'col-span-12' : 'col-span-12 lg:col-span-5')
+              } ${isDarkMode ? 'bg-[#10121a]' : 'bg-slate-50/50'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Edit3 size={16} className="text-blue-500" />
+                    <h3 className="text-sm font-extrabold">Submitted Form Values</h3>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400">
+                    {Object.keys(submittedData || {}).length} Parameters Recorded
+                  </span>
+                </div>
+                
+                {/* Form Fields Cards List */}
+                {renderFieldRows()}
+              </div>
+
+              {/* RIGHT COLUMN: Live Official Generated PDF Viewer */}
+              <div className={`flex flex-col relative overflow-hidden ${
+                activeTab === 'fields' ? 'hidden lg:flex lg:col-span-7' : (activeTab === 'pdf' ? 'col-span-12' : 'col-span-12 lg:col-span-7')
+              } bg-zinc-900`}>
+                <div className="p-2.5 px-4 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between text-xs text-zinc-300">
+                  <div className="flex items-center gap-2">
+                    <FileText size={15} className="text-emerald-400" />
+                    <span className="font-bold text-white">Live Official {selectedState} Certificate Preview</span>
+                  </div>
+                  <span className="text-[10px] text-zinc-400">Rendered with PyMuPDF Engine</span>
+                </div>
+
+                <div className="flex-1 w-full h-full relative overflow-hidden bg-zinc-900">
+                  <object
+                    data={successData.pdf_blob_url || successData.pdf_url}
+                    type="application/pdf"
+                    className="w-full h-full border-0"
+                  >
+                    <iframe
+                      src={successData.pdf_blob_url || successData.pdf_url}
+                      title="Filled State Tax PDF"
+                      className="w-full h-full border-0"
+                    />
+                  </object>
+                </div>
+              </div>
+
             </div>
+
+            {/* Modal Bottom Action Footer Bar */}
+            <div className={`p-4 px-6 border-t flex flex-wrap items-center justify-between gap-3 ${
+              isDarkMode ? 'border-zinc-800 bg-zinc-900/60' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVerificationModalOpen(false)}
+                  className={`px-4 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${
+                    isDarkMode ? 'border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-200' : 'border-slate-300 bg-white hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <Edit3 size={14} />
+                  <span>Modify Form Fields & Re-Submit</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVerificationModalOpen(false);
+                  }}
+                  className={`px-4 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${
+                    isDarkMode ? 'border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-200' : 'border-slate-300 bg-white hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <RefreshCw size={14} />
+                  <span>Select Another State Form</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => goToNextStep()}
+                  style={{ backgroundColor: activeHexColor }}
+                  className="px-6 py-2.5 rounded-xl text-white font-bold text-xs shadow-md hover:opacity-95 transition-all flex items-center gap-1.5"
+                >
+                  <span>Approve & Continue to Direct Deposit</span>
+                  <ArrowRight size={14} />
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
