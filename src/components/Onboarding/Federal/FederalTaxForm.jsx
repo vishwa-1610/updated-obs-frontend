@@ -132,6 +132,38 @@ const FederalTaxPage = () => {
     };
   }, []);
 
+  // Auto-calculate step4_deductions if use_deductions_worksheet is enabled
+  useEffect(() => {
+    if (formData.use_deductions_worksheet) {
+      const filingStatus = formData.filing_status;
+      const stdDeduction = filingStatus === '2' ? 32200 : (filingStatus === '3' ? 24150 : 16100);
+
+      const d1 = Number(formData.deductions_1a || 0) + Number(formData.deductions_1b || 0) + Number(formData.deductions_1c || 0);
+      const d4 = Number(formData.deductions_3a || 0) + Number(formData.deductions_3b || 0);
+      const d5 = Number(formData.deductions_5 || 0);
+      const d7 = Number(formData.deductions_6a || 0) + Number(formData.deductions_6b || 0) + Number(formData.deductions_6c || 0) + Number(formData.deductions_6d || 0) + Number(formData.deductions_6e || 0);
+      const d12 = Number(formData.deductions_12 || 0);
+      
+      const d14 = d7 > (stdDeduction + d12) ? Math.max(0, d7 - stdDeduction) : d12;
+      const totalDeductions = d1 + d4 + d5 + d14;
+
+      if (totalDeductions > 0) {
+        setFormData(prev => ({
+          ...prev,
+          step4_deductions: totalDeductions
+        }));
+      }
+    }
+  }, [
+    formData.use_deductions_worksheet,
+    formData.filing_status,
+    formData.deductions_1a, formData.deductions_1b, formData.deductions_1c,
+    formData.deductions_3a, formData.deductions_3b,
+    formData.deductions_5,
+    formData.deductions_6a, formData.deductions_6b, formData.deductions_6c, formData.deductions_6d, formData.deductions_6e,
+    formData.deductions_12
+  ]);
+
   const handleSignatureEnd = () => {
     if (sigCanvasRef.current && !sigCanvasRef.current.isEmpty()) {
       setFormData(prev => ({ ...prev, signature_image: sigCanvasRef.current.getCanvas().toDataURL('image/png') }));
@@ -551,6 +583,89 @@ const FederalTaxPage = () => {
                 placeholder="0.00"
                 className={inputClass}
               />
+            </div>
+          </div>
+
+          {/* Step 4(b) Deductions Worksheet Collapsible */}
+          <div className="mt-3.5 pt-3 border-t border-zinc-800/40 dark:border-zinc-800 light:border-slate-100">
+            <div className={`p-3 rounded-xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="use_deductions_worksheet"
+                  checked={formData.use_deductions_worksheet}
+                  onChange={handleChange}
+                  className="w-3.5 h-3.5 text-blue-600 rounded"
+                />
+                <div>
+                  <span className="font-bold text-xs block">Use Step 4(b) Deductions Worksheet (Page 4)?</span>
+                  <span className={`text-[10px] ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                    Complete to calculate estimated itemized deductions & populate Page 4 of Form W-4.
+                  </span>
+                </div>
+              </label>
+
+              {formData.use_deductions_worksheet && (
+                <div className="space-y-3 pt-3 mt-3 border-t border-zinc-800/40 dark:border-zinc-800 light:border-slate-200 animate-in fade-in">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className={labelClass}>Line 1a: Qualified Tips ($)</label>
+                      <input type="number" name="deductions_1a" value={formData.deductions_1a} onChange={handleChange} placeholder="0.00" className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Line 1b: Overtime Comp ($)</label>
+                      <input type="number" name="deductions_1b" value={formData.deductions_1b} onChange={handleChange} placeholder="0.00" className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Line 1c: Auto Loan Interest ($)</label>
+                      <input type="number" name="deductions_1c" value={formData.deductions_1c} onChange={handleChange} placeholder="0.00" className={inputClass} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelClass}>Line 3a: Senior Self (Age 65+) ($)</label>
+                      <input type="number" name="deductions_3a" value={formData.deductions_3a} onChange={handleChange} placeholder="0.00" className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Line 5: Student Loan / Adjustments ($)</label>
+                      <input type="number" name="deductions_5" value={formData.deductions_5} onChange={handleChange} placeholder="0.00" className={inputClass} />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-zinc-800/20">
+                    <span className="text-[10px] font-bold uppercase tracking-wider block mb-2 text-blue-500">
+                      Line 6: Estimated Itemized Deductions
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className={labelClass}>6a: Medical Expenses ($)</label>
+                        <input type="number" name="deductions_6a" value={formData.deductions_6a} onChange={handleChange} placeholder="0.00" className={inputClass} />
+                      </div>
+                      <div>
+                        <label className={labelClass}>6b: State & Local Taxes ($)</label>
+                        <input type="number" name="deductions_6b" value={formData.deductions_6b} onChange={handleChange} placeholder="0.00" className={inputClass} />
+                      </div>
+                      <div>
+                        <label className={labelClass}>6c: Home Mortgage Interest ($)</label>
+                        <input type="number" name="deductions_6c" value={formData.deductions_6c} onChange={handleChange} placeholder="0.00" className={inputClass} />
+                      </div>
+                      <div>
+                        <label className={labelClass}>6d: Gifts to Charity ($)</label>
+                        <input type="number" name="deductions_6d" value={formData.deductions_6d} onChange={handleChange} placeholder="0.00" className={inputClass} />
+                      </div>
+                      <div>
+                        <label className={labelClass}>6e: Other Deductions ($)</label>
+                        <input type="number" name="deductions_6e" value={formData.deductions_6e} onChange={handleChange} placeholder="0.00" className={inputClass} />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Line 12: Cash Charity (Std Ded) ($)</label>
+                        <input type="number" name="deductions_12" value={formData.deductions_12} onChange={handleChange} placeholder="0.00" className={inputClass} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
