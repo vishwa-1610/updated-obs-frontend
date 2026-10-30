@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   Loader2, AlertCircle, CheckCircle, MapPin, 
-  ShieldCheck, Zap, Sparkles, ArrowRight, Check, Forward, Globe, ChevronDown, FileText, CheckCircle2,
+  ShieldCheck, Zap, ArrowRight, Check, Forward, Globe, ChevronDown, FileText, CheckCircle2,
   RefreshCw, Download, ExternalLink, Eye, X, Printer, User, Building, DollarSign, Calendar, Edit3, CheckCheck, ZoomIn, ZoomOut, Maximize2
 } from 'lucide-react';
 import StateTaxFormDispatcher from '../Onboarding/StateForms/StateTaxFormDispatcher';

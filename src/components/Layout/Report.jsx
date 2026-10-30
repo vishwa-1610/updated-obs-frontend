@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { 
   BarChart3, FileText, Download, Filter, Search, Heart, 
-  Sparkles, Clock, CheckCircle, AlertTriangle, ArrowUpRight, 
+  Clock, CheckCircle, AlertTriangle, ArrowUpRight, 
   RefreshCw, TrendingUp, Layers, ShieldCheck, DollarSign,
   Users, Calendar, Eye, FileSpreadsheet, Lock, AlertCircle,
   Plus, Check, X, ChevronRight, Hash, Database, ExternalLink,
@@ -330,7 +330,7 @@ const ReportsDashboard = () => {
                 }}
                 className="px-3.5 py-2.5 rounded-2xl theme-bg-primary hover:opacity-90 text-white text-xs font-black flex items-center gap-2 transition-all shadow-md theme-shadow-primary"
               >
-                <Sparkles size={14} />
+                <FileText size={14} />
                 <span>Custom BI Report</span>
               </button>
 
@@ -1024,7 +1024,7 @@ const ReportsDashboard = () => {
               <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-zinc-800">
                 <div className="flex items-center gap-2.5">
                   <div className="w-10 h-10 rounded-2xl theme-bg-light theme-text-primary flex items-center justify-center font-bold">
-                    <Sparkles size={20} />
+                    <FileText size={20} />
                   </div>
                   <div>
                     <h3 className="font-black text-base text-slate-900 dark:text-white">

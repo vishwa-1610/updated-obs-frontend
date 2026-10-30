@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FolderKanban, Kanban, ListTodo, Target, Clock, Plus, 
-  Sparkles, RefreshCw, Send, Loader2, CheckCircle2, AlertCircle,
+  RefreshCw, Send, Loader2, CheckCircle2, AlertCircle,
   Briefcase, BarChart3, ShieldCheck, LineChart
 } from 'lucide-react';
 import { useTheme } from '../Theme/ThemeProvider';
@@ -155,7 +155,7 @@ const TaskDashboard = () => {
                 : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+            <RefreshCw className="w-3.5 h-3.5 text-purple-500" />
             <span className="hidden sm:inline">Spawn Recurring</span>
           </button>
 

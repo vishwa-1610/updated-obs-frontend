@@ -4,7 +4,7 @@ import {
   Users, Briefcase, GitMerge, FileText, PenTool, 
   Palette, CreditCard, Plus, Edit2, Trash2, X, ToggleLeft, ToggleRight,
   Download, ShieldCheck, Mail, ChevronDown, Check, Loader2,
-  UploadCloud, CheckCircle, Shield, Sparkles, Lock, ArrowRight, Copy, CheckCircle2,
+  UploadCloud, CheckCircle, Shield, Lock, ArrowRight, Copy, CheckCircle2,
   Sliders, FileCheck2, UserCheck, Scale, Globe, Building, Building2,
   Eye, Info, AlertCircle, Calendar, Hash, ExternalLink,
   GripVertical, ArrowUp, ArrowDown, ChevronUp, Server, HardDrive, RefreshCw, Key,

@@ -3,7 +3,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { 
   User, Shield, DollarSign, Calendar, ChevronDown, ChevronLeft, ChevronRight,
   Eraser, Save, PenTool, FileText, Calculator, Loader2, XCircle, CheckCircle2,
-  AlertTriangle, Info, Sparkles, Building2, MapPin, Check, HeartHandshake,
+  AlertTriangle, Info, Building2, MapPin, Check, HeartHandshake,
   HelpCircle, ArrowRight, CreditCard, Flag, Award, RefreshCw, ChevronUp
 } from 'lucide-react';
 import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';
@@ -519,7 +519,6 @@ const MontanaTaxForm = ({ initialData, onSubmit }) => {
                   : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
               }`}
             >
-              <Sparkles size={13} style={{ color: activeHexColor }} />
               Autofill Sample
             </button>
           </div>

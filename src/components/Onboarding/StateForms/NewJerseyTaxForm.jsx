@@ -3,7 +3,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { 
   User, Shield, DollarSign, Calendar, ChevronDown, ChevronLeft, ChevronRight,
   Eraser, Save, PenTool, FileText, Calculator, Loader2, XCircle, CheckCircle2,
-  AlertTriangle, Info, Sparkles, Building2, MapPin, Check, HeartHandshake,
+  AlertTriangle, Info, Building2, MapPin, Check, HeartHandshake,
   HelpCircle, ArrowRight, Table, ChevronUp, RefreshCw
 } from 'lucide-react';
 import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';
@@ -597,7 +597,6 @@ const NewJerseyTaxForm = ({ initialData, onSubmit }) => {
               color: activeHexColor
             }}
           >
-            <Sparkles size={14} />
             Autofill Sample
           </button>
         </div>

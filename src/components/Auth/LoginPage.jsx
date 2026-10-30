@@ -4,7 +4,7 @@ import { useDispatch } from 'react-redux';
 import { 
   Mail, Lock, Eye, EyeOff, ArrowRight, 
   Shield, Key, CheckCircle, AlertCircle, Building2,
-  Sparkles, Check, Loader2, RefreshCw, Smartphone,
+  Check, Loader2, RefreshCw, Smartphone,
   ShieldCheck, Globe, HelpCircle, Moon, Sun, ArrowLeft,
   ChevronRight, Laptop, UserCheck, Zap
 } from 'lucide-react';

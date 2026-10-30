@@ -3,7 +3,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { 
   User, Shield, DollarSign, Calendar, ChevronLeft, ChevronRight, ChevronDown, 
   Eraser, Save, PenTool, FileText, Calculator, Building2, CheckCircle2, 
-  AlertCircle, Sparkles, HelpCircle, Briefcase, Info, XCircle, Loader2
+  AlertCircle, HelpCircle, Briefcase, Info, XCircle, Loader2
 } from 'lucide-react';
 import StunningSelect from '../../common/StunningSelect';
 import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';

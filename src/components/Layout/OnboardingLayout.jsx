@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../../api';
 import { 
-  Loader2, ShieldCheck, Sun, Moon, Sparkles, CheckCircle2, 
+  Loader2, ShieldCheck, Sun, Moon, CheckCircle2, 
   ChevronRight, Lock, Building2, UserCheck, Shield, FileText, Check, Menu, X
 } from 'lucide-react'; 
 import { useTheme, THEME_COLORS } from '../Theme/ThemeProvider';

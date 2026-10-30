@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   UserCheck, Check, X, CalendarX, ArrowLeftRight, 
-  ShoppingBag, Clock, AlertCircle, Sparkles, Filter, RefreshCw
+  ShoppingBag, Clock, AlertCircle, Filter, RefreshCw
 } from 'lucide-react';
 import { useTheme } from '../Theme/ThemeProvider';
 import { attendanceService } from '../../services/attendanceService';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
-  CheckCircle2, Sparkles, Building2, UserCheck, 
+  CheckCircle2, Building2, UserCheck, 
   ArrowRight, ShieldCheck, Heart, FileCheck, Landmark, Check
 } from 'lucide-react';
 import { useOnboarding } from '../../context/OnboardingContext';
@@ -39,7 +39,7 @@ const OnboardingCompletePage = () => {
             className="px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider inline-flex items-center gap-1.5"
             style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
           >
-            <Sparkles size={13} /> Onboarding Complete
+            <CheckCircle2 size={13} /> Onboarding Complete
           </span>
         </div>
 

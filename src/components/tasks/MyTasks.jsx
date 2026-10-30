@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle2, Clock, Play, Pause, AlertCircle, Calendar, 
-  Flag, Tag, ChevronDown, ChevronRight, Loader2, Sparkles, Send, RefreshCw
+  Flag, Tag, ChevronDown, ChevronRight, Loader2, Send, RefreshCw
 } from 'lucide-react';
 import { useTheme } from '../Theme/ThemeProvider';
 import { taskService } from '../../services/taskService';

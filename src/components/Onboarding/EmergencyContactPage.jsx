@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Users, Phone, Mail, Heart, UserPlus, 
   ArrowRight, Loader2, AlertCircle, MapPin, 
-  ShieldCheck, Zap, FileCheck, Sparkles, Check,
+  ShieldCheck, Zap, FileCheck, Check,
   Home, Plus, Trash2, Shield
 } from 'lucide-react';
 import api from '../../api';

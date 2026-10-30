@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   User, Mail, Phone, MapPin, Calendar, Heart, 
   ArrowRight, Loader2, AlertCircle, ShieldCheck, 
-  CheckCircle2, Sparkles, ChevronDown, Fingerprint,
+  CheckCircle2, ChevronDown, Fingerprint,
   Eye, EyeOff, Hash, Home, Building2, Check, Shield, Lock, FileText
 } from 'lucide-react';
 import api from '../../api';

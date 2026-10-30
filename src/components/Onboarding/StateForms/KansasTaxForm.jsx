@@ -3,7 +3,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { 
   User, Shield, DollarSign, Calendar, ChevronDown, ChevronLeft, ChevronRight,
   Eraser, Save, PenTool, FileText, Calculator, Loader2, XCircle, CheckCircle2,
-  AlertTriangle, Info, Sparkles, Building2, MapPin, Check
+  AlertTriangle, Info, Building2, MapPin, Check
 } from 'lucide-react';
 import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';
 
@@ -904,7 +904,7 @@ const KansasTaxForm = ({ initialData, onSubmit }) => {
         {/* --- SUBMIT ACTION BUTTON --- */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
           <div className="flex items-center gap-2 text-xs text-zinc-400">
-            <Sparkles size={14} style={{ color: activeHexColor }} />
+            <FileText size={14} style={{ color: activeHexColor }} />
             <span>Form K-4 will be officially rendered with PyMuPDF</span>
           </div>
 

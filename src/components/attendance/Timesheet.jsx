@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ClipboardList, Plus, CheckCircle2, Clock, Send, 
   Check, X, FileText, ChevronLeft, ChevronRight, Calendar,
-  Sparkles, AlertCircle, ArrowRight, ShieldCheck, DollarSign,
+  AlertCircle, ArrowRight, ShieldCheck, DollarSign,
   TrendingUp, Layers, UserCheck, Trash2, Tag, Briefcase,
   ListTodo, Filter, Play, CheckCircle
 } from 'lucide-react';
@@ -261,7 +261,7 @@ export const Timesheet = () => {
                     : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs'
                 }`}
               >
-                <Sparkles size={15} className="text-amber-500" /> Auto-Compile Week
+                <RefreshCw size={15} className="text-amber-500" /> Auto-Compile Week
               </button>
 
               <button

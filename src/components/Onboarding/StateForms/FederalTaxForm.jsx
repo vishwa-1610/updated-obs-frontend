@@ -5,8 +5,7 @@ import axios from 'axios';
 import { 
   User, DollarSign, FileText, Calculator, 
   PenTool, CheckCircle, ChevronRight, AlertCircle, MapPin,
-  FileCheck, ArrowRight, Eye, ListChecks, Shield, Sparkles,
-  ShieldCheck, Zap, FileJson, Check, Loader2, Coins, Landmark
+  FileCheck, ArrowRight, Eye, ListChecks, Shield, ShieldCheck, Zap, FileJson, Check, Loader2, Coins, Landmark
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
@@ -227,7 +226,7 @@ const FederalTaxPage = () => {
             <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-600/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
             <div className="relative z-10 flex items-center gap-3 mb-12">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/50"><Sparkles size={20} className="text-white" /></div>
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/50"><FileCheck size={20} className="text-white" /></div>
                 <span className="font-bold text-xl tracking-tight text-white">Onboarding Portal</span>
             </div>
             <div className="relative z-10 flex-1 flex flex-col justify-center">

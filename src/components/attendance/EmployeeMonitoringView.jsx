@@ -3,7 +3,7 @@ import {
   Activity, Monitor, ShieldCheck, Eye, EyeOff, 
   Clock, Laptop, AlertCircle, CheckCircle2, TrendingUp, 
   BarChart3, RefreshCw, Smartphone, Globe, Lock, UserCheck,
-  Zap, Sparkles, X, ChevronRight, PieChart as PieIcon,
+  Zap, X, ChevronRight, PieChart as PieIcon,
   Search, Filter, Maximize2, Terminal, Code2, Chrome, MessageSquare,
   Trello, Figma, Music, ExternalLink, Calendar, Users, Info,
   Plus, Check

@@ -6,8 +6,7 @@ import {
 } from 'recharts';
 import { 
   TrendingUp, PieChart as PieIcon, BarChart3, CheckCircle2, 
-  AlertCircle, Clock, DollarSign, Users, Target, Sparkles, 
-  Activity, ShieldAlert, ArrowUpRight, Zap, RefreshCw, Filter,
+  AlertCircle, Clock, DollarSign, Users, Target, Activity, ShieldAlert, ArrowUpRight, Zap, RefreshCw, Filter,
   Layers, ChevronRight, Check, Flame, Award, Calendar, Repeat,
   FileCheck2, ShieldCheck, HelpCircle
 } from 'lucide-react';
@@ -289,7 +288,7 @@ const TaskAnalyticsView = ({ tasks = [], projects = [], onOpenTaskDetail, onOpen
       }`}>
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-2xl theme-bg-light theme-text-primary shrink-0">
-            <Sparkles className="w-5 h-5" />
+            <Target className="w-5 h-5" />
           </div>
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">

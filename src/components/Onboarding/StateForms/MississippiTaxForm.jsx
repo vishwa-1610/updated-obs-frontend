@@ -3,7 +3,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { 
   User, Shield, DollarSign, Calendar, ChevronDown, ChevronLeft, ChevronRight,
   Eraser, Save, PenTool, FileText, Calculator, Loader2, XCircle, CheckCircle2,
-  AlertTriangle, Info, Sparkles, Building2, MapPin, Check, HeartHandshake,
+  AlertTriangle, Info, Building2, MapPin, Check, HeartHandshake,
   HelpCircle, ArrowRight, CreditCard, Flag
 } from 'lucide-react';
 import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';
@@ -457,7 +457,6 @@ const MississippiTaxForm = ({ initialData, onSubmit }) => {
                 : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm'
             }`}
           >
-            <Sparkles size={14} className="text-amber-500" />
             <span>Autofill Sample (vishwa visu)</span>
           </button>
         </div>

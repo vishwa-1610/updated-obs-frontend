@@ -5,7 +5,7 @@ import {
   UploadCloud, Plus, Download, Search, Eye, Trash2,
   RefreshCw, Check, X, AlertCircle, ExternalLink,
   ChevronRight, ChevronLeft, ChevronDown, Lock, Send,
-  FileCheck, Sparkles, Filter, LayoutGrid, List,
+  FileCheck, Filter, LayoutGrid, List,
   BookOpen, Hash, Copy, ShieldCheck, FileSpreadsheet
 } from 'lucide-react';
 import { useTheme, THEME_COLORS } from '../Theme/ThemeProvider';
@@ -594,7 +594,7 @@ export default function Documents() {
               isDarkMode ? 'bg-[#181a20] border-zinc-700/60 hover:border-zinc-500 text-zinc-200' : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 shadow-sm'
             }`}
           >
-            <Sparkles className="w-4 h-4 text-purple-500" />
+            <FileText className="w-4 h-4 text-blue-500" />
             <span>Generate Letter</span>
           </button>
 
@@ -664,7 +664,7 @@ export default function Documents() {
             { id: 'audit', label: 'ESIGN / UETA Audit Trails', icon: ShieldCheck },
             { id: 'filled', label: 'Filled Employee Forms', icon: FileSpreadsheet },
             { id: 'verify', label: 'Cryptographic Hash Radar', icon: Hash },
-            { id: 'generator', label: 'PDF Letter Studio', icon: Sparkles }
+            { id: 'generator', label: 'PDF Letter Studio', icon: FileText }
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -1262,7 +1262,7 @@ export default function Documents() {
         <div className="space-y-6">
           <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
             <h2 className="text-base font-bold flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-purple-500" />
+              <FileText className="w-4 h-4 text-blue-500" />
               Dynamic PDF Letter & Agreement Studio
             </h2>
             <p className={`text-xs mt-1 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
@@ -1272,7 +1272,7 @@ export default function Documents() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
-              { id: 'OFFER_LETTER', title: 'Executive Offer Letter', desc: 'Formal employment offer letter with compensation, equity, start date, and signature acceptance blocks.', icon: Sparkles },
+              { id: 'OFFER_LETTER', title: 'Executive Offer Letter', desc: 'Formal employment offer letter with compensation, equity, start date, and signature acceptance blocks.', icon: FileCheck },
               { id: 'EMPLOYEE_AGREEMENT', title: 'Employment Agreement & NDA', desc: 'Proprietary information, non-compete, confidentiality and inventions assignment agreement.', icon: ShieldCheck },
               { id: 'COMPANY_LETTER', title: 'Custom Corporate Letterhead', desc: 'Official HR verification letter, proof of employment, or corporate promotion memo.', icon: BookOpen }
             ].map((tmpl) => {
@@ -1556,7 +1556,7 @@ export default function Documents() {
           }`}>
             <div className={`p-5 border-b shrink-0 flex items-center justify-between ${isDarkMode ? 'border-zinc-800 bg-[#181a20]' : 'border-slate-100 bg-slate-50'}`}>
               <h3 className="font-bold text-base flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-purple-500" />
+                <FileText className="w-4 h-4 text-blue-500" />
                 PDF Letter & Agreement Generator
               </h3>
               <button onClick={() => setIsLetterGeneratorModalOpen(false)} className="text-zinc-400 hover:text-zinc-200 p-1">

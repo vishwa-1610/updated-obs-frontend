@@ -6,7 +6,7 @@ import {
   Laptop, ShieldCheck, ShieldAlert, Key, RefreshCw, Eye, Edit3, Trash2, 
   CheckCircle, AlertCircle, AlertTriangle, XCircle, CheckCircle2, ChevronDown, 
   ChevronRight, ArrowRight, Download, Upload, Share2, Mail, Phone, 
-  FileText, ExternalLink, Sparkles, MessageSquare, Video, Check, X,
+  FileText, ExternalLink, MessageSquare, Video, Check, X,
   HardDrive, Cpu, Smartphone, Monitor, Globe, Award, TrendingUp, Layers,
   Lock, Unlock, HelpCircle, FileCheck, Send, CheckSquare, Square, ChevronLeft
 } from 'lucide-react';

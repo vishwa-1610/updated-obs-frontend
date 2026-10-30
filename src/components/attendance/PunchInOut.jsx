@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { 
   LogIn, LogOut, MapPin, Clock, AlertCircle,
   CheckCircle2, Timer, Coffee, Navigation, Camera,
-  ShieldCheck, ShieldAlert, Sparkles, RefreshCw,
+  ShieldCheck, ShieldAlert, RefreshCw,
   ChevronLeft, ChevronRight, Calendar as CalendarIcon,
   Laptop, Briefcase, Eye, X, Check, Info, AlertTriangle,
   Play, Square

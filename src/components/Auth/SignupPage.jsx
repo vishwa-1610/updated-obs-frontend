@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Mail, Lock, Eye, EyeOff, ArrowRight, 
-  Sparkles, User, MapPin, Navigation, LayoutGrid,
+  User, MapPin, Navigation, LayoutGrid,
   AlertCircle, Users
 } from 'lucide-react';
 
@@ -75,7 +75,7 @@ const SignupPage = () => {
               <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/10">
-                    <Sparkles className="w-6 h-6 text-white" />
+                    <LayoutGrid className="w-6 h-6 text-white" />
                   </div>
                   <h2 className="text-2xl font-bold tracking-wide">Portal Pro</h2>
                 </div>

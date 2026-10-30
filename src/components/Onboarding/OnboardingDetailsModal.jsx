@@ -4,7 +4,7 @@ import {
   User, Briefcase, Calendar, MapPin, Mail, Phone, FileText, 
   Users, Download, Hash, Home, Landmark, CreditCard, Percent,
   ShieldCheck, Eye, EyeOff, ExternalLink, CheckCircle2, AlertCircle,
-  FileCheck2, Shield, Sparkles, X, ChevronRight, Building2, Check, Globe,
+  FileCheck2, Shield, X, ChevronRight, Building2, Check, Globe,
   Send, UserCheck, Loader2, Edit3, Save, RefreshCw, Layers, DollarSign,
   Sliders, ArrowRight
 } from 'lucide-react';

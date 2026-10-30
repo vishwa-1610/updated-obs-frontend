@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { 
   Clock, CalendarCheck, CalendarX, ClipboardList, 
   UserCheck, BarChart3, Calendar, Settings, Timer, 
-  MapPin, Activity, ArrowLeftRight, Users, Sparkles
+  MapPin, Activity, ArrowLeftRight, Users
 } from 'lucide-react';
 import { useTheme } from '../Theme/ThemeProvider';
 import { fetchSettings, fetchHolidays, fetchMyLeaves } from '../../store/attendanceSlice';

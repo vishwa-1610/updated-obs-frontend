@@ -3,7 +3,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { 
   User, Shield, DollarSign, Calendar, ChevronDown, ChevronLeft, ChevronRight,
   Eraser, Save, PenTool, FileText, Calculator, Loader2, XCircle, CheckCircle2,
-  AlertTriangle, Info, Sparkles, Building2, MapPin, Check, HeartHandshake,
+  AlertTriangle, Info, Building2, MapPin, Check, HeartHandshake,
   ArrowRight, Briefcase, Eye, EyeOff, RotateCcw, CheckCircle, HelpCircle
 } from 'lucide-react';
 import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';
@@ -534,7 +534,6 @@ const MarylandTaxForm = ({ initialData, onSubmit }) => {
               }`}
               title="Quickly fill sample Maryland candidate data"
             >
-              <Sparkles size={13} style={{ color: activeHexColor }} />
               Auto-Fill Sample
             </button>
             <span className={`text-xs px-3 py-1.5 rounded-xl border font-bold ${
@@ -1057,7 +1056,7 @@ const MarylandTaxForm = ({ initialData, onSubmit }) => {
                      borderColor: `${activeHexColor}35`
                    }}>
                 <div className="flex items-center gap-3">
-                  <Sparkles size={20} style={{ color: activeHexColor }} />
+                  <FileCheck size={20} style={{ color: activeHexColor }} />
                   <div>
                     <h4 className="text-sm font-extrabold">Step 3 Total: Total Dependent & Tax Credits</h4>
                     <p className={`text-xs ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>

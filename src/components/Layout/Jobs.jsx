@@ -4,7 +4,7 @@ import {
   Briefcase, Users, Plus, Search, Filter, Play, CheckCircle, 
   Clock, AlertCircle, X, ChevronRight, Hash, Star, Calendar, 
   MapPin, DollarSign, Building, Building2, Eye, Edit3, Trash2, 
-  Check, ArrowRight, UserPlus, FileText, Sparkles, ExternalLink, 
+  Check, ArrowRight, UserPlus, FileText, ExternalLink, 
   Share2, Award, Laptop, Layers, ShieldCheck, RefreshCw, Send,
   TrendingUp, BarChart3, Video, UserCheck, CheckCircle2, ChevronDown,
   AlertTriangle, CheckCircle as CheckCircleIcon, XCircle

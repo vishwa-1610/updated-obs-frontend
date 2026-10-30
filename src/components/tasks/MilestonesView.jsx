@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Target, Calendar, CheckCircle2, Clock, Plus, Loader2, 
-  ChevronRight, AlertCircle, Sparkles, Flag, Trash2, Edit2, X 
+  ChevronRight, AlertCircle, Flag, Trash2, Edit2, X 
 } from 'lucide-react';
 import { useTheme } from '../Theme/ThemeProvider';
 import { taskService } from '../../services/taskService';

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { 
   CalendarX, Plus, CheckCircle2, Clock, XCircle, 
-  AlertCircle, Sparkles, Filter, FileText, ChevronRight,
+  AlertCircle, Filter, FileText, ChevronRight,
   TrendingUp, Umbrella, HeartPulse, UserCheck, Paperclip, X,
   Calendar, Info, AlertTriangle, ShieldCheck
 } from 'lucide-react';

@@ -18,7 +18,6 @@ import {
   Building2, 
   Check, 
   Palette,
-  Sparkles,
   Users,
   FileSpreadsheet,
   FileCheck,

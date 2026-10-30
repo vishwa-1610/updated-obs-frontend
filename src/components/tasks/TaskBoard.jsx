@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Plus, Search, Filter, Calendar, Clock, CheckSquare, 
   MoreVertical, AlertCircle, RefreshCw, Tag, Flag, User,
-  ChevronDown, Flame, Sparkles
+  ChevronDown, Flame
 } from 'lucide-react';
 import { useTheme } from '../Theme/ThemeProvider';
 import { taskService } from '../../services/taskService';

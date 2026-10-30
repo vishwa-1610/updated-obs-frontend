@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Calendar, Clock, Users, ArrowLeftRight, ShoppingBag, 
   Plus, Check, X, CheckCircle2, AlertCircle, Edit3, Trash2, 
-  ChevronRight, Sparkles, Filter, ShieldCheck, UserCheck,
+  ChevronRight, Filter, ShieldCheck, UserCheck,
   CalendarDays, Layers, Info, AlertTriangle, ArrowRight
 } from 'lucide-react';
 import { useTheme } from '../Theme/ThemeProvider';
@@ -664,8 +664,7 @@ export const ShiftRosterView = () => {
                         onClick={() => handleBidOnOpenShift(op.id)}
                         className="w-full py-2.5 rounded-xl font-bold text-xs theme-bg-primary text-white shadow-xs hover:opacity-90 transition-all flex items-center justify-center gap-1.5"
                       >
-                        <Sparkles size={14} />
-                        Bid on Shift Slot
+                                                Bid on Shift Slot
                       </button>
                     )}
                   </div>

@@ -3,8 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import SignatureCanvas from 'react-signature-canvas';
 import { 
   User, DollarSign, Calculator, 
-  PenTool, AlertCircle, Sparkles,
-  ArrowRight, Check, Loader2, FileText,
+  PenTool, AlertCircle, ArrowRight, Check, Loader2, FileText,
   ShieldCheck, HelpCircle, RotateCcw, Download, Eye, MapPin
 } from 'lucide-react';
 import api from '../../../api';

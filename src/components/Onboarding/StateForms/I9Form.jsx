@@ -5,7 +5,7 @@ import {
   User, Shield, MapPin, Mail, Phone, Calendar, 
   CheckCircle, FileText, ChevronDown, ChevronLeft, ChevronRight, 
   Briefcase, Globe, PenTool, Eraser, Save, AlertCircle, Loader2,
-  ShieldCheck, Zap, FileJson, Sparkles, Check, ArrowRight, RotateCcw
+  ShieldCheck, Zap, FileJson, Check, ArrowRight, RotateCcw
 } from 'lucide-react';
 import api from '../../../api';
 import { useOnboarding } from '../../../context/OnboardingContext';

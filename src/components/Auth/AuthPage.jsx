@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Mail, Lock, User, MapPin, Navigation, 
-  ArrowRight, Loader2, Sparkles, CheckCircle, 
+  ArrowRight, Loader2, CheckCircle, 
   Eye, EyeOff, LayoutGrid, Globe, ShieldCheck
 } from 'lucide-react';
 
@@ -121,7 +121,7 @@ const handleSubmit = async (e) => {
           {/* Header Content */}
           <div className="relative z-10">
             <div className="w-12 h-12 bg-white/10 backdrop-blur-lg rounded-2xl flex items-center justify-center border border-white/20 mb-8 shadow-xl">
-              <Sparkles className="text-blue-300" size={24} />
+              <ShieldCheck className="text-blue-300" size={24} />
             </div>
             <h1 className="text-5xl font-extrabold leading-tight mb-6">
               Welcome <span className="text-blue-400">Back</span>

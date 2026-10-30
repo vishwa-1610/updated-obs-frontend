@@ -5,8 +5,7 @@ import {
   Users, Briefcase, ArrowRight, Activity, Zap, TrendingUp, PieChart, 
   BarChart3, Clock, AlertCircle, Calendar as CalendarIcon, 
   CheckCircle2, Loader2, Send, X, ChevronLeft, ChevronRight,
-  Building2, UserPlus, ShieldCheck, FileText, CheckSquare, Sparkles,
-  Layers, ArrowUpRight, Plus, Filter, Search, Award, Download,
+  Building2, UserPlus, ShieldCheck, FileText, CheckSquare, Layers, ArrowUpRight, Plus, Filter, Search, Award, Download,
   HeartHandshake, BookOpen, AlertTriangle, UserCheck, Smartphone,
   RefreshCw, Check, Compass, DollarSign, CalendarCheck, ShieldAlert,
   Eye, Mail, MapPin, Phone, Hash, ExternalLink

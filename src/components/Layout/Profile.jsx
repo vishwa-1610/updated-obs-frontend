@@ -5,7 +5,7 @@ import {
   Edit2, X, Loader2, RefreshCw, Camera, Users, ChevronDown, Check,
   ShieldCheck, ShieldAlert, QrCode, Copy, Key, Download, Smartphone,
   AlertTriangle, Lock, ArrowRight, CheckCircle, Briefcase, Calendar,
-  Sparkles, ShieldQuestion, Fingerprint, Award, Layers, Palette,
+  ShieldQuestion, Fingerprint, Award, Layers, Palette,
   ExternalLink, CheckCircle2, ShieldOff
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -410,7 +410,7 @@ const Profile = () => {
           <div className="absolute inset-0 bg-radial from-white/15 to-transparent mix-blend-overlay" />
           <div className="absolute -right-12 -bottom-12 w-64 h-64 rounded-full bg-white/15 blur-2xl" />
           <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/30 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20 text-white text-xs font-bold shadow-sm">
-            <Sparkles size={13} className="text-yellow-300" />
+            <Palette size={13} className="text-yellow-300" />
             <span>{formData.company_name || 'Organization Workspace'}</span>
           </div>
         </div>
@@ -857,7 +857,7 @@ const Profile = () => {
             </div>
 
             <div className="mt-6 p-4 rounded-2xl theme-bg-light border border-current/15 flex items-center gap-3">
-              <Sparkles size={20} className="theme-text-primary shrink-0" />
+              <Palette size={20} className="theme-text-primary shrink-0" />
               <p className="text-xs font-semibold theme-text-primary">
                 Changing your accent color instantly updates navbar highlights, sidebar active items, buttons, badges, and card indicators across the entire workspace.
               </p>

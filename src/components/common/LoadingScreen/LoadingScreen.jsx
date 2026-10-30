@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Sparkles, Layers, ShieldCheck, RefreshCw, Loader2, Users, FileText, CheckCircle2 } from 'lucide-react';
+import { Layers, ShieldCheck, RefreshCw, Loader2, Users, FileText, CheckCircle2 } from 'lucide-react';
 import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';
 
 /**
@@ -65,8 +65,8 @@ export const PageLoader = ({
               boxShadow: `0 8px 24px -4px ${activeHex}40`
             }}
           >
-            <Sparkles 
-              className="w-5 h-5 animate-pulse" 
+            <ShieldCheck 
+              className="w-5 h-5" 
               style={{ color: activeHex }} 
             />
           </div>

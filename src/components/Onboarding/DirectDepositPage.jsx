@@ -4,7 +4,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { 
   Landmark, CreditCard, DollarSign, PenTool, Eraser, 
   Save, Loader2, CheckCircle, ShieldCheck, 
-  Zap, FileCheck, Sparkles, UploadCloud, Plus, Trash2, 
+  Zap, FileCheck, UploadCloud, Plus, Trash2, 
   AlertTriangle, User, XCircle, Check, ArrowRight, RotateCcw, Shield
 } from 'lucide-react';
 import api from '../../api';

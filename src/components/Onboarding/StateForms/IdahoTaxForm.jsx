@@ -3,7 +3,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { 
   User, Shield, DollarSign, Calendar, ChevronLeft, ChevronRight, ChevronDown, 
   Eraser, Save, PenTool, FileText, Calculator, Building2, CheckCircle2, 
-  AlertCircle, Sparkles, HelpCircle, Briefcase, Info, X
+  AlertCircle, HelpCircle, Briefcase, Info, X
 } from 'lucide-react';
 import StunningSelect from '../../common/StunningSelect';
 import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';
@@ -815,7 +815,7 @@ const IdahoTaxForm = ({ initialData, onSubmit }) => {
           <div className={`p-5 rounded-2xl border sticky top-6 ${cardBg}`}>
             <div className="flex items-center gap-2.5 pb-3 mb-4 border-b border-zinc-200/50 dark:border-zinc-800/80">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-500/10 text-blue-500">
-                <Sparkles size={18} />
+                <FileText size={18} />
               </div>
               <div>
                 <h3 className="text-sm font-extrabold tracking-tight">Form ID W-4 Summary</h3>

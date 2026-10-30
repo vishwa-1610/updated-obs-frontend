@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { 
-  Sliders, FileText, CheckCircle2, Shield, Sparkles, Plus, 
+  Sliders, FileText, CheckCircle2, Shield, Plus, 
   Search, Filter, Edit3, Trash2, Eye, Play, Download, 
   Layers, MapPin, Check, X, ChevronRight, Hash, Database,
   ArrowRight, FileSpreadsheet, Lock, AlertCircle, RefreshCw,
@@ -857,7 +857,7 @@ const RuleEngine = () => {
                   isDarkMode ? 'bg-[#121217] border-[#27272a]' : 'bg-white border-slate-200 shadow-xs'
                 }`}>
                   <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mb-2 flex items-center gap-2">
-                    <Sparkles size={14} className="text-amber-400" />
+                    <Sliders size={14} className="text-amber-400" />
                     <span>Quick Field Presets</span>
                   </h4>
                   <p className="text-[11px] text-slate-400 mb-3">1-click create standard onboarding field coordinates.</p>

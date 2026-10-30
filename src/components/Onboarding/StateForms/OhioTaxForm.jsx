@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { 
   User, Shield, DollarSign, Calendar, Eraser, PenTool, FileText, Calculator, 
-  Loader2, XCircle, CheckCircle2, AlertTriangle, Info, Sparkles, Building2, 
+  Loader2, XCircle, CheckCircle2, AlertTriangle, Info, Building2, 
   MapPin, Check, HeartHandshake, HelpCircle, ArrowRight, RefreshCw, Landmark, ExternalLink
 } from 'lucide-react';
 import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';

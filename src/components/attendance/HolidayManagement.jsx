@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Calendar, Plus, Trash2, CheckCircle2, Sparkles, 
-  Clock, Flag, Sun, PartyPopper
+  Calendar, Plus, Trash2, CheckCircle2, Clock, Flag, Sun, PartyPopper
 } from 'lucide-react';
 import { useTheme } from '../Theme/ThemeProvider';
 import { attendanceService } from '../../services/attendanceService';

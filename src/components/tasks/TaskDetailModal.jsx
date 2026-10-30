@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, Clock, Calendar, CheckSquare, Square, MessageSquare, Send, 
   Play, Pause, Trash2, Edit2, User, Flag, Tag, Paperclip, 
-  CheckCircle2, AlertCircle, RefreshCw, Sparkles, Plus, Check, ChevronDown
+  CheckCircle2, AlertCircle, RefreshCw, Plus, Check, ChevronDown
 } from 'lucide-react';
 import { useTheme } from '../Theme/ThemeProvider';
 import { taskService } from '../../services/taskService';

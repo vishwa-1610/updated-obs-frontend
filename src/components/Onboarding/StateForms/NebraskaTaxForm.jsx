@@ -3,7 +3,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { 
   User, Shield, DollarSign, Calendar, ChevronDown, ChevronLeft, ChevronRight,
   Eraser, Save, PenTool, FileText, Calculator, Loader2, XCircle, CheckCircle2,
-  AlertTriangle, Info, Sparkles, Building2, MapPin, Check, HeartHandshake,
+  AlertTriangle, Info, Building2, MapPin, Check, HeartHandshake,
   HelpCircle, ArrowRight, CreditCard, Flag, Award, RefreshCw, ChevronUp
 } from 'lucide-react';
 import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';
@@ -456,7 +456,6 @@ const NebraskaTaxForm = ({ initialData, onSubmit, isSubmitting = false }) => {
               color: activeHexColor
             }}
           >
-            <Sparkles size={14} />
             Autofill Sample
           </button>
         </div>

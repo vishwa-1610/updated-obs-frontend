@@ -2,10 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { 
   FileText, Plus, Search, Filter, RefreshCw, Eye, Edit3, Trash2, 
-  Copy, Send, Download, Sparkles, CheckCircle2, AlertTriangle, AlertCircle,
+  Copy, Send, Download, CheckCircle2, AlertTriangle, AlertCircle,
   X, Globe, Building, Briefcase, Mail, Layers, Layout, Palette, 
   Check, ArrowRight, ShieldCheck, Tag, ExternalLink, Code, FileDown, 
-  Play, Smartphone, Monitor, CheckSquare, Sparkle, Compass, Bookmark
+  Play, Smartphone, Monitor, CheckSquare, Compass, Bookmark
 } from 'lucide-react';
 import { useTheme } from '../Theme/ThemeProvider';
 import { StunningSelect } from '../tasks/StunningSelect';
@@ -489,7 +489,7 @@ export default function Templates() {
               isDarkMode ? 'bg-[#121217] border-zinc-800 text-zinc-300 hover:text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs'
             }`}
           >
-            <Sparkles size={14} className="text-amber-400" />
+            <Layers size={14} className="text-amber-400" />
             <span>Preset Library</span>
           </button>
 
@@ -509,7 +509,7 @@ export default function Templates() {
           { label: 'Total Templates', value: templates.length, icon: FileText, color: 'text-blue-500', bg: 'bg-blue-500/10', sub: 'In Library' },
           { label: 'Active in Production', value: templates.filter(t => t.is_active).length, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10', sub: 'Ready to Dispatch' },
           { label: 'Default Blueprints', value: templates.filter(t => t.is_default).length, icon: Bookmark, color: 'text-purple-500', bg: 'bg-purple-500/10', sub: 'Category Primaries' },
-          { label: 'Starter Presets', value: presets.length || 5, icon: Sparkle, color: 'text-amber-500', bg: 'bg-amber-500/10', sub: '1-Click Cloneable' },
+          { label: 'Starter Presets', value: presets.length || 5, icon: Layers, color: 'text-amber-500', bg: 'bg-amber-500/10', sub: '1-Click Cloneable' },
           { label: 'Client Specific', value: templates.filter(t => t.client_name).length, icon: Briefcase, color: 'text-cyan-500', bg: 'bg-cyan-500/10', sub: 'Branded Accounts' },
           { label: 'Merge Engine', value: '100% Ready', icon: Code, color: 'text-teal-500', bg: 'bg-teal-500/10', sub: 'Auto-Injected' },
         ].map((card, idx) => {
@@ -544,7 +544,7 @@ export default function Templates() {
       }`}>
         {[
           { id: 'TEMPLATES', label: 'All Company Templates', icon: Layers, count: templates.length },
-          { id: 'PRESETS', label: 'Preset Blueprint Library', icon: Sparkles, count: presets.length || 5 },
+          { id: 'PRESETS', label: 'Preset Blueprint Library', icon: Layers, count: presets.length || 5 },
           { id: 'STUDIO', label: 'Merge Tag Studio & Playground', icon: Code },
         ].map((tab) => {
           const Icon = tab.icon;

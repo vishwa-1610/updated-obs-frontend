@@ -3,7 +3,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { 
   User, Shield, DollarSign, Calendar, ChevronLeft, ChevronRight, ChevronDown, 
   Eraser, Save, PenTool, FileText, Calculator, Building2, CheckCircle2, 
-  AlertCircle, Sparkles, HelpCircle
+  AlertCircle, HelpCircle
 } from 'lucide-react';
 import StunningSelect from '../../common/StunningSelect';
 import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';
@@ -264,7 +264,7 @@ const HawaiiTaxForm = ({ initialData, onSubmit }) => {
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-xl border self-start sm:self-auto bg-blue-500/5 text-blue-500 border-blue-500/20">
-            <Sparkles size={14} />
+            <ShieldCheck size={14} />
             <span>Official State Withholding</span>
           </div>
         </div>

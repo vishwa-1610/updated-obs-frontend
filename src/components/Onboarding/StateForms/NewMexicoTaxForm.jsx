@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { 
   User, Shield, DollarSign, Calendar, Eraser, PenTool, FileText, Calculator, 
-  Loader2, XCircle, CheckCircle2, AlertTriangle, Info, Sparkles, Building2, 
+  Loader2, XCircle, CheckCircle2, AlertTriangle, Info, Building2, 
   MapPin, Check, HeartHandshake, HelpCircle, ArrowRight, RefreshCw, Sun, Users
 } from 'lucide-react';
 import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';
@@ -294,7 +294,7 @@ const NewMexicoTaxForm = ({ initialData = {}, onSubmit }) => {
 
         {/* Prominent NM TRD Banner Indicator */}
         <div className="mt-4 p-3 rounded-xl border flex items-center gap-3 bg-amber-500/10 border-amber-500/25 text-amber-600 dark:text-amber-400">
-          <Sparkles size={16} className="shrink-0" />
+          <Info size={16} className="shrink-0" />
           <p className="text-xs font-bold">
             *** FOR NEW MEXICO STATE WITHHOLDING ONLY *** &mdash; Your selections will be stamped directly on your official state certificate copy.
           </p>
