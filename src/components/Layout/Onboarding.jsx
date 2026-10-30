@@ -1218,7 +1218,9 @@ export default function Onboarding() {
               <tbody className={`divide-y ${isDarkMode ? 'divide-zinc-800/60' : 'divide-slate-100'}`}>
                 {(allOnboardings || []).map((c) => (
                   <tr key={c.id} className={isDarkMode ? 'hover:bg-zinc-800/30' : 'hover:bg-slate-50'}>
-                    <td className="py-3.5 px-4 font-semibold">{c.first_name} {c.last_name}</td>
+                    <td className="py-3.5 px-4 font-semibold cursor-pointer hover:underline text-blue-500" onClick={() => handleOpenDetail(c)}>
+                      {c.first_name} {c.last_name}
+                    </td>
                     <td className="py-3.5 px-4">
                       <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
                         isDarkMode ? 'bg-zinc-800 text-zinc-300' : 'bg-slate-100 text-slate-700'
@@ -1244,16 +1246,27 @@ export default function Onboarding() {
                     </td>
                     <td className="py-3.5 px-4">{getStatusBadge(c.status)}</td>
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => {
-                          setSelectedCandidate(c);
-                          setIsI9VerifyModalOpen(true);
-                        }}
-                        style={{ backgroundColor: `${activeHexColor}15`, color: activeHexColor, borderColor: `${activeHexColor}30` }}
-                        className="px-3 py-1.5 rounded-xl border text-xs font-semibold hover:opacity-90 transition-all"
-                      >
-                        Verify Section 2
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleOpenDetail(c)}
+                          title="View Candidate Details & Form I-9"
+                          className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                            isDarkMode ? 'bg-zinc-800 border-zinc-700/60 text-zinc-300 hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedCandidate(c);
+                            setIsI9VerifyModalOpen(true);
+                          }}
+                          style={{ backgroundColor: `${activeHexColor}15`, color: activeHexColor, borderColor: `${activeHexColor}30` }}
+                          className="px-3 py-1.5 rounded-xl border text-xs font-semibold hover:opacity-90 transition-all cursor-pointer"
+                        >
+                          Verify Section 2
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

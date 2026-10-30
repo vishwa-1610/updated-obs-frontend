@@ -6,7 +6,7 @@ import {
   ShieldCheck, Eye, EyeOff, ExternalLink, CheckCircle2, AlertCircle,
   FileCheck2, Shield, X, ChevronRight, Building2, Check, Globe,
   Send, UserCheck, Loader2, Edit3, Save, RefreshCw, Layers, DollarSign,
-  Sliders, ArrowRight
+  Sliders, ArrowRight, Clock
 } from 'lucide-react';
 import { useTheme } from '../Theme/ThemeProvider';
 import { fetchBankDetails, clearBankDetails } from '../../store/onboardingSlice';
@@ -105,6 +105,7 @@ const OnboardingDetailsModal = ({
   const [extraDetails, setExtraDetails] = useState(null);
   const [loadingExtra, setLoadingExtra] = useState(false);
   const [revealedBankFields, setRevealedBankFields] = useState({});
+  const [showInlineI9Preview, setShowInlineI9Preview] = useState(false);
   const { isDarkMode, accentColor, themeColors } = useTheme();
   const dispatch = useDispatch();
 
@@ -286,6 +287,35 @@ const OnboardingDetailsModal = ({
       ...(extraDetails || {}),
     };
   }, [onboarding, extraDetails]);
+
+  // Comprehensive Form I-9 PDF URL Resolver
+  const resolvedI9PdfUrl = useMemo(() => {
+    if (!data) return null;
+    const direct = data.i9_pdf 
+      || data.i9_data?.pdf_file 
+      || data.i9_data?.pdf_url 
+      || data.confirmed_onboarding?.i9_pdf
+      || data.i9_form?.pdf_file;
+    if (direct) return formatPdfUrl(direct);
+
+    if (Array.isArray(data.all_documents)) {
+      const match = data.all_documents.find(d => 
+        d.id === 'i9_form' || 
+        (d.name && (d.name.toLowerCase().includes('i-9') || d.name.toLowerCase().includes('i9'))) || 
+        (d.url && (d.url.toLowerCase().includes('i9') || d.url.toLowerCase().includes('i-9')))
+      );
+      if (match?.url) return formatPdfUrl(match.url);
+    }
+
+    if (Array.isArray(data.filled_documents)) {
+      const match = data.filled_documents.find(d => 
+        d.filled_file && (d.filled_file.toLowerCase().includes('i9') || d.filled_file.toLowerCase().includes('i-9'))
+      );
+      if (match?.filled_file) return formatPdfUrl(match.filled_file);
+    }
+
+    return null;
+  }, [data]);
 
   // Initialize edit form values from current data
   const initEditFormState = (candidateData) => {
@@ -639,15 +669,13 @@ const OnboardingDetailsModal = ({
       });
     }
 
-    const rawI9Url = data.i9_pdf || data.i9_data?.pdf_file;
-    const i9Url = formatPdfUrl(rawI9Url);
-    if (i9Url) {
+    if (resolvedI9PdfUrl) {
       docs.push({
         id: 'i9_form',
-        name: 'USCIS Form I-9 (Employment Eligibility)',
+        name: 'USCIS Form I-9 (Employment Eligibility Verification)',
         type: 'Compliance',
-        url: i9Url,
-        status: data.i9_data?.status || 'Signed'
+        url: resolvedI9PdfUrl,
+        status: data.i9_data?.status === 'EMPLOYER_VERIFIED' ? 'Section 2 Verified' : (data.i9_data?.status || 'Signed')
       });
     }
 
@@ -667,7 +695,7 @@ const OnboardingDetailsModal = ({
     }
 
     return docs;
-  }, [data]);
+  }, [data, resolvedI9PdfUrl]);
 
   // Unified Bank Accounts List
   const allBankAccounts = useMemo(() => {
@@ -735,14 +763,14 @@ const OnboardingDetailsModal = ({
       { id: 'details', label: 'Candidate Info', icon: User, count: null },
       { id: 'job', label: 'Assignment & Job', icon: Briefcase, count: null },
       { id: 'tax', label: 'Tax & Withholding (W-4)', icon: FileCheck2, count: null },
-      { id: 'i9', label: 'USCIS Form I-9', icon: ShieldCheck, count: null },
+      { id: 'i9', label: 'USCIS Form I-9', icon: ShieldCheck, count: resolvedI9PdfUrl ? 'PDF' : null },
       { id: 'bank', label: 'Direct Deposit', icon: Landmark, count: allBankAccounts.length || null },
       { id: 'emergency', label: 'Emergency Contacts', icon: Users, count: allEmergencyContacts.length || null },
       { id: 'documents', label: 'All Documents (PDFs)', icon: FileText, count: documentsList.length || null },
     ];
 
     return list;
-  }, [data, allBankAccounts, allEmergencyContacts, documentsList]);
+  }, [data, allBankAccounts, allEmergencyContacts, documentsList, resolvedI9PdfUrl]);
 
   if (!data || !isOpen) return null;
 
@@ -781,20 +809,51 @@ const OnboardingDetailsModal = ({
               <Calendar size={13} className="text-blue-500" />
               <span>Signed: {data.confirmation_date || data.completed_at || data.start_date || 'Enrolled'}</span>
             </div>
-            {(data.federal_w4_pdf || data.w4_pdf || data.i9_pdf) && (
+
+            {/* Direct Form I-9 Actions in Details Banner */}
+            {resolvedI9PdfUrl && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleOpenPdfPreview(resolvedI9PdfUrl, `USCIS Form I-9 - ${data.first_name || ''} ${data.last_name || ''}`)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-purple-600 dark:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  title="View Filled USCIS Form I-9"
+                >
+                  <Eye size={13} />
+                  <span>View Form I-9</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadFile(
+                    resolvedI9PdfUrl,
+                    `${data.first_name || 'Candidate'}_${data.last_name || ''}_USCIS_Form_I9.pdf`,
+                    'details_i9_cert'
+                  )}
+                  disabled={downloadingDocId === 'details_i9_cert'}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-500 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+                  title="Download Signed USCIS Form I-9 PDF"
+                >
+                  {downloadingDocId === 'details_i9_cert' ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                  <span>Download I-9</span>
+                </button>
+              </>
+            )}
+
+            {/* Direct Federal W-4 Actions */}
+            {(data.federal_w4_pdf || data.w4_pdf) && (
               <button
                 type="button"
                 onClick={() => handleDownloadFile(
-                  data.federal_w4_pdf || data.w4_pdf || data.i9_pdf,
-                  `${data.first_name || 'Candidate'}_${data.last_name || ''}_Signed_Compliance_Form.pdf`,
-                  'details_cert'
+                  data.federal_w4_pdf || data.w4_pdf,
+                  `${data.first_name || 'Candidate'}_${data.last_name || ''}_IRS_Form_W4.pdf`,
+                  'details_w4_cert'
                 )}
-                disabled={downloadingDocId === 'details_cert'}
+                disabled={downloadingDocId === 'details_w4_cert'}
                 className="px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
-                title="Download Signed Tax & Compliance Form"
+                title="Download Signed IRS Form W-4 PDF"
               >
-                {downloadingDocId === 'details_cert' ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                <span>Download Form</span>
+                {downloadingDocId === 'details_w4_cert' ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                <span>Download W-4</span>
               </button>
             )}
           </div>
@@ -843,6 +902,111 @@ const OnboardingDetailsModal = ({
           <DetailItem icon={MapPin} label="City" value={data.city} isDarkMode={isDarkMode} />
           <DetailItem icon={MapPin} label="State" value={data.state} isDarkMode={isDarkMode} />
           <DetailItem icon={Hash} label="Zip Code" value={data.zipcode} isDarkMode={isDarkMode} />
+        </div>
+      </div>
+
+      {/* USCIS FORM I-9 COMPLIANCE & ELIGIBILITY VERIFICATION CARD */}
+      <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${
+        isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-white border-slate-200/80 shadow-sm'
+      }`}>
+        <div className={`flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 mb-4 border-b gap-3 ${
+          isDarkMode ? 'border-zinc-800' : 'border-slate-100'
+        }`}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center font-bold text-xs shrink-0">
+              <ShieldCheck size={18} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-sm">USCIS Form I-9 (Employment Eligibility Verification)</h3>
+                {data.i9_data?.status === 'EMPLOYER_VERIFIED' ? (
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 flex items-center gap-1">
+                    <CheckCircle2 size={11} /> Section 2 Verified
+                  </span>
+                ) : resolvedI9PdfUrl ? (
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-blue-500/15 text-blue-500 border border-blue-500/30 flex items-center gap-1">
+                    <Check size={11} /> Section 1 Signed
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-amber-500/15 text-amber-500 border border-amber-500/30 flex items-center gap-1">
+                    <Clock size={11} /> Pending Submission
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-zinc-400">Department of Homeland Security statutory work authorization record</p>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {resolvedI9PdfUrl ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleOpenPdfPreview(resolvedI9PdfUrl, `USCIS Form I-9 - ${data.first_name || ''} ${data.last_name || ''}`)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 border border-purple-500/20 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  title="View Filled USCIS Form I-9 PDF"
+                >
+                  <Eye size={13} />
+                  <span>View Filled I-9</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadFile(
+                    resolvedI9PdfUrl,
+                    `${data.first_name || 'Candidate'}_${data.last_name || ''}_USCIS_Form_I9.pdf`,
+                    'card_i9_download'
+                  )}
+                  disabled={downloadingDocId === 'card_i9_download'}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+                  title="Download Official Filled USCIS Form I-9 PDF"
+                >
+                  {downloadingDocId === 'card_i9_download' ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                  <span>Download I-9 PDF</span>
+                </button>
+              </>
+            ) : (
+              <span className="text-xs text-amber-500 italic">Form I-9 PDF not yet generated</span>
+            )}
+            <button
+              type="button"
+              onClick={() => setActiveTab('i9')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                isDarkMode ? 'bg-zinc-800/80 border-zinc-700 hover:bg-zinc-700 text-zinc-300' : 'bg-slate-100 border-slate-200 hover:bg-slate-200 text-slate-700'
+              }`}
+            >
+              <span>Full I-9 Tab</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
+        </div>
+
+        {/* Candidate I-9 Parameters Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+          <DetailItem 
+            icon={ShieldCheck} 
+            label="Citizenship Status" 
+            value={data.i9_data?.citizenship_status ? data.i9_data.citizenship_status.replace(/_/g, ' ').toUpperCase() : (data.citizenship_status ? String(data.citizenship_status).replace(/_/g, ' ').toUpperCase() : 'U.S. Citizen')} 
+            isDarkMode={isDarkMode} 
+          />
+          <DetailItem 
+            icon={FileText} 
+            label="Verification Document Choice" 
+            value={data.i9_data?.document_list_type === 'A' ? 'List A (Identity & Work Auth)' : (data.i9_data?.document_list_type === 'BC' ? 'List B & C (Combined Documents)' : 'Standard Document Verification')} 
+            isDarkMode={isDarkMode} 
+          />
+          <DetailItem 
+            icon={Calendar} 
+            label="Section 1 Signed Date" 
+            value={data.i9_data?.signature_date || data.confirmation_date || data.completed_at || 'Completed'} 
+            isDarkMode={isDarkMode} 
+          />
+          <DetailItem 
+            icon={Building2} 
+            label="Section 2 Verification" 
+            value={data.i9_data?.status === 'EMPLOYER_VERIFIED' ? 'Verified by Employer' : 'Pending Employer Verification'} 
+            isDarkMode={isDarkMode} 
+          />
         </div>
       </div>
     </div>
@@ -1076,63 +1240,213 @@ const OnboardingDetailsModal = ({
 
   const renderI9Info = () => {
     const i9 = data.i9_data || {};
-    const rawI9 = data.i9_pdf || i9.pdf_file;
+    const isEmployerVerified = i9.status === 'EMPLOYER_VERIFIED';
+    const rawI9 = resolvedI9PdfUrl;
+
     return (
       <div className="space-y-4">
+        {/* TOP DOCUMENT BANNER & ACTIONS */}
         <div className={`p-5 rounded-2xl border transition-all ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-white border-slate-200/80 shadow-sm'}`}>
-          <div className={`flex items-center justify-between pb-3.5 mb-4 border-b ${isDarkMode ? 'border-zinc-800' : 'border-slate-100'}`}>
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center font-bold text-xs">
-                <ShieldCheck size={16} />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 mb-4 border-b border-zinc-800/40 gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center font-bold text-base shrink-0 border border-purple-500/20">
+                <ShieldCheck size={20} />
               </div>
               <div>
-                <h3 className="font-bold text-sm">USCIS Form I-9 (Employment Eligibility)</h3>
-                <p className="text-[11px] text-zinc-400">Section 1 & 2 Verification Status</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-bold text-sm">USCIS Form I-9 (Employment Eligibility Verification)</h3>
+                  {isEmployerVerified ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 flex items-center gap-1">
+                      <CheckCircle2 size={11} /> Employer Verified & Sealed
+                    </span>
+                  ) : rawI9 ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-amber-500/15 text-amber-500 border border-amber-500/30 flex items-center gap-1">
+                      <Clock size={11} /> Section 1 Signed • Pending Section 2
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-zinc-500/15 text-zinc-400 border border-zinc-500/30">
+                      Draft / Incomplete
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-400 mt-0.5">Form Version: Edition 08/01/23 • OMB No. 1615-0047 • Valid through 07/31/2026</p>
               </div>
             </div>
-            {rawI9 && (
-              <div className="flex items-center gap-1.5">
+
+            {/* Top Action Buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {rawI9 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPdfPreview(rawI9, `USCIS Form I-9 - ${data.first_name || ''} ${data.last_name || ''}`)}
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 border border-purple-500/20 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    title="View Filled USCIS Form I-9"
+                  >
+                    <Eye size={13} />
+                    <span>View I-9 PDF</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadFile(rawI9, `${data.first_name || 'Candidate'}_${data.last_name || ''}_USCIS_Form_I9.pdf`, 'i9_tab_pdf')}
+                    disabled={downloadingDocId === 'i9_tab_pdf'}
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+                    title="Download USCIS Form I-9 directly"
+                  >
+                    {downloadingDocId === 'i9_tab_pdf' ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                    <span>Download I-9</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowInlineI9Preview(prev => !prev)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                      showInlineI9Preview 
+                        ? 'bg-purple-500 text-white border-purple-500' 
+                        : isDarkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-700'
+                    }`}
+                    title="Toggle embedded document preview"
+                  >
+                    <Layers size={13} />
+                    <span>{showInlineI9Preview ? 'Hide Inline Viewer' : 'Inline Viewer'}</span>
+                  </button>
+                </>
+              )}
+              {onVerifyI9 && !isEmployerVerified && (
                 <button
                   type="button"
-                  onClick={() => handleOpenPdfPreview(rawI9, "USCIS Form I-9")}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
-                  title="View USCIS Form I-9"
+                  onClick={onVerifyI9}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
                 >
-                  <Eye size={13} /> View I-9 PDF
+                  <ShieldCheck size={14} />
+                  <span>Verify Section 2</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleDownloadFile(rawI9, `${data.first_name || 'Candidate'}_${data.last_name || ''}_USCIS_Form_I9.pdf`, 'i9_pdf')}
-                  disabled={downloadingDocId === 'i9_pdf'}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  title="Download USCIS Form I-9"
-                >
-                  {downloadingDocId === 'i9_pdf' ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                  Download
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-            <DetailItem icon={ShieldCheck} label="Citizenship Status" value={i9.citizenship_status ? i9.citizenship_status.replace(/_/g, ' ').toUpperCase() : 'Citizen'} isDarkMode={isDarkMode} />
-            <DetailItem icon={FileText} label="Document List Choice" value={i9.document_list_type === 'A' ? 'List A (Identity & Work Auth)' : 'List B & C (Combined)'} isDarkMode={isDarkMode} />
-            <DetailItem icon={Calendar} label="e-Signature Date" value={i9.signature_date || data.confirmation_date} isDarkMode={isDarkMode} />
-            
-            {i9.document_list_type === 'A' ? (
-              <>
-                <DetailItem icon={FileText} label="List A: Doc Title" value={i9.document_title} isDarkMode={isDarkMode} />
-                <DetailItem icon={Hash} label="List A: Doc Number" value={i9.document_number} isDarkMode={isDarkMode} />
-                <DetailItem icon={Calendar} label="List A: Expiration" value={i9.expiration_date} isDarkMode={isDarkMode} />
-                <DetailItem icon={Building2} label="List A: Authority" value={i9.issuing_authority} isDarkMode={isDarkMode} />
-              </>
+          {/* INLINE EMBEDDED PDF PREVIEW IF TOGGLED */}
+          {showInlineI9Preview && rawI9 && (
+            <div className="mb-5 rounded-2xl overflow-hidden border border-purple-500/30 bg-slate-950 p-2 shadow-inner">
+              <div className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-purple-300 border-b border-zinc-800 mb-2">
+                <span className="flex items-center gap-1.5">
+                  <FileText size={14} /> Official Filled USCIS Form I-9 Document Stream
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowInlineI9Preview(false)}
+                  className="text-zinc-400 hover:text-white cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <iframe
+                src={`${rawI9}#toolbar=1&navpanes=0`}
+                title="USCIS Form I-9 Inline Preview"
+                className="w-full h-[650px] rounded-xl border-none"
+              />
+            </div>
+          )}
+
+          {/* SECTION 1: CANDIDATE INFORMATION AND ATTESTATION */}
+          <div className="mb-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-400 font-bold text-[10px] flex items-center justify-center">1</span>
+              <h4 className="font-bold text-xs uppercase tracking-wider text-purple-400">
+                Section 1: Employee Information and Attestation
+              </h4>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+              <DetailItem icon={User} label="Legal Full Name" value={`${data.first_name || ''} ${data.middle_initial || ''} ${data.last_name || ''}`.trim()} isDarkMode={isDarkMode} />
+              <DetailItem icon={Calendar} label="Date of Birth" value={data.dob || data.date_of_birth} isDarkMode={isDarkMode} />
+              <DetailItem icon={Hash} label="Social Security Number (SSN)" value={data.ssn ? `•••-••-${String(data.ssn).slice(-4)}` : null} isDarkMode={isDarkMode} />
+              <DetailItem icon={ShieldCheck} label="Citizenship Status" value={i9.citizenship_status ? i9.citizenship_status.replace(/_/g, ' ').toUpperCase() : 'U.S. Citizen'} isDarkMode={isDarkMode} />
+              
+              {i9.uscis_a_number && (
+                <DetailItem icon={Hash} label="USCIS A-Number" value={i9.uscis_a_number} isDarkMode={isDarkMode} />
+              )}
+              {i9.form_i94_number && (
+                <DetailItem icon={Hash} label="Form I-94 Number" value={i9.form_i94_number} isDarkMode={isDarkMode} />
+              )}
+              {i9.foreign_passport_number && (
+                <DetailItem icon={Hash} label="Foreign Passport #" value={i9.foreign_passport_number} isDarkMode={isDarkMode} />
+              )}
+              {i9.country_of_issuance && (
+                <DetailItem icon={Globe} label="Country of Issuance" value={i9.country_of_issuance} isDarkMode={isDarkMode} />
+              )}
+
+              <DetailItem icon={Home} label="Residential Address" value={`${data.address || ''}, ${data.city || ''}, ${data.state || ''} ${data.zipcode || ''}`} isDarkMode={isDarkMode} fullWidth />
+              <DetailItem icon={Calendar} label="Section 1 Signed Date" value={i9.signature_date || data.confirmation_date || 'Digitally Signed'} isDarkMode={isDarkMode} />
+              <DetailItem icon={ShieldCheck} label="Attestation Status" value="Electronically Certified" isDarkMode={isDarkMode} />
+            </div>
+          </div>
+
+          {/* SECTION 2: EMPLOYER OR AUTHORIZED REPRESENTATIVE VERIFICATION */}
+          <div className={`pt-4 border-t ${isDarkMode ? 'border-zinc-800/80' : 'border-slate-100'}`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-[10px] flex items-center justify-center">2</span>
+                <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-500">
+                  Section 2: Employer Review and Verification
+                </h4>
+              </div>
+              <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                isEmployerVerified ? 'bg-emerald-500/15 text-emerald-500' : 'bg-amber-500/15 text-amber-500'
+              }`}>
+                {isEmployerVerified ? 'Verified & Audited' : 'Pending Verification'}
+              </span>
+            </div>
+
+            {isEmployerVerified ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+                <DetailItem icon={FileText} label="Document List Choice" value={i9.document_list_type === 'A' ? 'List A (Identity & Work Auth)' : 'List B & C (Combined)'} isDarkMode={isDarkMode} />
+                
+                {i9.document_list_type === 'A' ? (
+                  <>
+                    <DetailItem icon={FileText} label="List A: Doc Title" value={i9.document_title} isDarkMode={isDarkMode} />
+                    <DetailItem icon={Hash} label="List A: Doc Number" value={i9.document_number} isDarkMode={isDarkMode} />
+                    <DetailItem icon={Calendar} label="List A: Expiration" value={i9.expiration_date} isDarkMode={isDarkMode} />
+                    <DetailItem icon={Building2} label="List A: Authority" value={i9.issuing_authority} isDarkMode={isDarkMode} />
+                  </>
+                ) : (
+                  <>
+                    <DetailItem icon={FileText} label="List B: Title" value={i9.doc_b_title || i9.document_title} isDarkMode={isDarkMode} />
+                    <DetailItem icon={Hash} label="List B: Number" value={i9.doc_b_number || i9.document_number} isDarkMode={isDarkMode} />
+                    <DetailItem icon={FileText} label="List C: Title" value={i9.doc_c_title} isDarkMode={isDarkMode} />
+                    <DetailItem icon={Hash} label="List C: Number" value={i9.doc_c_number} isDarkMode={isDarkMode} />
+                  </>
+                )}
+
+                <DetailItem icon={UserCheck} label="Employer Representative" value={i9.employer_rep_name || i9.employer_representative_name || i9.verified_by || 'HR Administrator'} isDarkMode={isDarkMode} />
+                <DetailItem icon={Briefcase} label="Representative Title" value={i9.employer_rep_title || i9.employer_title || 'HR Compliance Specialist'} isDarkMode={isDarkMode} />
+                <DetailItem icon={Building2} label="Business Name" value={i9.employer_business_name || 'Tech Innovators Inc'} isDarkMode={isDarkMode} />
+                <DetailItem icon={Calendar} label="Verification Date" value={i9.verification_date || i9.employer_signature_date || data.confirmation_date} isDarkMode={isDarkMode} />
+                {i9.verification_method && (
+                  <DetailItem icon={ShieldCheck} label="Verification Method" value={i9.verification_method} isDarkMode={isDarkMode} />
+                )}
+              </div>
             ) : (
-              <>
-                <DetailItem icon={FileText} label="List B: Title" value={i9.doc_b_title || i9.document_title} isDarkMode={isDarkMode} />
-                <DetailItem icon={Hash} label="List B: Number" value={i9.doc_b_number || i9.document_number} isDarkMode={isDarkMode} />
-                <DetailItem icon={FileText} label="List C: Title" value={i9.doc_c_title} isDarkMode={isDarkMode} />
-                <DetailItem icon={Hash} label="List C: Number" value={i9.doc_c_number} isDarkMode={isDarkMode} />
-              </>
+              <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                isDarkMode ? 'bg-amber-950/20 border-amber-900/40 text-amber-200' : 'bg-amber-50 border-amber-200 text-amber-800'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <AlertCircle size={20} className="text-amber-500 shrink-0" />
+                  <div>
+                    <h5 className="font-bold text-xs">Section 2 Employer Review Required</h5>
+                    <p className="text-[11px] opacity-80 mt-0.5">
+                      The candidate has completed Section 1. An authorized employer representative must examine original identity and work authorization documents and complete Section 2 within 3 business days of first day of employment.
+                    </p>
+                  </div>
+                </div>
+                {onVerifyI9 && (
+                  <button
+                    type="button"
+                    onClick={onVerifyI9}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-amber-600 hover:bg-amber-500 transition-all shrink-0 cursor-pointer shadow-sm"
+                  >
+                    Complete Section 2 Now
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
