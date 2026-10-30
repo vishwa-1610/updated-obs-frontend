@@ -16,13 +16,22 @@ import StateTaxFormDispatcher from './StateForms/StateTaxFormDispatcher';
 // Helper to ensure full backend URL for media PDFs
 const formatPdfUrl = (url) => {
   if (!url) return null;
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
-    return url;
-  }
+  if (url.startsWith('blob:')) return url;
   const { hostname, protocol } = window.location;
   let backendOrigin = `${protocol}//${hostname}:8000`;
   if (hostname.includes('obs.tiswatech.com')) {
     backendOrigin = `https://${hostname.replace('obs.tiswatech.com', 'secureobs.tiswatech.com')}`;
+  }
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    if (hostname.endsWith('.lvh.me')) {
+      try {
+        const parsed = new URL(url);
+        if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+          return `${protocol}//${hostname}:8000${parsed.pathname}${parsed.search}`;
+        }
+      } catch (e) {}
+    }
+    return url;
   }
   const cleanPath = url.startsWith('/') ? url : `/${url}`;
   return `${backendOrigin}${cleanPath}`;
@@ -142,6 +151,87 @@ const OnboardingDetailsModal = ({
     }
     setPreviewBlobUrl(null);
     setPreviewPdfUrl(null);
+  };
+
+  const [downloadingDocId, setDownloadingDocId] = useState(null);
+
+  // Direct Programmatic Download Handler
+  // Fetches binary blob directly to prevent cross-origin browser navigation to next tab
+  const handleDownloadFile = async (url, desiredFilename = 'document.pdf', docId = null) => {
+    const fullUrl = formatPdfUrl(url);
+    if (!fullUrl) return;
+
+    if (docId) setDownloadingDocId(docId);
+
+    const sanitizeFilename = (name) => {
+      let clean = (name || 'document.pdf').trim().replace(/[/\\?%*:|"<>]/g, '_');
+      if (!clean.toLowerCase().endsWith('.pdf') && !clean.includes('.')) {
+        clean += '.pdf';
+      }
+      return clean;
+    };
+
+    const finalFilename = sanitizeFilename(desiredFilename);
+
+    try {
+      // 1. If already a blob URL (e.g. from preview modal cache), trigger instant download
+      if (fullUrl.startsWith('blob:')) {
+        const link = document.createElement('a');
+        link.href = fullUrl;
+        link.download = finalFilename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        return;
+      }
+
+      // 2. Fetch binary stream directly to create a local same-origin Blob
+      const token = localStorage.getItem('access');
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(fullUrl, { headers });
+      if (!res.ok) {
+        throw new Error(`Download HTTP error ${res.status}`);
+      }
+      const blob = await res.blob();
+      const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+      const localBlobUrl = window.URL.createObjectURL(pdfBlob);
+
+      const link = document.createElement('a');
+      link.href = localBlobUrl;
+      link.download = finalFilename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => {
+        window.URL.revokeObjectURL(localBlobUrl);
+      }, 5000);
+    } catch (err) {
+      console.warn('Direct blob fetch download failed, attempting Axios fallback:', err);
+      try {
+        const response = await api.get(fullUrl, { responseType: 'blob' });
+        const localBlobUrl = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+        const link = document.createElement('a');
+        link.href = localBlobUrl;
+        link.download = finalFilename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => window.URL.revokeObjectURL(localBlobUrl), 5000);
+      } catch (fallbackErr) {
+        console.error('All download mechanisms failed, direct anchor fallback:', fallbackErr);
+        const link = document.createElement('a');
+        link.href = fullUrl;
+        link.download = finalFilename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+    } finally {
+      if (docId) setDownloadingDocId(null);
+    }
   };
 
   // 1. SELECT BANK DATA FROM STORE
@@ -684,13 +774,29 @@ const OnboardingDetailsModal = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto text-xs font-mono">
+          <div className="flex items-center gap-2 self-end sm:self-auto text-xs font-mono flex-wrap">
             <div className={`px-3 py-1.5 rounded-xl border text-[11px] flex items-center gap-1.5 ${
               isDarkMode ? 'bg-zinc-800/80 border-zinc-700 text-zinc-300' : 'bg-white border-slate-200 text-slate-700 shadow-xs'
             }`}>
               <Calendar size={13} className="text-blue-500" />
               <span>Signed: {data.confirmation_date || data.completed_at || data.start_date || 'Enrolled'}</span>
             </div>
+            {(data.federal_w4_pdf || data.w4_pdf || data.i9_pdf) && (
+              <button
+                type="button"
+                onClick={() => handleDownloadFile(
+                  data.federal_w4_pdf || data.w4_pdf || data.i9_pdf,
+                  `${data.first_name || 'Candidate'}_${data.last_name || ''}_Signed_Compliance_Form.pdf`,
+                  'details_cert'
+                )}
+                disabled={downloadingDocId === 'details_cert'}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+                title="Download Signed Tax & Compliance Form"
+              >
+                {downloadingDocId === 'details_cert' ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                <span>Download Form</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -804,13 +910,26 @@ const OnboardingDetailsModal = ({
                 <Edit3 size={13} /> Edit Federal W-4
               </button>
               {data.federal_w4_pdf && (
-                <button
-                  type="button"
-                  onClick={() => handleOpenPdfPreview(data.federal_w4_pdf, "IRS Form W-4 (Federal)")}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Eye size={13} /> View Federal W-4
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPdfPreview(data.federal_w4_pdf, "IRS Form W-4 (Federal)")}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                    title="View Federal Form W-4"
+                  >
+                    <Eye size={13} /> View Federal W-4
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadFile(data.federal_w4_pdf, `${data.first_name || 'Candidate'}_${data.last_name || ''}_IRS_Form_W4_Federal.pdf`, 'fed_w4')}
+                    disabled={downloadingDocId === 'fed_w4'}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    title="Download Federal Form W-4"
+                  >
+                    {downloadingDocId === 'fed_w4' ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                    Download
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -888,13 +1007,26 @@ const OnboardingDetailsModal = ({
                 <Edit3 size={13} /> Edit State Tax Form
               </button>
               {data.w4_pdf && (
-                <button
-                  type="button"
-                  onClick={() => handleOpenPdfPreview(data.w4_pdf, `${stateCode} State Tax Withholding`)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Eye size={13} /> View State Tax Form
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPdfPreview(data.w4_pdf, `${stateCode} State Tax Withholding`)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                    title={`View ${stateCode} State Tax Form`}
+                  >
+                    <Eye size={13} /> View State Tax Form
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadFile(data.w4_pdf, `${data.first_name || 'Candidate'}_${data.last_name || ''}_${stateCode}_State_Tax_Form.pdf`, 'state_w4')}
+                    disabled={downloadingDocId === 'state_w4'}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    title={`Download ${stateCode} State Tax PDF`}
+                  >
+                    {downloadingDocId === 'state_w4' ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                    Download
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -959,13 +1091,26 @@ const OnboardingDetailsModal = ({
               </div>
             </div>
             {rawI9 && (
-              <button
-                type="button"
-                onClick={() => handleOpenPdfPreview(rawI9, "USCIS Form I-9")}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <Eye size={13} /> View I-9 PDF
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleOpenPdfPreview(rawI9, "USCIS Form I-9")}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="View USCIS Form I-9"
+                >
+                  <Eye size={13} /> View I-9 PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadFile(rawI9, `${data.first_name || 'Candidate'}_${data.last_name || ''}_USCIS_Form_I9.pdf`, 'i9_pdf')}
+                  disabled={downloadingDocId === 'i9_pdf'}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Download USCIS Form I-9"
+                >
+                  {downloadingDocId === 'i9_pdf' ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+                  Download
+                </button>
+              </div>
             )}
           </div>
 
@@ -1178,14 +1323,19 @@ const OnboardingDetailsModal = ({
                   >
                     <Eye size={15} />
                   </button>
-                  <a
-                    href={doc.url}
-                    download
-                    className="p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700/30 transition-colors"
-                    title="Download"
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadFile(doc.url, `${data.first_name || 'Candidate'}_${data.last_name || ''}_${(doc.name || 'document').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`, doc.id)}
+                    disabled={downloadingDocId === doc.id}
+                    className="p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700/30 transition-colors cursor-pointer disabled:opacity-50"
+                    title="Download PDF directly to computer"
                   >
-                    <Download size={15} />
-                  </a>
+                    {downloadingDocId === doc.id ? (
+                      <Loader2 size={15} className="animate-spin text-blue-500" />
+                    ) : (
+                      <Download size={15} />
+                    )}
+                  </button>
                 </div>
               </div>
             ))}
@@ -3163,14 +3313,21 @@ const OnboardingDetailsModal = ({
                 <h3 className="font-bold text-sm truncate">{previewPdfTitle || 'Document Preview'}</h3>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <a
-                  href={previewPdfUrl}
-                  download
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center gap-1.5 shadow-sm"
+                <button
+                  type="button"
+                  onClick={() => handleDownloadFile(previewBlobUrl || previewPdfUrl, `${data.first_name || 'Candidate'}_${data.last_name || ''}_${(previewPdfTitle || 'Document').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`, 'preview')}
+                  disabled={downloadingDocId === 'preview'}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
                   style={{ backgroundColor: activeThemeHex }}
+                  title="Download PDF directly"
                 >
-                  <Download size={13} /> Download
-                </a>
+                  {downloadingDocId === 'preview' ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <Download size={13} />
+                  )}
+                  <span>{downloadingDocId === 'preview' ? 'Downloading...' : 'Download'}</span>
+                </button>
                 <a
                   href={previewPdfUrl}
                   target="_blank"
