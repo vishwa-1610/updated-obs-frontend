@@ -254,6 +254,7 @@ const JobsDashboard = () => {
         }
       })).unwrap();
 
+      setShowConvertModal(false);
       setFeedbackModal({
         isOpen: true,
         type: 'success',
@@ -261,9 +262,10 @@ const JobsDashboard = () => {
         message: `${convertData.candidate_name} has been initiated into the employee onboarding roster with start date ${convertData.start_date}.`,
       });
 
-      setShowConvertModal(false);
-      dispatch(fetchApplications());
-      dispatch(fetchJobStats());
+      setTimeout(() => {
+        dispatch(fetchApplications());
+        dispatch(fetchJobStats());
+      }, 50);
     } catch (err) {
       setFeedbackModal({
         isOpen: true,

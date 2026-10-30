@@ -528,8 +528,13 @@ export default function Onboarding() {
     e.preventDefault();
     setActionLoading(true);
     try {
+      const candidateFullName = `${enrollForm.first_name} ${enrollForm.last_name}`.trim();
       await dispatch(createNewOnboarding(enrollForm)).unwrap();
       setIsEnrollModalOpen(false);
+      setFeedback({ 
+        type: 'success', 
+        message: `Candidate ${candidateFullName || 'record'} has been initiated into onboarding successfully! Welcome invitation dispatched.` 
+      });
       setEnrollForm({
         first_name: '',
         last_name: '',
@@ -543,10 +548,14 @@ export default function Onboarding() {
         employment_type: 'FULL_TIME',
         state: 'CA'
       });
-      setFeedback({ type: 'success', message: 'Candidate enrolled in onboarding successfully!' });
-      loadAllData();
+      setTimeout(() => {
+        loadAllData();
+      }, 50);
     } catch (err) {
-      setFeedback({ type: 'error', message: typeof err === 'string' ? err : 'Failed to enroll candidate' });
+      setFeedback({ 
+        type: 'error', 
+        message: typeof err === 'string' ? err : (err?.detail || err?.message || 'Failed to enroll candidate') 
+      });
     } finally {
       setActionLoading(false);
     }
@@ -560,9 +569,11 @@ export default function Onboarding() {
         setActionLoading(true);
         try {
           await dispatch(convertToEmployeeAction({ id: candidate.id, data: {} })).unwrap();
-          setFeedback({ type: 'success', message: `${candidate.first_name} successfully converted to Employee Directory!` });
           setIsDetailModalOpen(false);
-          loadAllData();
+          setFeedback({ type: 'success', message: `${candidate.first_name} successfully converted to Employee Directory!` });
+          setTimeout(() => {
+            loadAllData();
+          }, 50);
         } catch (err) {
           setFeedback({ type: 'error', message: typeof err === 'string' ? err : 'Failed to convert to employee' });
         } finally {
@@ -604,9 +615,11 @@ export default function Onboarding() {
         setActionLoading(true);
         try {
           await dispatch(regretCandidateAction(candidate.id)).unwrap();
-          setFeedback({ type: 'success', message: `Candidate onboarding marked as regret/discontinued.` });
           setIsDetailModalOpen(false);
-          loadAllData();
+          setFeedback({ type: 'success', message: `Candidate onboarding marked as regret/discontinued.` });
+          setTimeout(() => {
+            loadAllData();
+          }, 50);
         } catch (err) {
           setFeedback({ type: 'error', message: typeof err === 'string' ? err : 'Failed to update candidate status' });
         } finally {
@@ -670,7 +683,9 @@ export default function Onboarding() {
       setIsBulkImportModalOpen(false);
       setBulkCsvFile(null);
       setFeedback({ type: 'success', message: `Bulk import processed! ${res.data?.created_count || 0} candidates enrolled.` });
-      loadAllData();
+      setTimeout(() => {
+        loadAllData();
+      }, 50);
     } catch (err) {
       setFeedback({ type: 'error', message: err.response?.data?.detail || 'Failed to import candidates CSV' });
     } finally {
@@ -851,8 +866,8 @@ export default function Onboarding() {
       </div>
 
       {/* 3. PRIMARY SEGMENTED TABS */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-        <div className={`flex items-center gap-1.5 p-1.5 rounded-2xl border overflow-x-auto ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 mb-6 w-full">
+        <div className={`flex-1 w-full flex items-center gap-1.5 p-1.5 rounded-2xl border overflow-x-auto ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
           {[
             { id: 'pipeline', label: 'Candidate Pipeline', icon: Users },
             { id: 'i9', label: 'Form I-9 & Section 2', icon: FileText },
@@ -868,7 +883,7 @@ export default function Onboarding() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 style={isActive ? { backgroundColor: activeHexColor, color: '#ffffff' } : {}}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+                className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap text-center ${
                   isActive
                     ? 'shadow-md'
                     : isDarkMode
@@ -876,15 +891,15 @@ export default function Onboarding() {
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{tab.label}</span>
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{tab.label}</span>
               </button>
             );
           })}
         </div>
 
         {/* View Mode & Refresh */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2 shrink-0 self-end lg:self-center">
           {activeTab === 'pipeline' && (
             <div className={`flex items-center p-1 rounded-xl border ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
               <button
