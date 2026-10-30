@@ -1,3 +1,4 @@
+import { StunningSelect } from '../../tasks/StunningSelect';
 import React, { useState, useEffect, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { Shield, User, DollarSign, Calendar, ChevronLeft, ChevronRight, ChevronDown, Eraser, Save, PenTool, FileText, Calculator, Flag, HeartPulse } from 'lucide-react';
@@ -244,11 +245,13 @@ const IowaTaxForm = ({ initialData, onSubmit }) => {
             <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-6 mb-6">
                 <label className={labelClass}>Select Filing Status</label>
                 <div className="relative mb-4">
-                    <select name="filing_status_ia" value={formData.filing_status_ia} onChange={handleChange} className={`${inputClass} appearance-none cursor-pointer pr-10`}>
-                        {filingStatuses.map(({ code, label }) => (
-                            <option key={code} value={code}>{label}</option>
-                        ))}
-                    </select>
+                    <StunningSelect
+                  label="Filing Status Ia"
+                  value={formData.filing_status_ia}
+                  onChange={(e) => handleChange({ target: { name: 'filing_status_ia', value: e.target.value } })}
+                  options={filingStatuses.map(o => ({ value: o.code || o.value || o, label: o.label || o.name || o.code || o }))}
+                  placeholder="Select Filing Status Ia"
+                />
                     <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 </div>
 

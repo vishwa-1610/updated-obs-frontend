@@ -203,6 +203,21 @@ const CaliforniaDE4Form = ({ initialData, onSubmit }) => {
     setLocalData(prev => ({ ...prev, signature_image: null }));
   };
 
+  // --- CALCULATIONS ---
+  const worksheetATotal = parseInt(localData.allow_self || 0) + parseInt(localData.allow_spouse || 0) + parseInt(localData.allow_blind_self || 0) + parseInt(localData.allow_blind_spouse || 0) + parseInt(localData.allow_dependents || 0);
+  const standardDeduction = 5540; 
+  const itemized = parseInt(localData.itemized_deductions || 0);
+  const adjustments = parseInt(localData.adjustments_income || 0);
+  const nonWage = parseInt(localData.non_wage_income || 0);
+  
+  const line3 = Math.max(itemized - standardDeduction, 0);
+  const line5 = line3 + adjustments;
+  const line7 = Math.max(line5 - nonWage, 0);
+  const worksheetBAllowances = Math.floor(line7 / 1000);
+  
+  // ✅ GRAND TOTAL
+  const totalAllowances = worksheetATotal + worksheetBAllowances;
+
   const handleSubmit = async (e) => {
       e.preventDefault();
       
@@ -237,6 +252,7 @@ const CaliforniaDE4Form = ({ initialData, onSubmit }) => {
               allow_blind_self: cleanNumber(localData.allow_blind_self),
               allow_blind_spouse: cleanNumber(localData.allow_blind_spouse),
               allow_dependents: cleanNumber(localData.allow_dependents),
+              total_allowances: totalAllowances,
               signature_image: sig 
           };
 
@@ -258,20 +274,6 @@ const CaliforniaDE4Form = ({ initialData, onSubmit }) => {
       }
   };
 
-  // --- CALCULATIONS ---
-  const worksheetATotal = parseInt(localData.allow_self || 0) + parseInt(localData.allow_spouse || 0) + parseInt(localData.allow_blind_self || 0) + parseInt(localData.allow_blind_spouse || 0) + parseInt(localData.allow_dependents || 0);
-  const standardDeduction = 5540; 
-  const itemized = parseInt(localData.itemized_deductions || 0);
-  const adjustments = parseInt(localData.adjustments_income || 0);
-  const nonWage = parseInt(localData.non_wage_income || 0);
-  
-  const line3 = Math.max(itemized - standardDeduction, 0);
-  const line5 = line3 + adjustments;
-  const line7 = Math.max(line5 - nonWage, 0);
-  const worksheetBAllowances = Math.floor(line7 / 1000);
-  
-  // ✅ GRAND TOTAL
-  const totalAllowances = worksheetATotal + worksheetBAllowances;
 
   // --- STYLES ---
   const sectionClass = "bg-white p-8 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 hover:shadow-[0_4px_25px_rgba(0,0,0,0.06)] transition-shadow duration-300";

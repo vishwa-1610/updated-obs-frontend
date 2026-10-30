@@ -1,3 +1,4 @@
+import { StunningSelect } from '../../tasks/StunningSelect';
 import React, { useState, useEffect, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { User, Shield, DollarSign, Calendar, ChevronLeft, ChevronRight, ChevronDown, Eraser, Save, PenTool, FileText, Calculator } from 'lucide-react';
@@ -91,6 +92,9 @@ const ConnecticutTaxForm = ({ initialData, onSubmit }) => {
     filing_status: 'A',
     allowances: '',
     additional_withholding: '',
+    reduced_withholding: '',
+    msrra_exempt: false,
+    military_state: '',
     new_rehired: 'no',  // Always start as 'no'
     rehire_date: '',
     confirmation_date: new Date().toISOString().split('T')[0],
@@ -175,7 +179,11 @@ const ConnecticutTaxForm = ({ initialData, onSubmit }) => {
     if (sigCanvasRef.current && !sigCanvasRef.current.isEmpty()) {
       sig = sigCanvasRef.current.getCanvas().toDataURL('image/png');
     }
-    onSubmit({ ...formData, signature_image: sig });
+    onSubmit({ 
+      ...formData, 
+      reduced_withholding: formData.allowances || formData.reduced_withholding,
+      signature_image: sig 
+    });
   };
 
   const inputClass = "w-full px-4 py-3 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent bg-white text-gray-900 placeholder-gray-400 transition-shadow";
@@ -251,19 +259,50 @@ const ConnecticutTaxForm = ({ initialData, onSubmit }) => {
         <section>
           <h3 className={sectionHeader}><FileText className="text-blue-600" size={22} /> Withholding Code (Line 1)</h3>
           <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-6">
-            <label className={labelClass}>Select Filing Status Code</label>
-            <div className="relative">
-              <select name="filing_status" value={formData.filing_status} onChange={handleChange} className={`${inputClass} appearance-none cursor-pointer pr-10`}>
-                {filingCodes.map(({ code, label }) => (
-                  <option key={code} value={code}>{label}</option>
-                ))}
-              </select>
-              <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            </div>
+            <StunningSelect
+              label="Select Filing Status Code"
+              value={formData.filing_status}
+              onChange={(e) => handleChange({ target: { name: 'filing_status', value: e.target.value } })}
+              options={filingCodes.map(f => ({ value: f.code, label: f.label }))}
+              placeholder="Select Filing Code"
+            />
             <p className="text-xs text-blue-700 mt-2 flex items-start gap-1">
               <Shield size={12} className="mt-0.5" />
               Determine your code by reading the instructions on page 1 of the CT-W4 PDF form.
             </p>
+          </div>
+
+          {/* MSRRA Exemption */}
+          <div className="mt-4 p-5 bg-purple-50/60 border border-purple-200/80 rounded-xl space-y-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                name="msrra_exempt"
+                checked={formData.msrra_exempt || false}
+                onChange={handleChange}
+                className="w-5 h-5 mt-0.5 text-purple-600 rounded"
+              />
+              <div>
+                <span className="font-bold text-sm text-gray-900 block">Military Spouses Residency Relief Act (MSRRA) Exemption</span>
+                <span className="text-xs text-gray-600 block mt-0.5">
+                  Check if you are claiming the MSRRA exemption from Connecticut withholding.
+                </span>
+              </div>
+            </label>
+            {formData.msrra_exempt && (
+              <div className="pl-8 pt-2">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">State of Legal Residence / Domicile</label>
+                <input
+                  type="text"
+                  name="military_state"
+                  maxLength="2"
+                  value={formData.military_state || ''}
+                  onChange={handleChange}
+                  placeholder="e.g. TX"
+                  className="w-32 px-3 py-2 rounded-lg border border-purple-300 text-sm font-bold uppercase tracking-widest bg-white"
+                />
+              </div>
+            )}
           </div>
         </section>
 

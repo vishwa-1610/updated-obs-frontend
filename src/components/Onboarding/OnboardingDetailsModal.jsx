@@ -235,6 +235,42 @@ const OnboardingDetailsModal = ({
       spouse_blind: Boolean(stData?.spouse_blind),
       head_of_household: Boolean(stData?.head_of_household || stData?.is_head_of_household),
       exempt_status: Boolean(stData?.exempt_status || stData?.exempt),
+      // Maryland Specifics
+      payroll_system: stData?.payroll_system || candidateData?.payroll_system || 'RG',
+      agency_number: stData?.agency_number || candidateData?.agency_number || '',
+      agency_name: stData?.agency_name || candidateData?.agency_name || '',
+      // Massachusetts Specifics
+      age_65: Boolean(stData?.age_65),
+      claim_spouse: Boolean(stData?.claim_spouse),
+      spouse_65: Boolean(stData?.spouse_65),
+      dependents: Number(stData?.dependents ?? candidateData?.dependents ?? 0),
+      has_dependent_under_12: Boolean(stData?.has_dependent_under_12),
+      blind_self: Boolean(stData?.blind_self ?? stData?.blind_claim),
+      blind_spouse: Boolean(stData?.blind_spouse ?? stData?.spouse_blind),
+      // Michigan Specifics
+      driver_license: stData?.driver_license || candidateData?.driver_license || '',
+      dob: stData?.dob || candidateData?.dob || '',
+      new_employee: stData?.new_employee !== undefined ? Boolean(stData.new_employee) : true,
+      hire_date: stData?.hire_date || candidateData?.hire_date || '',
+      exempt_type: stData?.exempt_type || '',
+      // New Jersey Specifics
+      filing_status_nj: String(stData?.filing_status || candidateData?.filing_status || '1'),
+      line3_letter: (stData?.line3_letter || stData?.rate_table_letter || '').toUpperCase(),
+      allowances_nj: stData?.allowances ?? candidateData?.allowances ?? 1,
+      // New York Specifics
+      filing_status_ny: String(stData?.filing_status || candidateData?.filing_status || '1'),
+      nyc_resident: Boolean(stData?.nyc_resident ?? candidateData?.nyc_resident ?? false),
+      yonkers_resident: Boolean(stData?.yonkers_resident ?? candidateData?.yonkers_resident ?? false),
+      nyc_allowances: stData?.nyc_allowances ?? candidateData?.nyc_allowances ?? 0,
+      ny_extra: stData?.ny_extra ?? candidateData?.ny_extra ?? 0,
+      nyc_extra: stData?.nyc_extra ?? candidateData?.nyc_extra ?? 0,
+      yonkers_extra: stData?.yonkers_extra ?? candidateData?.yonkers_extra ?? 0,
+      health_benefits: Boolean(stData?.health_benefits ?? candidateData?.health_benefits ?? false),
+      benefit_date: stData?.benefit_date || candidateData?.benefit_date || '',
+      // North Carolina Specifics
+      filing_status_nc: String(stData?.filing_status || candidateData?.filing_status || '1'),
+      county_nc: (stData?.county || candidateData?.county || 'WAKE').slice(0, 5).toUpperCase(),
+      country_nc: stData?.country || candidateData?.country || 'USA',
       custom_state_data: { ...stData },
 
       // Direct Deposit / Bank
@@ -323,6 +359,7 @@ const OnboardingDetailsModal = ({
       // 2. Submit State Tax Form Payload
       try {
         const statePayload = {
+          ...baseState,
           token: token,
           onboarding_id: candidateId,
           email: candidateEmail,
@@ -336,9 +373,38 @@ const OnboardingDetailsModal = ({
           ssn: baseState.ssn,
           filing_status: baseState.filing_status || 'Single',
           allowances: Number(baseState.allowances || 0),
-          additional_withholding: Number(baseState.state_additional_withholding || baseState.step4_extra_withholding || 0),
+          additional_withholding: baseState.additional_withholding !== undefined ? baseState.additional_withholding : Number(baseState.state_additional_withholding || baseState.step4_extra_withholding || 0),
           status_letter: cleanStatusLetter,
           confirmation_date: confirmDate,
+          // Maryland Specific Fields
+          payroll_system: baseState.payroll_system || 'RG',
+          agency_number: baseState.agency_number || '',
+          agency_name: baseState.agency_name || '',
+          county: baseState.county || '',
+          middle_initial: baseState.middle_initial || '',
+          multiple_jobs: Boolean(baseState.multiple_jobs || baseState.multiple_jobs_two),
+          kids_under_17: Number(baseState.kids_under_17 || 0),
+          other_dependents: Number(baseState.other_dependents || 0),
+          other_credits: Number(baseState.other_credits || 0),
+          step4_other_income: Number(baseState.step4_other_income || 0),
+          step4_deductions: Number(baseState.step4_deductions || 0),
+          step4_extra_withholding: Number(baseState.step4_extra_withholding || 0),
+          // Massachusetts Specific Fields
+          age_65: Boolean(baseState.age_65),
+          claim_spouse: Boolean(baseState.claim_spouse),
+          spouse_65: Boolean(baseState.spouse_65),
+          dependents: Number(baseState.dependents ?? baseState.allowances ?? 0),
+          has_dependent_under_12: Boolean(baseState.has_dependent_under_12),
+          blind_self: Boolean(baseState.blind_self || baseState.blind_claim),
+          blind_spouse: Boolean(baseState.blind_spouse || baseState.spouse_blind),
+          // Michigan Specific Fields
+          driver_license: baseState.driver_license || '',
+          dob: baseState.dob || '',
+          new_employee: Boolean(baseState.new_employee),
+          hire_date: baseState.hire_date || '',
+          exemptions: Number(baseState.exemptions ?? baseState.allowances ?? 0),
+          exempt_type: baseState.exempt_type || '',
+          exempt_text: baseState.exempt_text || '',
           ...(baseState.custom_state_data || {}),
         };
         await api.post('/confirm-onboarding/', statePayload);
@@ -1631,6 +1697,1048 @@ const OnboardingDetailsModal = ({
                           </div>
                         </div>
                       </div>
+
+                      {/* Maryland Specific Parameters */}
+                      {(editFormState.state_code === 'MD' || editFormState.state === 'MD') && (
+                        <div className={`p-4 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+                          <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-500 mb-3">Maryland Form W-4 / Central Payroll Bureau Details</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Payroll System</label>
+                              <select
+                                value={editFormState.payroll_system || 'RG'}
+                                onChange={(e) => handleEditFieldChange('payroll_system', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              >
+                                <option value="RG">RG - Regular State Payroll</option>
+                                <option value="CT">CT - Comptroller of Maryland</option>
+                                <option value="UM">UM - University of Maryland</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Agency Number (Max 5)</label>
+                              <input
+                                type="text"
+                                maxLength="5"
+                                value={editFormState.agency_number || ''}
+                                onChange={(e) => handleEditFieldChange('agency_number', e.target.value)}
+                                placeholder="e.g. 36010"
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Employing Agency Name</label>
+                              <input
+                                type="text"
+                                value={editFormState.agency_name || ''}
+                                onChange={(e) => handleEditFieldChange('agency_name', e.target.value)}
+                                placeholder="e.g. Transportation / Univ of MD"
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Step 3: Children Under 17 ($2,000 ea)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editFormState.kids_under_17 ?? 0}
+                                onChange={(e) => handleEditFieldChange('kids_under_17', parseInt(e.target.value, 10) || 0)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Step 3: Other Dependents ($500 ea)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editFormState.other_dependents ?? 0}
+                                onChange={(e) => handleEditFieldChange('other_dependents', parseInt(e.target.value, 10) || 0)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Step 4(a): Other Income ($)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editFormState.step4_other_income ?? 0}
+                                onChange={(e) => handleEditFieldChange('step4_other_income', parseFloat(e.target.value) || 0)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Massachusetts Form M-4 Specific Parameters */}
+                      {(editFormState.state_code === 'MA' || editFormState.state === 'MA') && (
+                        <div className={`p-4 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+                          <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-500 mb-3">Massachusetts Form M-4 Withholding Exemptions</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 3: Dependents</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editFormState.dependents ?? 0}
+                                onChange={(e) => handleEditFieldChange('dependents', parseInt(e.target.value, 10) || 0)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                            <div className="sm:col-span-2 flex flex-col justify-center gap-2">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.age_65)}
+                                  onChange={(e) => handleEditFieldChange('age_65', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Line 1: Taxpayer is age 65 or older (+1 exemption)</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.claim_spouse)}
+                                  onChange={(e) => handleEditFieldChange('claim_spouse', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Line 2: Claim Spouse Exemption (Base 4)</span>
+                              </label>
+                              {editFormState.claim_spouse && (
+                                <label className="flex items-center gap-2 cursor-pointer ml-5">
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(editFormState.spouse_65)}
+                                    onChange={(e) => handleEditFieldChange('spouse_65', e.target.checked)}
+                                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                  />
+                                  <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Spouse is age 65 or older (Increases to 5)</span>
+                                </label>
+                              )}
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.has_dependent_under_12)}
+                                  onChange={(e) => handleEditFieldChange('has_dependent_under_12', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Instruction D: Dependent under age 12 (+1 allowance)</span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Michigan Form MI-W4 Specific Parameters */}
+                      {(editFormState.state_code === 'MI' || editFormState.state === 'MI') && (
+                        <div className={`p-4 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+                          <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-500 mb-3">Michigan Form MI-W4 Withholding Details</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Driver's License / State ID</label>
+                              <input
+                                type="text"
+                                value={editFormState.driver_license || ''}
+                                onChange={(e) => handleEditFieldChange('driver_license', e.target.value)}
+                                placeholder="e.g. M123456789012"
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 6: Exemptions Claimed</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editFormState.exemptions ?? editFormState.allowances ?? 0}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value, 10) || 0;
+                                  handleEditFieldChange('exemptions', val);
+                                  handleEditFieldChange('allowances', val);
+                                }}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Box 5: Employment Status</label>
+                              <select
+                                value={editFormState.new_employee ? 'yes' : 'no'}
+                                onChange={(e) => handleEditFieldChange('new_employee', e.target.value === 'yes')}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              >
+                                <option value="yes">Yes - New Employee</option>
+                                <option value="no">No - Existing Employee</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Minnesota Form W-4MN Specific Parameters */}
+                      {(editFormState.state_code === 'MN' || editFormState.state === 'MN') && (
+                        <div className={`p-4 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+                          <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-500 mb-3">Minnesota Form W-4MN Allowances & Exemptions</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Marital Status</label>
+                              <select
+                                value={editFormState.marital_status || '1'}
+                                onChange={(e) => handleEditFieldChange('marital_status', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              >
+                                <option value="1">1 - Single / Married Separate</option>
+                                <option value="2">2 - Married Filing Jointly</option>
+                                <option value="3">3 - Married at Higher Single Rate</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Dependents (Step D)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editFormState.line1d ?? editFormState.dependents ?? 0}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value, 10) || 0;
+                                  handleEditFieldChange('line1d', val);
+                                  handleEditFieldChange('dependents', val);
+                                }}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Total Allowances (Line 1)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editFormState.allowances ?? 0}
+                                onChange={(e) => handleEditFieldChange('allowances', parseInt(e.target.value, 10) || 0)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                            <div className="sm:col-span-3 flex flex-wrap gap-4 pt-1">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.line1a ?? true)}
+                                  onChange={(e) => handleEditFieldChange('line1a', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Step A: 1 for Yourself</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.line1b)}
+                                  onChange={(e) => handleEditFieldChange('line1b', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Step B: Single/1 Job or Married 1 Job</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.line1c)}
+                                  onChange={(e) => handleEditFieldChange('line1c', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Step C: 1 for Spouse</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.line1e)}
+                                  onChange={(e) => handleEditFieldChange('line1e', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Step E: 1 for Head of Household</span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Mississippi Form 89-350 Specific Parameters */}
+                      {(editFormState.state_code === 'MS' || editFormState.state === 'MS') && (
+                        <div className={`p-4 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+                          <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-500 mb-3">Mississippi Form 89-350 Exemption Parameters</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Marital Status</label>
+                              <select
+                                value={editFormState.filing_status || '1'}
+                                onChange={(e) => handleEditFieldChange('filing_status', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              >
+                                <option value="1">1 - Single ($6,000)</option>
+                                <option value="2">2 - Married ($12,000)</option>
+                                <option value="3">3 - Head of Family ($9,500)</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 4: Dependents ($1,500 ea)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editFormState.dependents ?? 0}
+                                onChange={(e) => handleEditFieldChange('dependents', parseInt(e.target.value, 10) || 0)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Spouse Claim (if employed)</label>
+                              <input
+                                type="number"
+                                step="500"
+                                min="0"
+                                max="12000"
+                                value={editFormState.spouse_claim_amount ?? 6000}
+                                onChange={(e) => handleEditFieldChange('spouse_claim_amount', parseInt(e.target.value, 10) || 0)}
+                                placeholder="e.g. 6000"
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                            <div className="sm:col-span-3 flex flex-wrap gap-4 pt-1">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.spouse_employed)}
+                                  onChange={(e) => handleEditFieldChange('spouse_employed', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Spouse is Employed (Divide $12,000)</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.age_65)}
+                                  onChange={(e) => handleEditFieldChange('age_65', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Taxpayer Age 65+ (+$1,500)</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.blind_self)}
+                                  onChange={(e) => handleEditFieldChange('blind_self', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Taxpayer Blind (+$1,500)</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.military_spouse_exempt)}
+                                  onChange={(e) => handleEditFieldChange('military_spouse_exempt', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Military Spouse MSRRA Exempt (Line 8)</span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Missouri Form MO W-4 Specific Parameters */}
+                      {(editFormState.state_code === 'MO' || editFormState.state === 'MO') && (
+                        <div className={`p-4 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+                          <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-500 mb-3">Missouri Form MO W-4 Withholding Parameters</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 1: Filing Status</label>
+                              <select
+                                value={editFormState.filing_status_mo || '1'}
+                                onChange={(e) => handleEditFieldChange('filing_status_mo', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              >
+                                <option value="1">1 - Single / Married Spouse Works</option>
+                                <option value="2">2 - Married (Spouse Does Not Work)</option>
+                                <option value="3">3 - Head of Household</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 2: Extra Withholding ($)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editFormState.additional_withholding ?? 0}
+                                onChange={(e) => handleEditFieldChange('additional_withholding', e.target.value)}
+                                placeholder="0.00"
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 3: Reduced Withholding ($)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editFormState.reduced_withholding ?? 0}
+                                onChange={(e) => handleEditFieldChange('reduced_withholding', e.target.value)}
+                                placeholder="0.00"
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                            <div className="sm:col-span-3 flex flex-wrap gap-4 pt-1">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.exempt)}
+                                  onChange={(e) => handleEditFieldChange('exempt', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Line 4: Claim Exemption (Indicate EXEMPT)</span>
+                              </label>
+                              {editFormState.exempt && (
+                                <div className="w-full mt-2">
+                                  <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 4 Statutory Reason</label>
+                                  <select
+                                    value={editFormState.exempt_reason || '1'}
+                                    onChange={(e) => handleEditFieldChange('exempt_reason', e.target.value)}
+                                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                      isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                    }`}
+                                  >
+                                    <option value="1">1 - Refund last year & expect zero liability this year</option>
+                                    <option value="2">2 - SCRA / MSRRA Military Spouse Relief Act</option>
+                                    <option value="3">3 - Active Duty Armed Forces Military Deduction</option>
+                                  </select>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Montana Form MW-4 Specific Parameters */}
+                      {(editFormState.state_code === 'MT' || editFormState.state === 'MT') && (
+                        <div className={`p-4 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+                          <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-500 mb-3">Montana Form MW-4 Withholding Parameters</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 1: Filing Status</label>
+                              <select
+                                value={editFormState.filing_status_mt || '1'}
+                                onChange={(e) => handleEditFieldChange('filing_status_mt', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              >
+                                <option value="1">1 - Single or Married Filing Separately</option>
+                                <option value="2">2 - Married Filing Jointly</option>
+                                <option value="3">3 - Head of Household</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 3: Extra Withholding ($)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editFormState.extra_withholding ?? 0}
+                                onChange={(e) => handleEditFieldChange('extra_withholding', e.target.value)}
+                                placeholder="0.00"
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 4: Specified Withholding ($)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editFormState.specified_withholding ?? 0}
+                                onChange={(e) => handleEditFieldChange('specified_withholding', e.target.value)}
+                                placeholder="0.00"
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                            <div className="sm:col-span-3 flex flex-wrap gap-4 pt-1">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.both_working)}
+                                  onChange={(e) => handleEditFieldChange('both_working', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Line 2: Married Joint with Both Spouses Working</span>
+                              </label>
+
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.exempt)}
+                                  onChange={(e) => handleEditFieldChange('exempt', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Line 5: Claim Exemption</span>
+                              </label>
+
+                              {editFormState.exempt && (
+                                <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                                  <div>
+                                    <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 5 Exemption Reason</label>
+                                    <select
+                                      value={editFormState.exempt_type || 'a'}
+                                      onChange={(e) => handleEditFieldChange('exempt_type', e.target.value)}
+                                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                        isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                      }`}
+                                    >
+                                      <option value="a">A - Tribal Member on Reservation</option>
+                                      <option value="b">B - Armed Forces Reserve / Title 10 Active Duty</option>
+                                      <option value="c">C - North Dakota Resident (Reciprocity)</option>
+                                      <option value="d">D - Military Spouse Relief Act (MSRRA)</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="text-[11px] font-bold text-zinc-400 block mb-1">Exemption Tax Year</label>
+                                    <input
+                                      type="text"
+                                      maxLength={4}
+                                      value={editFormState.tax_year || '2026'}
+                                      onChange={(e) => handleEditFieldChange('tax_year', e.target.value)}
+                                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                        isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                      }`}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Nebraska Form W-4N Specific Parameters */}
+                      {(editFormState.state_code === 'NE' || editFormState.state === 'NE') && (
+                        <div className={`p-4 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+                          <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-500 mb-3">Nebraska Form W-4N Withholding Parameters</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Marital Withholding Status</label>
+                              <select
+                                value={editFormState.filing_status_ne || editFormState.filing_status || '1'}
+                                onChange={(e) => handleEditFieldChange('filing_status_ne', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              >
+                                <option value="1">1 - Single / Head of Household / MFS</option>
+                                <option value="2">2 - Married Filing Jointly / Surviving Spouse</option>
+                                <option value="3">3 - Married, but withhold at Single Rate</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 1: Allowances Claimed</label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="30"
+                                value={editFormState.allowances_ne ?? editFormState.total_allowances ?? 1}
+                                onChange={(e) => handleEditFieldChange('allowances_ne', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 2: Extra Withholding ($)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editFormState.additional_withholding ?? 0}
+                                onChange={(e) => handleEditFieldChange('additional_withholding', e.target.value)}
+                                placeholder="0.00"
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div className="sm:col-span-3 flex flex-wrap gap-4 pt-1">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.exempt)}
+                                  onChange={(e) => handleEditFieldChange('exempt', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Line 3: Claim Exemption from Nebraska Withholding</span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* New Jersey Form NJ-W4 Specific Parameters */}
+                      {(editFormState.state_code === 'NJ' || editFormState.state === 'NJ') && (
+                        <div className={`p-4 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+                          <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-500 mb-3">New Jersey Form NJ-W4 Withholding Parameters</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 2: Filing Status</label>
+                              <select
+                                value={editFormState.filing_status_nj || editFormState.filing_status || '1'}
+                                onChange={(e) => handleEditFieldChange('filing_status_nj', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              >
+                                <option value="1">1 - Single</option>
+                                <option value="2">2 - Married/Civil Union Couple Joint</option>
+                                <option value="3">3 - Married/Civil Union Partner Separate</option>
+                                <option value="4">4 - Head of Household</option>
+                                <option value="5">5 - Qualifying Widow(er) / Surviving Partner</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 3: Rate Table Letter</label>
+                              <select
+                                value={editFormState.line3_letter || ''}
+                                onChange={(e) => handleEditFieldChange('line3_letter', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              >
+                                <option value="">Standard Table</option>
+                                <option value="A">Table A</option>
+                                <option value="B">Table B</option>
+                                <option value="C">Table C</option>
+                                <option value="D">Table D</option>
+                                <option value="E">Table E</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 4: Allowances Claimed</label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="30"
+                                value={editFormState.allowances_nj ?? editFormState.allowances ?? 1}
+                                onChange={(e) => handleEditFieldChange('allowances_nj', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 5: Extra Withholding ($)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editFormState.additional_withholding ?? 0}
+                                onChange={(e) => handleEditFieldChange('additional_withholding', e.target.value)}
+                                placeholder="0.00"
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div className="sm:col-span-2 flex items-center pt-5">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.exempt)}
+                                  onChange={(e) => handleEditFieldChange('exempt', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Line 6: Claim Exemption from NJ Withholding</span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* New Mexico Form W-4 (State Withholding Certificate) */}
+                      {(editFormState.state_code === 'NM' || editFormState.state === 'NM') && (
+                        <div className={`p-4 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-bold text-xs uppercase tracking-wider text-amber-500">
+                              New Mexico Form W-4 State Withholding Parameters (FYI-104)
+                            </h4>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                              NM TRD W-4
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Step 1(c): Filing Status</label>
+                              <select
+                                value={editFormState.filing_status_nm || editFormState.filing_status || '1'}
+                                onChange={(e) => handleEditFieldChange('filing_status_nm', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              >
+                                <option value="1">1 - Single or Married Filing Separately</option>
+                                <option value="2">2 - Married Filing Jointly</option>
+                                <option value="3">3 - Head of Household</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Step 3: Children &lt; 17 ($2,000 ea)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editFormState.kids_under_17 ?? 0}
+                                onChange={(e) => handleEditFieldChange('kids_under_17', parseInt(e.target.value, 10) || 0)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Step 3: Other Dependents ($500 ea)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editFormState.other_dependents ?? 0}
+                                onChange={(e) => handleEditFieldChange('other_dependents', parseInt(e.target.value, 10) || 0)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Step 4(a): Other Income ($)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                value={editFormState.step4_other_income ?? 0}
+                                onChange={(e) => handleEditFieldChange('step4_other_income', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Step 4(b): Deductions ($)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                value={editFormState.step4_deductions ?? 0}
+                                onChange={(e) => handleEditFieldChange('step4_deductions', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Step 4(c): Extra NM Withholding ($)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editFormState.step4_extra_withholding ?? editFormState.additional_withholding ?? 0}
+                                onChange={(e) => handleEditFieldChange('step4_extra_withholding', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div className="sm:col-span-3 flex flex-wrap gap-4 pt-1">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.multiple_jobs_two)}
+                                  onChange={(e) => handleEditFieldChange('multiple_jobs_two', e.target.checked)}
+                                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                  Step 2(c): Multiple Jobs or Spouse Works
+                                </span>
+                              </label>
+
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.exempt)}
+                                  onChange={(e) => handleEditFieldChange('exempt', e.target.checked)}
+                                  className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+                                />
+                                <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                                  Claim Exemption from New Mexico Withholding (MSRRA / Zero Liability)
+                                </span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* New York Form IT-2104 (State, NYC, & Yonkers Withholding) */}
+                      {(editFormState.state_code === 'NY' || editFormState.state === 'NY') && (
+                        <div className={`p-4 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-bold text-xs uppercase tracking-wider text-blue-500">
+                              New York Form IT-2104 Withholding Parameters
+                            </h4>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                              NYS &bull; NYC &bull; Yonkers
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Filing Status</label>
+                              <select
+                                value={editFormState.filing_status_ny || editFormState.filing_status || '1'}
+                                onChange={(e) => handleEditFieldChange('filing_status_ny', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              >
+                                <option value="1">1 - Single or Head of Household</option>
+                                <option value="2">2 - Married</option>
+                                <option value="3">3 - Married, withhold at higher single rate</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 1: NY State Allowances</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editFormState.allowances ?? 1}
+                                onChange={(e) => handleEditFieldChange('allowances', parseInt(e.target.value, 10) || 0)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 2: NYC Allowances</label>
+                              <input
+                                type="number"
+                                min="0"
+                                disabled={!editFormState.nyc_resident}
+                                value={editFormState.nyc_allowances ?? 0}
+                                onChange={(e) => handleEditFieldChange('nyc_allowances', parseInt(e.target.value, 10) || 0)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  !editFormState.nyc_resident ? 'opacity-50 cursor-not-allowed' : ''
+                                } ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 3: NY Extra ($)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editFormState.ny_extra ?? editFormState.additional_withholding ?? 0}
+                                onChange={(e) => handleEditFieldChange('ny_extra', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 4: NYC Extra ($)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                disabled={!editFormState.nyc_resident}
+                                value={editFormState.nyc_extra ?? 0}
+                                onChange={(e) => handleEditFieldChange('nyc_extra', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  !editFormState.nyc_resident ? 'opacity-50 cursor-not-allowed' : ''
+                                } ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 5: Yonkers Extra ($)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                disabled={!editFormState.yonkers_resident}
+                                value={editFormState.yonkers_extra ?? 0}
+                                onChange={(e) => handleEditFieldChange('yonkers_extra', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  !editFormState.yonkers_resident ? 'opacity-50 cursor-not-allowed' : ''
+                                } ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div className="sm:col-span-3 flex flex-wrap gap-4 pt-1">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.nyc_resident)}
+                                  onChange={(e) => handleEditFieldChange('nyc_resident', e.target.checked)}
+                                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                  Resident of New York City (NYC)
+                                </span>
+                              </label>
+
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.yonkers_resident)}
+                                  onChange={(e) => handleEditFieldChange('yonkers_resident', e.target.checked)}
+                                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                  Resident of City of Yonkers
+                                </span>
+                              </label>
+
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(editFormState.health_benefits)}
+                                  onChange={(e) => handleEditFieldChange('health_benefits', e.target.checked)}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                  Dependent Health Insurance Available
+                                </span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* North Carolina Form NC-4 Withholding Parameters */}
+                      {(editFormState.state_code === 'NC' || editFormState.state === 'NC') && (
+                        <div className={`p-4 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-bold text-xs uppercase tracking-wider text-blue-500">
+                              North Carolina Form NC-4 Withholding Parameters
+                            </h4>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                              NCDOR NC-4
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Filing Status</label>
+                              <select
+                                value={editFormState.filing_status_nc || editFormState.filing_status || '1'}
+                                onChange={(e) => handleEditFieldChange('filing_status_nc', e.target.value)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              >
+                                <option value="1">1 - Single or Married Filing Separately</option>
+                                <option value="2">2 - Head of Household</option>
+                                <option value="3">3 - Married Filing Jointly or Surviving Spouse</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 1: Allowances Claimed</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={editFormState.allowances ?? 1}
+                                onChange={(e) => handleEditFieldChange('allowances', parseInt(e.target.value, 10) || 0)}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">Line 2: Additional Withholding ($ Whole)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={editFormState.additional_withholding ?? editFormState.step4_extra_withholding ?? 0}
+                                onChange={(e) => handleEditFieldChange('additional_withholding', Math.round(parseFloat(e.target.value) || 0))}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-[11px] font-bold text-zinc-400 block mb-1">NC County (First 5 Letters)</label>
+                              <input
+                                type="text"
+                                maxLength="5"
+                                value={editFormState.county_nc || editFormState.county || 'WAKE'}
+                                onChange={(e) => handleEditFieldChange('county_nc', e.target.value.toUpperCase().slice(0, 5))}
+                                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold uppercase ${
+                                  isDarkMode ? 'bg-[#12141a] border-zinc-700 text-zinc-100' : 'bg-white border-slate-300 text-slate-900'
+                                }`}
+                                placeholder="WAKE"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* State Specific Exemptions */}
                       <div className={`p-4 sm:p-5 rounded-2xl border ${isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'}`}>

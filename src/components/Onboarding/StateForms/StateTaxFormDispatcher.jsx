@@ -31,14 +31,17 @@ import MissouriTaxForm from './MissouriTaxForm';
 import MontanaTaxForm from './MontanaTaxForm';
 import NebraskaTaxForm from './NebraskaTaxForm';
 import NewJerseyTaxForm from './NewJerseyTaxForm';
+import NewMexicoTaxForm from './NewMexicoTaxForm';
 import NewYorkTaxForm from './NewYorkTaxForm';
 import NorthCarolinaTaxForm from './NorthCarolinaTaxForm';
+import NorthDakotaTaxForm from './NorthDakotaTaxForm';
 import OhioTaxForm from './OhioTaxForm';
 import OklahomaTaxForm from './OklahomaTaxForm';
 import OregonTaxForm from './OregonTaxForm';
 import PennsylvaniaTaxForm from './PennsylvaniaTaxForm';
 import RhodeIslandTaxForm from './RhodeIslandTaxForm';
 import SouthCarolinaTaxForm from './SouthCarolinaTaxForm';
+import UtahTaxForm from './UtahTaxForm';
 import VermontTaxForm from './VermontTaxForm';
 import VirginiaTaxForm from './VirginiaTaxForm';
 import WestVirginiaTaxForm from './WestVirginiaTaxForm';
@@ -50,6 +53,7 @@ const FORM_MAP = {
   'AZ': ArizonaW4Form,
   'AR': ArkansasW4Form,
   'CA': CaliforniaDE4Form,
+  'CO': ColoradoTaxForm,
   'CT': ConnecticutTaxForm,
   'DE': DelawareTaxForm,
   'DC': DCTaxForm,
@@ -72,14 +76,17 @@ const FORM_MAP = {
   'MT': MontanaTaxForm,
   'NE': NebraskaTaxForm,
   'NJ': NewJerseyTaxForm,
+  'NM': NewMexicoTaxForm,
   'NY': NewYorkTaxForm,
   'NC': NorthCarolinaTaxForm,
+  'ND': NorthDakotaTaxForm,
   'OH': OhioTaxForm,
   'OK': OklahomaTaxForm,
   'OR': OregonTaxForm,
   'PA': PennsylvaniaTaxForm,
   'RI': RhodeIslandTaxForm,
   'SC': SouthCarolinaTaxForm,
+  'UT': UtahTaxForm,
   'VT': VermontTaxForm,
   'VA': VirginiaTaxForm,
   'WV': WestVirginiaTaxForm,
@@ -88,10 +95,7 @@ const FORM_MAP = {
 
 // --- 3. CATEGORY B: States that USE the Federal Form ---
 const USES_FEDERAL_FORM = [
-  'UT', // Utah
-  'NM', // New Mexico
-  'ND', // North Dakota
-  'CO'  // Colorado
+  // All applicable states now have dedicated state tax components
 ];
 
 // --- 4. CATEGORY C: States with NO Income Tax ---

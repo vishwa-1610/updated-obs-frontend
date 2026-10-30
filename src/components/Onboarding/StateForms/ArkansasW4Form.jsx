@@ -179,6 +179,18 @@ const ArkansasTaxForm = ({ initialData, onSubmit }) => {
     return () => window.removeEventListener('resize', resizeCanvas);
   }, []);
 
+  const handleLine1Toggle = (field) => {
+    setFormData(prev => {
+      const isCurrentlyChecked = !!prev[field];
+      return {
+        ...prev,
+        line1a: field === 'line1a' ? !isCurrentlyChecked : false,
+        line1b: field === 'line1b' ? !isCurrentlyChecked : false,
+        line1c: field === 'line1c' ? !isCurrentlyChecked : false,
+      };
+    });
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     if (name === 'zipcode') {
@@ -204,6 +216,17 @@ const ArkansasTaxForm = ({ initialData, onSubmit }) => {
     sigCanvasRef.current.clear();
     setFormData(prev => ({ ...prev, signature_image: null }));
   };
+
+  // Calc Total
+  const calculateTotal = () => {
+      let total = 0;
+      if (formData.line1a) total += 1;
+      if (formData.line1b) total += 2; 
+      if (formData.line1c) total += 2;
+      total += parseInt(formData.dependents || 0);
+      return total;
+  };
+  const totalExemptions = calculateTotal();
 
   // --- SUBMIT HANDLER (Strict Validation) ---
   const handleSubmit = async (e) => {
@@ -238,7 +261,7 @@ const ArkansasTaxForm = ({ initialData, onSubmit }) => {
       setIsSubmitting(true);
 
       try {
-          const finalData = { ...formData, signature_image: sig };
+          const finalData = { ...formData, total_exemptions: totalExemptions, signature_image: sig };
           await onSubmit(finalData);
           setIsSubmitting(false);
       } catch (error) {
@@ -249,16 +272,6 @@ const ArkansasTaxForm = ({ initialData, onSubmit }) => {
       }
   };
 
-  // Calc Total
-  const calculateTotal = () => {
-      let total = 0;
-      if (formData.line1a) total += 1;
-      if (formData.line1b) total += 2; 
-      if (formData.line1c) total += 2;
-      total += parseInt(formData.dependents || 0);
-      return total;
-  };
-  const totalExemptions = calculateTotal();
 
   // Styles
   const inputClass = "w-full px-4 py-3 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent bg-white text-gray-900 placeholder-gray-400 transition-shadow";
@@ -324,29 +337,56 @@ const ArkansasTaxForm = ({ initialData, onSubmit }) => {
             <h3 className={sectionHeader}><Calculator className="text-blue-600" size={22} /> Exemptions</h3>
             <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-6 space-y-4">
                 
-                <label className={`${checkboxCardClass} ${formData.line1a ? activeCheckboxClass : ''}`}>
-                    <input type="checkbox" name="line1a" checked={formData.line1a} onChange={handleChange} className="mt-1 w-5 h-5 text-blue-600 rounded" />
+                <div 
+                  onClick={() => handleLine1Toggle('line1a')}
+                  className={`${checkboxCardClass} ${formData.line1a ? activeCheckboxClass : ''}`}
+                >
+                    <input 
+                      type="checkbox" 
+                      name="line1a" 
+                      checked={!!formData.line1a} 
+                      onChange={() => {}} 
+                      className="mt-1 w-5 h-5 text-blue-600 rounded cursor-pointer pointer-events-none" 
+                    />
                     <div>
-                        <span className="block font-bold text-gray-900">Line 1A: Yourself (Select One)</span>
-                        <span className="text-xs text-gray-500">Value: 1 Exemption</span>
+                        <span className="block font-bold text-gray-900">Line 1a: Yourself</span>
+                        <span className="text-xs text-gray-500">Enter 1 exemption</span>
                     </div>
-                </label>
+                </div>
 
-                <label className={`${checkboxCardClass} ${formData.line1b ? activeCheckboxClass : ''}`}>
-                    <input type="checkbox" name="line1b" checked={formData.line1b} onChange={handleChange} className="mt-1 w-5 h-5 text-blue-600 rounded" />
+                <div 
+                  onClick={() => handleLine1Toggle('line1b')}
+                  className={`${checkboxCardClass} ${formData.line1b ? activeCheckboxClass : ''}`}
+                >
+                    <input 
+                      type="checkbox" 
+                      name="line1b" 
+                      checked={!!formData.line1b} 
+                      onChange={() => {}} 
+                      className="mt-1 w-5 h-5 text-blue-600 rounded cursor-pointer pointer-events-none" 
+                    />
                     <div>
-                        <span className="block font-bold text-gray-900">Line 1B: Spouse (Select Two)</span>
-                        <span className="text-xs text-gray-500">Value: 2 Exemptions</span>
+                        <span className="block font-bold text-gray-900">Line 1b: Yourself and your Spouse</span>
+                        <span className="text-xs text-gray-500">Enter 2 exemptions</span>
                     </div>
-                </label>
+                </div>
 
-                <label className={`${checkboxCardClass} ${formData.line1c ? activeCheckboxClass : ''}`}>
-                    <input type="checkbox" name="line1c" checked={formData.line1c} onChange={handleChange} className="mt-1 w-5 h-5 text-blue-600 rounded" />
+                <div 
+                  onClick={() => handleLine1Toggle('line1c')}
+                  className={`${checkboxCardClass} ${formData.line1c ? activeCheckboxClass : ''}`}
+                >
+                    <input 
+                      type="checkbox" 
+                      name="line1c" 
+                      checked={!!formData.line1c} 
+                      onChange={() => {}} 
+                      className="mt-1 w-5 h-5 text-blue-600 rounded cursor-pointer pointer-events-none" 
+                    />
                     <div>
-                        <span className="block font-bold text-gray-900">Line 1C: Head of Household (Select Two)</span>
-                        <span className="text-xs text-gray-500">Value: 2 Exemptions</span>
+                        <span className="block font-bold text-gray-900">Line 1c: Head of Household and yourself</span>
+                        <span className="text-xs text-gray-500">Enter 2 exemptions</span>
                     </div>
-                </label>
+                </div>
 
                 {/* Line 2 Dependents */}
                 <div className="flex items-center justify-between p-3 bg-white rounded border border-gray-200">

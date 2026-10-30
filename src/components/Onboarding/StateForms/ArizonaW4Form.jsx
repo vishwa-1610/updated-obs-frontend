@@ -186,10 +186,24 @@ const ArizonaW4Form = ({ initialData, onSubmit }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setLocalData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    if (name === 'zero_withholding') {
+      setLocalData(prev => ({
+        ...prev,
+        zero_withholding: checked,
+        additional_withholding: checked ? 0 : prev.additional_withholding
+      }));
+    } else if (name === 'withholding_percentage') {
+      setLocalData(prev => ({
+        ...prev,
+        withholding_percentage: value,
+        zero_withholding: false
+      }));
+    } else {
+      setLocalData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    }
   };
 
   const handleSignatureEnd = () => {

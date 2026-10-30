@@ -1,397 +1,825 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import { Shield, User, DollarSign, Calendar, ChevronDown, Eraser, Save, PenTool, FileText, Calculator, Flag, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  User, Shield, DollarSign, Calendar, Eraser, PenTool, FileText, Calculator, 
+  Loader2, XCircle, CheckCircle2, AlertTriangle, Info, Sparkles, Building2, 
+  MapPin, Check, HeartHandshake, HelpCircle, ArrowRight, RefreshCw, Landmark, Users, Briefcase
+} from 'lucide-react';
+import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';
 
-// --- CUSTOM DATE PICKER (Reused) ---
-const CustomDatePicker = ({ label, name, value, onChange, placeholder }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [view, setView] = useState('calendar');
-  // Safe date initialization
-  const [currentDate, setCurrentDate] = useState(() => {
-      const d = new Date(value);
-      return isNaN(d.getTime()) ? new Date() : d;
-  });
-  const dropdownRef = useRef(null);
-  const yearScrollRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false); setView('calendar');
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => { 
-      if (value) {
-          const d = new Date(value);
-          if (!isNaN(d.getTime())) setCurrentDate(d);
-      }
-  }, [value]);
-
-  useEffect(() => {
-    if (view === 'year' && yearScrollRef.current) {
-        const selectedYearEl = yearScrollRef.current.querySelector('.selected-year');
-        if (selectedYearEl) selectedYearEl.scrollIntoView({ block: 'center' });
-    }
-  }, [view]);
-
-  const changeMonth = (offset) => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + offset, 1));
-
-  const handleDateClick = (day) => {
-    const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
-    const dayStr = day.toString().padStart(2, '0');
-    onChange({ target: { name, value: `${currentDate.getFullYear()}-${month}-${dayStr}` } });
-    setIsOpen(false);
-  };
-
-  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const years = Array.from({ length: 100 }, (_, i) => 1940 + i);
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <label className="block text-sm font-semibold mb-1.5 text-gray-800 tracking-wide">{label}</label>
-      <div className="relative cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
-        <Calendar size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
-        <input readOnly type="text" value={value || ''} placeholder={placeholder || "YYYY-MM-DD"} className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 text-sm bg-white cursor-pointer focus:ring-2 focus:ring-blue-600 outline-none" />
-        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-      </div>
-      {isOpen && (
-        <div className="absolute z-50 mb-2 p-4 rounded-xl shadow-2xl border border-gray-200 w-72 bottom-full left-0 bg-white text-gray-800">
-           <div className="flex justify-between items-center mb-4">
-              {view === 'calendar' && <button type="button" onClick={() => changeMonth(-1)}><ChevronLeft size={18}/></button>}
-              <div className="flex gap-2">
-                 <button type="button" onClick={() => setView(view === 'month' ? 'calendar' : 'month')} className="font-bold hover:bg-gray-100 px-2 rounded">{monthNames[currentDate.getMonth()]}</button>
-                 <button type="button" onClick={() => setView(view === 'year' ? 'calendar' : 'year')} className="font-bold hover:bg-gray-100 px-2 rounded">{currentDate.getFullYear()}</button>
-              </div>
-              {view === 'calendar' && <button type="button" onClick={() => changeMonth(1)}><ChevronRight size={18}/></button>}
-           </div>
-           {view === 'calendar' && (
-             <div className="grid grid-cols-7 gap-1 text-center">
-                {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=><span key={d} className="text-xs text-gray-400 font-bold">{d}</span>)}
-                {Array(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay()).fill(null).map((_,i)=><div key={i}/>)}
-                {Array.from({length: new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 0).getDate()}, (_,i)=>i+1).map(d => (
-                   <button key={d} type="button" onClick={() => handleDateClick(d)} className="h-8 w-8 text-sm rounded-full hover:bg-blue-100">{d}</button>
-                ))}
-             </div>
-           )}
-           {view === 'month' && <div className="grid grid-cols-3 gap-2">{monthNames.map((m,i)=><button key={m} onClick={()=>{setCurrentDate(new Date(currentDate.getFullYear(),i,1));setView('calendar')}} className="p-2 text-sm hover:bg-gray-100 rounded">{m}</button>)}</div>}
-           {view === 'year' && <div ref={yearScrollRef} className="h-48 overflow-y-auto grid grid-cols-3 gap-2">{years.map(y=><button key={y} onClick={()=>{setCurrentDate(new Date(y,currentDate.getMonth(),1));setView('calendar')}} className="p-2 text-sm hover:bg-gray-100 rounded">{y}</button>)}</div>}
+// --- 1. THEME-AWARE LOADING OVERLAY ---
+const LoadingOverlay = ({ isDarkMode, activeHexColor }) => (
+  <div className={`fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md transition-all duration-300 p-4 ${
+    isDarkMode ? 'bg-[#0d0f15]/80' : 'bg-white/85'
+  }`}>
+    <div className={`flex flex-col items-center p-8 rounded-3xl shadow-2xl border max-w-sm w-full text-center animate-in zoom-in-95 duration-200 ${
+      isDarkMode ? 'bg-[#181a20] border-zinc-800 text-zinc-100' : 'bg-white border-slate-200 text-slate-800'
+    }`}>
+      <div className="relative mb-4">
+        <div 
+          className="w-16 h-16 border-4 rounded-full animate-spin"
+          style={{ borderColor: `${activeHexColor}30`, borderTopColor: activeHexColor }}
+        />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <FileText size={20} style={{ color: activeHexColor }} />
         </div>
-      )}
+      </div>
+      <h3 className="text-base font-extrabold tracking-tight mb-1">Generating Wisconsin WT-4</h3>
+      <p className={`text-xs max-w-xs leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+        Securing Employee's Wisconsin Withholding Exemption Certificate...
+      </p>
+    </div>
+  </div>
+);
+
+// --- 2. THEME-AWARE ERROR MODAL ---
+const ErrorModal = ({ isOpen, title, message, onClose, isDarkMode }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className={`w-full max-w-md p-6 rounded-3xl shadow-2xl border text-center animate-in zoom-in-95 duration-200 ${
+        isDarkMode ? 'bg-[#181a20] border-zinc-800 text-zinc-100' : 'bg-white border-slate-200 text-slate-800'
+      }`}>
+        <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
+          <AlertTriangle size={24} />
+        </div>
+        <h3 className="text-base font-extrabold mb-2">{title || "Validation Alert"}</h3>
+        <p className={`text-xs leading-relaxed mb-6 ${isDarkMode ? 'text-zinc-400' : 'text-slate-600'}`}>
+          {message}
+        </p>
+        <button 
+          type="button"
+          onClick={onClose} 
+          className="w-full py-3 bg-zinc-900 hover:bg-black dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-xs transition-transform active:scale-95 shadow-md"
+        >
+          Review &amp; Complete
+        </button>
+      </div>
     </div>
   );
 };
 
-// --- MAIN WISCONSIN FORM ---
-const WisconsinTaxForm = ({ initialData, onSubmit }) => {
-  const sigCanvasRef = useRef(null); 
-  const containerRef = useRef(null);
-  const dataLoadedRef = useRef(false);
+// --- 3. MAIN COMPONENT: WisconsinTaxForm ---
+const WisconsinTaxForm = ({ initialData = {}, onSubmit }) => {
+  const { isDarkMode, accentColor } = useTheme();
+  const activeColor = THEME_COLORS?.find(c => c.id === accentColor)?.color || '#b91c1c'; // Wisconsin Badger Red default
 
-  // 1. LOCAL STATE
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorModal, setErrorModal] = useState({ isOpen: false, title: '', message: '' });
+
+  // Form State
   const [formData, setFormData] = useState({
-    // Personal Info
-    first_name: '',
-    middle_initial: '',
-    last_name: '',
-    ssn: '',
-    address: '',
-    city: '',
-    state: 'WI',
-    zipcode: '',
-    date_of_birth: '',
-    date_of_hire: '',
+    // Employee Demographics
+    first_name: initialData.first_name || '',
+    middle_initial: initialData.middle_initial || initialData.initial || '',
+    last_name: initialData.last_name || '',
+    ssn: initialData.ssn || '',
+    address: initialData.address || '',
+    city: initialData.city || '',
+    state: initialData.state || 'WI',
+    zipcode: (initialData.zipcode || '').slice(0, 5),
+    date_of_birth: initialData.date_of_birth || initialData.dob || '',
+    date_of_hire: initialData.date_of_hire || initialData.doh || new Date().toISOString().split('T')[0],
 
-    // Filing Status
-    filing_status_wi: '1', // 1=Single, 2=Married, 3=Higher Single Rate
+    // Filing Status: '1' = Single, '2' = Married, '3' = Married at Higher Single Rate
+    filing_status_wi: initialData.filing_status_wi || initialData.filing_status || '1',
 
-    // Exemptions (Line 1)
-    claim_self: true,   // Line 1a
-    spouse_works: false, // Affects Line 1b (If Married)
-    dependents: 0,      // Line 1c
+    // Line 1: Exemptions
+    claim_self: initialData.claim_self !== undefined ? Boolean(initialData.claim_self) : true,
+    claim_spouse: Boolean(initialData.claim_spouse ?? false),
+    spouse_works: Boolean(initialData.spouse_works ?? false),
+    dependents: parseInt(initialData.dependents ?? initialData.line1c ?? 0, 10) || 0,
 
-    // Withholding (Line 2)
-    additional_withholding: '',
+    // Line 2: Additional Withholding ($)
+    additional_withholding: initialData.additional_withholding ?? initialData.line2 ?? '',
 
-    // Exempt (Line 3)
-    exempt: false,
+    // Line 3: Complete Exemption
+    exempt: Boolean(initialData.exempt ?? initialData.line3 ?? false),
 
-    // Signature
-    confirmation_date: new Date().toISOString().split('T')[0],
-    signature_image: null
+    // Signature & Date
+    signature_image: initialData.signature_image || null,
+    confirmation_date: initialData.confirmation_date || new Date().toISOString().split('T')[0]
   });
 
-  const filingStatuses = [
-    { code: '1', label: 'Single' },
-    { code: '2', label: 'Married' },
-    { code: '3', label: 'Married, but withhold at higher Single rate' }
-  ];
+  const sigCanvasRef = useRef(null);
 
-  // 2. INITIALIZE (Fixed Reset Loop)
+  // Sync initialData changes
   useEffect(() => {
-    if (initialData && !dataLoadedRef.current) {
-        setFormData(prev => ({
-            ...prev,
-            first_name: initialData.first_name || '',
-            last_name: initialData.last_name || '',
-            middle_initial: initialData.initial || '',
-            ssn: initialData.ssn || '',
-            address: initialData.address || '',
-            city: initialData.city || '',
-            zipcode: (initialData.zipcode || '').slice(0, 5), // Safe Zip Load
-            date_of_birth: initialData.dob || '',
-            state: 'WI'
-        }));
-        dataLoadedRef.current = true;
+    if (initialData && Object.keys(initialData).length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        first_name: initialData.first_name || prev.first_name,
+        middle_initial: initialData.middle_initial || initialData.initial || prev.middle_initial,
+        last_name: initialData.last_name || prev.last_name,
+        ssn: initialData.ssn || prev.ssn,
+        address: initialData.address || prev.address,
+        city: initialData.city || prev.city,
+        state: initialData.state || prev.state || 'WI',
+        zipcode: (initialData.zipcode || prev.zipcode || '').slice(0, 5),
+        date_of_birth: initialData.date_of_birth || initialData.dob || prev.date_of_birth,
+        date_of_hire: initialData.date_of_hire || initialData.doh || prev.date_of_hire,
+        filing_status_wi: initialData.filing_status_wi || initialData.filing_status || prev.filing_status_wi,
+        claim_self: initialData.claim_self !== undefined ? Boolean(initialData.claim_self) : prev.claim_self,
+        claim_spouse: Boolean(initialData.claim_spouse ?? prev.claim_spouse),
+        spouse_works: Boolean(initialData.spouse_works ?? prev.spouse_works),
+        dependents: parseInt(initialData.dependents ?? initialData.line1c ?? prev.dependents, 10) || 0,
+        additional_withholding: initialData.additional_withholding ?? initialData.line2 ?? prev.additional_withholding,
+        exempt: Boolean(initialData.exempt ?? initialData.line3 ?? prev.exempt)
+      }));
     }
   }, [initialData]);
 
-  // 3. CANVAS RESIZE
-  useEffect(() => {
-    const resizeCanvas = () => {
-        if (containerRef.current && sigCanvasRef.current) {
-            const canvas = sigCanvasRef.current.getCanvas();
-            const rect = containerRef.current.getBoundingClientRect();
-            // Save data
-            const savedData = sigCanvasRef.current.isEmpty() ? null : sigCanvasRef.current.toDataURL();
-            canvas.width = rect.width;
-            canvas.height = rect.height;
-            // Restore data
-            if (savedData) sigCanvasRef.current.fromDataURL(savedData);
-        }
-    };
-    setTimeout(resizeCanvas, 200);
-    window.addEventListener('resize', resizeCanvas);
-    return () => window.removeEventListener('resize', resizeCanvas);
-  }, []);
+  // Derived Calculations
+  const isSingle = formData.filing_status_wi === '1';
+  const isMarried = formData.filing_status_wi === '2';
+  const isHigherSingle = formData.filing_status_wi === '3';
 
-  // 4. HANDLERS
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    
-    // --- FIX: Force Zip Code to max 5 digits (Prevents DB Crash) ---
-    if (name === 'zipcode') {
-        const truncated = value.replace(/\D/g, '').slice(0, 5);
-        setFormData(prev => ({ ...prev, [name]: truncated }));
-        return;
+  // Line 1(a): Self
+  const line1aVal = formData.claim_self ? 1 : 0;
+
+  // Line 1(b): Spouse (1 if married and spouse doesn't claim on own certificate)
+  const line1bVal = isMarried && formData.claim_spouse ? 1 : 0;
+
+  // Line 1(c): Dependents
+  const line1cVal = Math.max(0, parseInt(formData.dependents, 10) || 0);
+
+  // Line 1(d): Total Exemptions
+  const totalExemptions = formData.exempt ? 0 : (line1aVal + line1bVal + line1cVal);
+
+  // SSN Auto-Formatting (XXX-XX-XXXX)
+  const handleSSNChange = (e) => {
+    const raw = e.target.value.replace(/\D/g, '').slice(0, 9);
+    let formatted = raw;
+    if (raw.length > 5) {
+      formatted = `${raw.slice(0, 3)}-${raw.slice(3, 5)}-${raw.slice(5)}`;
+    } else if (raw.length > 3) {
+      formatted = `${raw.slice(0, 3)}-${raw.slice(3)}`;
     }
-
-    setFormData(prev => ({ 
-        ...prev, 
-        [name]: type === 'checkbox' ? checked : value 
-    }));
+    setFormData(prev => ({ ...prev, ssn: formatted }));
   };
 
-  const handleSignatureEnd = () => {
-    if (sigCanvasRef.current && !sigCanvasRef.current.isEmpty()) {
-        // --- FIX: USE getCanvas() instead of getTrimmedCanvas() ---
-        const signatureData = sigCanvasRef.current.getCanvas().toDataURL('image/png');
-        setFormData(prev => ({ ...prev, signature_image: signatureData }));
-    }
-  };
-
+  // Clear Signature Canvas
   const clearSignature = () => {
-    sigCanvasRef.current.clear();
-    setFormData(prev => ({ ...prev, signature_image: null }));
+    if (sigCanvasRef.current) {
+      sigCanvasRef.current.clear();
+      setFormData(prev => ({ ...prev, signature_image: null }));
+    }
   };
 
-  const handleSubmit = (e) => {
-      e.preventDefault();
-      // Ensure signature is captured on submit
-      let sig = "";
-      if (sigCanvasRef.current && !sigCanvasRef.current.isEmpty()) {
-          sig = sigCanvasRef.current.getCanvas().toDataURL('image/png');
+  // Handle Form Submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // Validations
+    if (!formData.first_name.trim() || !formData.last_name.trim()) {
+      setErrorModal({
+        isOpen: true,
+        title: "Missing Name",
+        message: "Please enter your legal first and last name."
+      });
+      return;
+    }
+
+    const cleanSSN = formData.ssn.replace(/\D/g, '');
+    if (cleanSSN.length !== 9) {
+      setErrorModal({
+        isOpen: true,
+        title: "Invalid SSN",
+        message: "Please enter a valid 9-digit Social Security Number."
+      });
+      return;
+    }
+
+    if (!formData.address.trim() || !formData.city.trim() || formData.zipcode.length < 5) {
+      setErrorModal({
+        isOpen: true,
+        title: "Incomplete Address",
+        message: "Please provide your permanent street address, city, and 5-digit ZIP code."
+      });
+      return;
+    }
+
+    // Capture Signature Data
+    let sigDataUrl = formData.signature_image;
+    if (sigCanvasRef.current && !sigCanvasRef.current.isEmpty()) {
+      sigDataUrl = sigCanvasRef.current.getTrimmedCanvas().toDataURL('image/png');
+    }
+
+    if (!sigDataUrl) {
+      setErrorModal({
+        isOpen: true,
+        title: "Signature Required",
+        message: "Please sign in the certification box to certify your Wisconsin Form WT-4."
+      });
+      return;
+    }
+
+    const payload = {
+      ...formData,
+      state: 'WI',
+      state_code: 'WI',
+      signature_image: sigDataUrl,
+      line1a: line1aVal,
+      line1b: line1bVal,
+      line1c: line1cVal,
+      line1d: totalExemptions,
+      total_exemptions: totalExemptions,
+      exemptions: totalExemptions,
+      additional_withholding: parseFloat(formData.additional_withholding) || 0,
+      line2: parseFloat(formData.additional_withholding) || 0,
+      exempt: formData.exempt,
+      line3: formData.exempt ? 'EXEMPT' : ''
+    };
+
+    setIsLoading(true);
+    try {
+      if (onSubmit) {
+        await onSubmit(payload);
       }
-      onSubmit({ ...formData, signature_image: sig });
+    } catch (err) {
+      setErrorModal({
+        isOpen: true,
+        title: "Submission Error",
+        message: err?.response?.data?.error || err.message || "Failed to submit Wisconsin Form WT-4. Please try again."
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
-
-  // Calculate Total Exemptions (Line 1d)
-  const calculateTotal = () => {
-      let total = 0;
-      if (formData.claim_self) total += 1;
-      
-      // Line 1b: If Married (2) AND Spouse Does NOT Work, add 1
-      if (formData.filing_status_wi === '2' && !formData.spouse_works) {
-          total += 1;
-      }
-      
-      total += parseInt(formData.dependents || 0);
-      return total;
-  };
-
-  const totalExemptions = calculateTotal();
-
-  // Styles
-  const inputClass = "w-full px-4 py-3 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent bg-white text-gray-900 placeholder-gray-400 transition-shadow";
-  const labelClass = "block text-sm font-semibold mb-1.5 text-gray-800 tracking-wide";
-  const sectionHeader = "text-xl font-bold text-gray-900 flex items-center gap-2 border-b border-gray-200 pb-3 mb-6";
-  const checkboxCardClass = "flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-all hover:border-blue-400 bg-white border-gray-200";
-  const activeCheckboxClass = "border-blue-600 ring-1 ring-blue-600 bg-blue-50/20";
 
   return (
-    <div className="bg-white px-4 py-2 text-left">
-      <div className="mb-10 text-center">
-        <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Wisconsin Withholding Exemption</h2>
-        <p className="text-gray-500 text-sm mt-1">Form WT-4</p>
+    <div className={`max-w-4xl mx-auto rounded-3xl border transition-all duration-300 p-4 sm:p-8 ${
+      isDarkMode 
+        ? 'bg-[#101216] border-zinc-800/80 text-zinc-100 shadow-2xl' 
+        : 'bg-white border-slate-200/90 text-slate-800 shadow-xl'
+    }`}>
+      {isLoading && <LoadingOverlay isDarkMode={isDarkMode} activeHexColor={activeColor} />}
+      <ErrorModal 
+        isOpen={errorModal.isOpen} 
+        title={errorModal.title} 
+        message={errorModal.message} 
+        onClose={() => setErrorModal({ isOpen: false, title: '', message: '' })}
+        isDarkMode={isDarkMode}
+      />
+
+      {/* --- FORM HEADER --- */}
+      <div className="relative overflow-hidden rounded-2xl p-6 sm:p-8 mb-8 border" style={{
+        borderColor: `${activeColor}30`,
+        background: isDarkMode 
+          ? `linear-gradient(135deg, rgba(185, 28, 28, 0.25) 0%, rgba(15, 23, 42, 0.8) 100%)`
+          : `linear-gradient(135deg, ${activeColor}08 0%, ${activeColor}15 100%)`
+      }}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider text-red-500 bg-red-500/10 border border-red-500/20">
+                <Landmark size={12} />
+                State of Wisconsin
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                isDarkMode ? 'bg-zinc-800 text-zinc-400' : 'bg-slate-200/60 text-slate-600'
+              }`}>
+                Department of Revenue &bull; Wis. Stats. Chapter 71 &amp; 103
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight mb-1">
+              Employee's Wisconsin Withholding Exemption Certificate (Form WT-4)
+            </h1>
+            <p className={`text-xs max-w-xl leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-slate-600'}`}>
+              Every newly hired employee in Wisconsin must complete Form WT-4 for New Hire Reporting and to determine the amount of Wisconsin income tax to be withheld from wages.
+            </p>
+          </div>
+
+          <div className="shrink-0 flex sm:flex-col items-center sm:items-end justify-between sm:justify-center p-3 rounded-xl border border-red-500/20 bg-red-500/5">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-500">Official Certificate</span>
+            <span className="text-xs font-black text-red-600 dark:text-red-400">Form WT-4 / W-204</span>
+          </div>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-12">
-        
-        {/* 1. PERSONAL INFORMATION */}
-        <section>
-            <h3 className={sectionHeader}><User className="text-blue-600" size={22} /> Employee Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                <div className="md:col-span-5"><label className={labelClass}>First Name</label><input type="text" name="first_name" value={formData.first_name || ''} onChange={handleChange} className={inputClass} placeholder="First Name" required /></div>
-                <div className="md:col-span-2"><label className={labelClass}>M.I.</label><input type="text" name="middle_initial" maxLength="1" value={formData.middle_initial || ''} onChange={handleChange} className={`${inputClass} text-center uppercase`} placeholder="M" /></div>
-                <div className="md:col-span-5"><label className={labelClass}>Last Name</label><input type="text" name="last_name" value={formData.last_name || ''} onChange={handleChange} className={inputClass} placeholder="Last Name" required /></div>
-                
-                <div className="md:col-span-6 relative"><label className={labelClass}>SSN</label><div className="relative"><input type="text" name="ssn" value={formData.ssn || ''} onChange={handleChange} className={`${inputClass} pl-10 tracking-widest`} placeholder="XXXXXXXXX" required/><Shield size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"/></div></div>
-                <div className="md:col-span-6"><label className={labelClass}>Date of Birth</label><CustomDatePicker name="date_of_birth" value={formData.date_of_birth || ''} onChange={handleChange} placeholder="YYYY-MM-DD" /></div>
+      <form onSubmit={handleSubmit} className="space-y-8">
 
-                <div className="md:col-span-8"><label className={labelClass}>Address</label><input type="text" name="address" value={formData.address || ''} onChange={handleChange} className={inputClass} placeholder="Street Address" required /></div>
-                <div className="md:col-span-4"><label className={labelClass}>City</label><input type="text" name="city" value={formData.city || ''} onChange={handleChange} className={inputClass} required /></div>
-                <div className="md:col-span-4"><label className={labelClass}>State</label><input type="text" name="state" value="WI" readOnly className={`${inputClass} bg-gray-50`} /></div>
-                <div className="md:col-span-4"><label className={labelClass}>Zip Code</label><input type="text" name="zipcode" value={formData.zipcode || ''} onChange={handleChange} className={inputClass} required /></div>
-                <div className="md:col-span-4"><label className={labelClass}>Date of Hire</label><CustomDatePicker name="date_of_hire" value={formData.date_of_hire || ''} onChange={handleChange} placeholder="YYYY-MM-DD" /></div>
+        {/* --- STEP 1: PERSONAL INFORMATION & NEW HIRE REPORTING --- */}
+        <div className={`p-6 rounded-2xl border transition-all ${
+          isDarkMode ? 'bg-[#151820] border-zinc-800/80' : 'bg-slate-50/70 border-slate-200'
+        }`}>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs text-white" style={{ backgroundColor: activeColor }}>
+              1
             </div>
-        </section>
+            <h2 className="text-sm font-extrabold uppercase tracking-wider">Step 1: Employee's Section</h2>
+          </div>
 
-        {/* 2. FILING STATUS */}
-        <section>
-            <h3 className={sectionHeader}><FileText className="text-blue-600" size={22} /> Filing Status</h3>
-            <div className="space-y-4">
-                <div className="space-y-2">
-                    {filingStatuses.map((status) => (
-                        <label key={status.code} className={`${checkboxCardClass} ${formData.filing_status_wi === status.code ? activeCheckboxClass : ''}`}>
-                            <input type="radio" name="filing_status_wi" value={status.code} checked={formData.filing_status_wi === status.code} onChange={handleChange} className="mt-1 w-5 h-5 text-blue-600" />
-                            <span className="text-gray-900 font-medium">{status.label}</span>
-                        </label>
-                    ))}
-                </div>
-
-                {formData.filing_status_wi === '2' && (
-                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 animate-in fade-in">
-                        <label className="flex items-center gap-3 cursor-pointer">
-                            <input type="checkbox" name="spouse_works" checked={formData.spouse_works} onChange={handleChange} className="w-5 h-5 text-blue-600 rounded" />
-                            <div>
-                                <span className="block font-bold text-gray-900">Does your spouse work?</span>
-                                <span className="text-xs text-gray-500">Uncheck this if your spouse does NOT work (Adds +1 Exemption).</span>
-                            </div>
-                        </label>
-                    </div>
-                )}
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+            <div className="sm:col-span-5">
+              <label className="block text-xs font-bold mb-1">First Name *</label>
+              <input
+                type="text"
+                required
+                value={formData.first_name}
+                onChange={e => setFormData({ ...formData, first_name: e.target.value.toUpperCase() })}
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-medium outline-none transition-all uppercase ${
+                  isDarkMode ? 'bg-[#1c202a] border-zinc-700 text-white focus:border-red-500' : 'bg-white border-slate-300 text-slate-800 focus:border-red-500'
+                }`}
+                placeholder="JOHN"
+              />
             </div>
-        </section>
 
-        {/* 3. EXEMPTIONS WORKSHEET */}
-        <section>
-            <h3 className={sectionHeader}><Calculator className="text-blue-600" size={22} /> Exemptions (Line 1)</h3>
-            <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-6 space-y-4">
-                
-                {/* Line 1a */}
-                <label className={`${checkboxCardClass} ${formData.claim_self ? activeCheckboxClass : ''}`}>
-                    <input type="checkbox" name="claim_self" checked={formData.claim_self} onChange={handleChange} className="mt-1 w-5 h-5 text-blue-600 rounded" />
-                    <div>
-                        <span className="block font-bold text-gray-900">1a. Yourself</span>
-                        <span className="text-xs text-gray-500">Enter "1" for yourself.</span>
-                    </div>
-                </label>
-
-                {/* Line 1b (Calculated Display) */}
-                <div className="p-3 bg-white rounded border border-gray-200 flex justify-between items-center text-gray-500">
-                    <span className="text-sm">1b. Spouse (Calculated from status)</span>
-                    <span className="font-bold">{(formData.filing_status_wi === '2' && !formData.spouse_works) ? "1" : "0"}</span>
-                </div>
-
-                {/* Line 1c */}
-                <div className="flex items-center justify-between p-3 bg-white rounded border border-gray-200">
-                      <div className="flex-1 pr-4">
-                        <label className="text-sm font-semibold text-gray-800">1c. Number of Dependents</label>
-                      </div>
-                      <input type="number" name="dependents" value={formData.dependents || ''} onChange={handleChange} min="0" className="w-20 px-3 py-2 border rounded text-center" />
-                </div>
-
-                {/* Total Line 1d */}
-                <div className="flex items-center justify-between p-4 bg-white rounded border border-blue-200 mt-4">
-                    <div className="flex items-center gap-2">
-                         <CheckCircle className="text-blue-600" size={20}/>
-                         <label className="font-bold text-blue-900">Line 1d: Total Exemptions</label>
-                    </div>
-                    <span className="font-bold text-xl text-blue-900 bg-white px-4 py-1 rounded border border-blue-200">{totalExemptions}</span>
-                </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold mb-1">M.I.</label>
+              <input
+                type="text"
+                maxLength={1}
+                value={formData.middle_initial}
+                onChange={e => setFormData({ ...formData, middle_initial: e.target.value.toUpperCase() })}
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-medium text-center outline-none transition-all uppercase ${
+                  isDarkMode ? 'bg-[#1c202a] border-zinc-700 text-white focus:border-red-500' : 'bg-white border-slate-300 text-slate-800 focus:border-red-500'
+                }`}
+                placeholder="A"
+              />
             </div>
-        </section>
 
-        {/* 4. WITHHOLDING & EXEMPT */}
-        <section>
-            <h3 className={sectionHeader}><DollarSign className="text-blue-600" size={22} /> Additional & Exempt</h3>
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 space-y-6">
-                
-                {/* Line 2 */}
+            <div className="sm:col-span-5">
+              <label className="block text-xs font-bold mb-1">Last Name *</label>
+              <input
+                type="text"
+                required
+                value={formData.last_name}
+                onChange={e => setFormData({ ...formData, last_name: e.target.value.toUpperCase() })}
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-medium outline-none transition-all uppercase ${
+                  isDarkMode ? 'bg-[#1c202a] border-zinc-700 text-white focus:border-red-500' : 'bg-white border-slate-300 text-slate-800 focus:border-red-500'
+                }`}
+                placeholder="DOE"
+              />
+            </div>
+
+            <div className="sm:col-span-6">
+              <label className="block text-xs font-bold mb-1">Social Security Number (SSN) *</label>
+              <input
+                type="text"
+                required
+                maxLength={11}
+                value={formData.ssn}
+                onChange={handleSSNChange}
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-mono font-medium outline-none transition-all ${
+                  isDarkMode ? 'bg-[#1c202a] border-zinc-700 text-white focus:border-red-500' : 'bg-white border-slate-300 text-slate-800 focus:border-red-500'
+                }`}
+                placeholder="XXX-XX-XXXX"
+              />
+            </div>
+
+            <div className="sm:col-span-6">
+              <label className="block text-xs font-bold mb-1">Date of Birth (DOB) *</label>
+              <input
+                type="date"
+                required
+                value={formData.date_of_birth}
+                onChange={e => setFormData({ ...formData, date_of_birth: e.target.value })}
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-medium outline-none transition-all ${
+                  isDarkMode ? 'bg-[#1c202a] border-zinc-700 text-white focus:border-red-500' : 'bg-white border-slate-300 text-slate-800 focus:border-red-500'
+                }`}
+              />
+            </div>
+
+            <div className="sm:col-span-6">
+              <label className="block text-xs font-bold mb-1">Street Address *</label>
+              <input
+                type="text"
+                required
+                value={formData.address}
+                onChange={e => setFormData({ ...formData, address: e.target.value.toUpperCase() })}
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-medium outline-none transition-all uppercase ${
+                  isDarkMode ? 'bg-[#1c202a] border-zinc-700 text-white focus:border-red-500' : 'bg-white border-slate-300 text-slate-800 focus:border-red-500'
+                }`}
+                placeholder="100 STATE STREET"
+              />
+            </div>
+
+            <div className="sm:col-span-6">
+              <label className="block text-xs font-bold mb-1">Date of Hire (DOH) *</label>
+              <input
+                type="date"
+                required
+                value={formData.date_of_hire}
+                onChange={e => setFormData({ ...formData, date_of_hire: e.target.value })}
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-medium outline-none transition-all ${
+                  isDarkMode ? 'bg-[#1c202a] border-zinc-700 text-white focus:border-red-500' : 'bg-white border-slate-300 text-slate-800 focus:border-red-500'
+                }`}
+              />
+            </div>
+
+            <div className="sm:col-span-5">
+              <label className="block text-xs font-bold mb-1">City *</label>
+              <input
+                type="text"
+                required
+                value={formData.city}
+                onChange={e => setFormData({ ...formData, city: e.target.value.toUpperCase() })}
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-medium outline-none transition-all uppercase ${
+                  isDarkMode ? 'bg-[#1c202a] border-zinc-700 text-white focus:border-red-500' : 'bg-white border-slate-300 text-slate-800 focus:border-red-500'
+                }`}
+                placeholder="MADISON"
+              />
+            </div>
+
+            <div className="sm:col-span-3">
+              <label className="block text-xs font-bold mb-1">State</label>
+              <input
+                type="text"
+                disabled
+                value="WI"
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold text-center ${
+                  isDarkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-slate-200 border-slate-300 text-slate-600'
+                }`}
+              />
+            </div>
+
+            <div className="sm:col-span-4">
+              <label className="block text-xs font-bold mb-1">ZIP Code (5 Digits) *</label>
+              <input
+                type="text"
+                required
+                maxLength={5}
+                value={formData.zipcode}
+                onChange={e => setFormData({ ...formData, zipcode: e.target.value.replace(/\D/g, '').slice(0, 5) })}
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-medium outline-none transition-all ${
+                  isDarkMode ? 'bg-[#1c202a] border-zinc-700 text-white focus:border-red-500' : 'bg-white border-slate-300 text-slate-800 focus:border-red-500'
+                }`}
+                placeholder="53703"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* --- STEP 2: MARITAL / FILING STATUS --- */}
+        <div className={`p-6 rounded-2xl border transition-all ${
+          isDarkMode ? 'bg-[#151820] border-zinc-800/80' : 'bg-slate-50/70 border-slate-200'
+        }`}>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs text-white" style={{ backgroundColor: activeColor }}>
+              2
+            </div>
+            <h2 className="text-sm font-extrabold uppercase tracking-wider">Step 2: Marital Status</h2>
+          </div>
+          <p className={`text-xs mb-4 leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-slate-600'}`}>
+            Check the box that corresponds to your Wisconsin withholding filing status:
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label className={`p-4 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
+              formData.filing_status_wi === '1'
+                ? `border-red-500/80 bg-red-500/10 ${isDarkMode ? 'text-white' : 'text-slate-900'}`
+                : `border-zinc-700/60 hover:border-zinc-500 ${isDarkMode ? 'bg-[#1c202a]' : 'bg-white'}`
+            }`}>
+              <input
+                type="radio"
+                name="filing_status_wi"
+                value="1"
+                checked={formData.filing_status_wi === '1'}
+                onChange={e => setFormData({ ...formData, filing_status_wi: e.target.value })}
+                className="mt-0.5 text-red-600 focus:ring-red-500"
+              />
+              <div>
+                <span className="text-xs font-bold block mb-0.5">Single</span>
+                <span className={`text-[10px] ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                  Single or legally separated
+                </span>
+              </div>
+            </label>
+
+            <label className={`p-4 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
+              formData.filing_status_wi === '2'
+                ? `border-red-500/80 bg-red-500/10 ${isDarkMode ? 'text-white' : 'text-slate-900'}`
+                : `border-zinc-700/60 hover:border-zinc-500 ${isDarkMode ? 'bg-[#1c202a]' : 'bg-white'}`
+            }`}>
+              <input
+                type="radio"
+                name="filing_status_wi"
+                value="2"
+                checked={formData.filing_status_wi === '2'}
+                onChange={e => setFormData({ ...formData, filing_status_wi: e.target.value })}
+                className="mt-0.5 text-red-600 focus:ring-red-500"
+              />
+              <div>
+                <span className="text-xs font-bold block mb-0.5">Married</span>
+                <span className={`text-[10px] ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                  Standard married rate
+                </span>
+              </div>
+            </label>
+
+            <label className={`p-4 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
+              formData.filing_status_wi === '3'
+                ? `border-red-500/80 bg-red-500/10 ${isDarkMode ? 'text-white' : 'text-slate-900'}`
+                : `border-zinc-700/60 hover:border-zinc-500 ${isDarkMode ? 'bg-[#1c202a]' : 'bg-white'}`
+            }`}>
+              <input
+                type="radio"
+                name="filing_status_wi"
+                value="3"
+                checked={formData.filing_status_wi === '3'}
+                onChange={e => setFormData({ ...formData, filing_status_wi: e.target.value })}
+                className="mt-0.5 text-red-600 focus:ring-red-500"
+              />
+              <div>
+                <span className="text-xs font-bold block mb-0.5">Married (Higher Single Rate)</span>
+                <span className={`text-[10px] ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                  Both spouses work / multiple jobs
+                </span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* --- STEP 3: FIGURE TOTAL WITHHOLDING EXEMPTIONS (LINES 1a - 1d) --- */}
+        <div className={`p-6 rounded-2xl border transition-all ${
+          isDarkMode ? 'bg-[#151820] border-zinc-800/80' : 'bg-slate-50/70 border-slate-200'
+        }`}>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs text-white" style={{ backgroundColor: activeColor }}>
+              3
+            </div>
+            <h2 className="text-sm font-extrabold uppercase tracking-wider">Figure Total Withholding Exemptions (Line 1)</h2>
+          </div>
+          <p className={`text-xs mb-4 leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-slate-600'}`}>
+            Complete Lines 1(a) through 1(d) to calculate your total Wisconsin withholding exemptions:
+          </p>
+
+          <div className="space-y-3">
+            {/* Line 1(a): Yourself */}
+            <label className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
+              formData.claim_self
+                ? `border-red-500/60 bg-red-500/5 ${isDarkMode ? 'text-white' : 'text-slate-900'}`
+                : `border-zinc-700/60 hover:border-zinc-500 ${isDarkMode ? 'bg-[#1c202a]' : 'bg-white'}`
+            }`}>
+              <input
+                type="checkbox"
+                checked={formData.claim_self}
+                onChange={e => setFormData({ ...formData, claim_self: e.target.checked })}
+                className="mt-0.5 rounded border-zinc-600 text-red-600 focus:ring-red-500 shrink-0"
+              />
+              <div className="flex-1 flex items-center justify-between gap-4">
                 <div>
-                    <label className={labelClass}>Line 2: Additional Withholding ($)</label>
-                    <div className="relative max-w-sm"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500">$</span><input type="number" name="additional_withholding" value={formData.additional_withholding || ''} onChange={handleChange} className={`${inputClass} pl-8`} placeholder="0.00" /></div>
+                  <span className="text-xs font-bold block mb-0.5">Line 1(a): Exemption for Yourself</span>
+                  <p className={`text-[11px] leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                    Enter 1 for yourself if no one else claims you as a dependent (+1 Exemption).
+                  </p>
                 </div>
+                <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 shrink-0">
+                  {line1aVal}
+                </span>
+              </div>
+            </label>
 
-                {/* Line 3: Exempt */}
-                <div className="border-t border-gray-200 pt-6">
-                    <label className={`${checkboxCardClass} ${formData.exempt ? 'border-red-500 ring-1 ring-red-500 bg-red-50/20' : ''}`}>
-                        <input type="checkbox" name="exempt" checked={formData.exempt} onChange={handleChange} className="w-5 h-5 text-red-600 rounded" />
-                        <div>
-                             <span className="block font-bold text-gray-900">Line 3: Claim Exemption</span>
-                             <span className="text-xs text-gray-500">I claim exemption from withholding (must meet conditions).</span>
-                        </div>
-                    </label>
+            {/* Line 1(b): Spouse */}
+            <label className={`flex items-start gap-3 p-4 rounded-xl border transition-all ${
+              !isMarried
+                ? 'opacity-50 cursor-not-allowed bg-zinc-800/20 border-zinc-800'
+                : formData.claim_spouse
+                  ? `cursor-pointer border-red-500/60 bg-red-500/5 ${isDarkMode ? 'text-white' : 'text-slate-900'}`
+                  : `cursor-pointer border-zinc-700/60 hover:border-zinc-500 ${isDarkMode ? 'bg-[#1c202a]' : 'bg-white'}`
+            }`}>
+              <input
+                type="checkbox"
+                disabled={!isMarried}
+                checked={isMarried && formData.claim_spouse}
+                onChange={e => setFormData({ ...formData, claim_spouse: e.target.checked })}
+                className="mt-0.5 rounded border-zinc-600 text-red-600 focus:ring-red-500 shrink-0"
+              />
+              <div className="flex-1 flex items-center justify-between gap-4">
+                <div>
+                  <span className="text-xs font-bold block mb-0.5">Line 1(b): Exemption for Your Spouse</span>
+                  <p className={`text-[11px] leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                    {isMarried 
+                      ? "Enter 1 for your spouse if not claimed on your spouse's own Form WT-4 (+1 Exemption)." 
+                      : "Only applicable if filing status is Married."}
+                  </p>
                 </div>
+                <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 shrink-0">
+                  {line1bVal}
+                </span>
+              </div>
+            </label>
 
+            {/* Line 1(c): Dependents */}
+            <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+              isDarkMode ? 'bg-[#1c202a] border-zinc-800' : 'bg-white border-slate-200'
+            }`}>
+              <div>
+                <span className="text-xs font-bold block mb-0.5">Line 1(c): Exemption(s) for Dependent(s)</span>
+                <p className={`text-[11px] leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                  You are entitled to claim an exemption for each dependent you claim on your Wisconsin return.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <input
+                  type="number"
+                  min={0}
+                  value={formData.dependents}
+                  onChange={e => setFormData({ ...formData, dependents: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                  className={`w-20 px-3 py-2 rounded-xl border text-xs font-bold text-center outline-none ${
+                    isDarkMode ? 'bg-[#151820] border-zinc-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                  }`}
+                />
+              </div>
             </div>
-        </section>
 
-        {/* 5. SIGNATURE */}
-        <section className="bg-gray-50 rounded-xl border border-gray-200 p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2"><Calendar className="text-blue-600" size={20}/> Declaration & Signature</h3>
-            
-            <p className="text-sm text-gray-700 mb-6 font-medium">
-                Under penalties of perjury, I declare that this certificate is true, correct, and complete to the best of my knowledge and belief.
+            {/* Line 1(d): Total Exemptions */}
+            <div className="p-4 rounded-xl border bg-red-600/10 border-red-600/30 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-black text-red-700 dark:text-red-300 block">
+                  Line 1(d): Total Withholding Exemptions (Add lines a through c):
+                </span>
+                <span className={`text-[11px] ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                  Wisconsin standard withholding total
+                </span>
+              </div>
+              <span className="text-xl font-black text-red-700 dark:text-red-300 px-3.5 py-1 rounded-xl bg-white dark:bg-zinc-900 shadow-sm border border-red-500/40">
+                {totalExemptions}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* --- STEP 4: ADDITIONAL WITHHOLDING & COMPLETE EXEMPTION (LINES 2 - 3) --- */}
+        <div className={`p-6 rounded-2xl border transition-all ${
+          isDarkMode ? 'bg-[#151820] border-zinc-800/80' : 'bg-slate-50/70 border-slate-200'
+        }`}>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs text-white" style={{ backgroundColor: activeColor }}>
+              4
+            </div>
+            <h2 className="text-sm font-extrabold uppercase tracking-wider">Additional Withholding &amp; Exemption (Lines 2 &ndash; 3)</h2>
+          </div>
+
+          <div className="space-y-4">
+            {/* Line 2: Additional Withholding */}
+            <div className={`p-4 rounded-xl border ${isDarkMode ? 'bg-[#1c202a] border-zinc-800' : 'bg-white border-slate-200'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold">Line 2: Additional Amount per Pay Period Deducted ($)</span>
+                <span className="text-[10px] font-extrabold text-red-500">Employer Agreement</span>
+              </div>
+              <div className="relative max-w-xs">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">$</span>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={formData.additional_withholding}
+                  onChange={e => setFormData({ ...formData, additional_withholding: e.target.value })}
+                  className={`w-full pl-7 pr-3 py-2 rounded-xl border text-xs font-bold outline-none ${
+                    isDarkMode ? 'bg-[#151820] border-zinc-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-800'
+                  }`}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            {/* Line 3: Complete Exemption */}
+            <div className={`p-4 rounded-xl border transition-all ${
+              formData.exempt
+                ? 'border-amber-500 bg-amber-500/10'
+                : isDarkMode ? 'bg-[#1c202a] border-zinc-800' : 'bg-white border-slate-200'
+            }`}>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.exempt}
+                  onChange={e => setFormData({ ...formData, exempt: e.target.checked })}
+                  className="mt-0.5 rounded border-zinc-600 text-amber-500 focus:ring-amber-500 shrink-0"
+                />
+                <div>
+                  <span className="text-xs font-bold block mb-0.5">
+                    Line 3: I claim complete exemption from Wisconsin withholding (Enter "Exempt")
+                  </span>
+                  <p className={`text-[11px] leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                    I certify that I incurred no liability for Wisconsin income tax for last year and that I anticipate that I will incur no liability for Wisconsin income tax for this year.
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* --- REAL-TIME WISCONSIN WITHHOLDING SUMMARY --- */}
+        <div className={`p-5 rounded-2xl border transition-all ${
+          isDarkMode ? 'bg-[#151820] border-zinc-800/80' : 'bg-slate-50 border-slate-200'
+        }`}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Calculator size={16} className="text-red-500" />
+              <h3 className="text-xs font-black uppercase tracking-wider">Wisconsin Form WT-4 Summary</h3>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 border border-red-500/20">
+              Certificate Preview
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+            <div className={`p-3 rounded-xl border ${isDarkMode ? 'bg-[#1c202a] border-zinc-800' : 'bg-white border-slate-200'}`}>
+              <span className={`text-[10px] block font-semibold mb-0.5 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>Filing Status</span>
+              <span className="text-xs font-black text-red-500">
+                {isSingle ? 'Single' : (isMarried ? 'Married' : 'Higher Single')}
+              </span>
+            </div>
+
+            <div className={`p-3 rounded-xl border ${isDarkMode ? 'bg-[#1c202a] border-zinc-800' : 'bg-white border-slate-200'}`}>
+              <span className={`text-[10px] block font-semibold mb-0.5 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>Total Exemptions (1d)</span>
+              <span className="text-xs font-black text-red-600 dark:text-red-400">{totalExemptions}</span>
+            </div>
+
+            <div className={`p-3 rounded-xl border ${isDarkMode ? 'bg-[#1c202a] border-zinc-800' : 'bg-white border-slate-200'}`}>
+              <span className={`text-[10px] block font-semibold mb-0.5 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>Extra Deduction (2)</span>
+              <span className="text-xs font-black text-slate-800 dark:text-zinc-100">
+                ${parseFloat(formData.additional_withholding || 0).toFixed(2)}
+              </span>
+            </div>
+
+            <div className={`p-3 rounded-xl border ${isDarkMode ? 'bg-[#1c202a] border-zinc-800' : 'bg-white border-slate-200'}`}>
+              <span className={`text-[10px] block font-semibold mb-0.5 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>Withholding Status</span>
+              <span className={`text-xs font-black ${formData.exempt ? 'text-amber-500' : 'text-emerald-500'}`}>
+                {formData.exempt ? 'EXEMPT (Line 3)' : 'Standard Withholding'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* --- STEP 5: EMPLOYEE CERTIFICATION & DIGITAL SIGNATURE --- */}
+        <div className={`p-6 rounded-2xl border transition-all ${
+          isDarkMode ? 'bg-[#151820] border-zinc-800/80' : 'bg-slate-50/70 border-slate-200'
+        }`}>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs text-white" style={{ backgroundColor: activeColor }}>
+              5
+            </div>
+            <h2 className="text-sm font-extrabold uppercase tracking-wider">Step 5: Sign &amp; Certify</h2>
+          </div>
+
+          <div className="p-3.5 rounded-xl border mb-6 bg-red-500/5 border-red-500/20 text-red-600 dark:text-red-400">
+            <p className="text-xs leading-relaxed font-medium">
+              <strong>I CERTIFY</strong> that the number of withholding exemptions claimed on this certificate does not exceed the number to which I am entitled. If claiming complete exemption from withholding, I certify that I incurred no liability for Wisconsin income tax for last year and that I anticipate that I will incur no liability for Wisconsin income tax for this year.
             </p>
+          </div>
 
-            <div className="mb-8 max-w-xs">
-                <CustomDatePicker label="Date of Signing" name="confirmation_date" value={formData.confirmation_date || ''} onChange={handleChange} />
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-6">
+            <div className="sm:col-span-8">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold flex items-center gap-1.5">
+                  <PenTool size={13} style={{ color: activeColor }} />
+                  Employee's Signature *
+                </label>
+                <button
+                  type="button"
+                  onClick={clearSignature}
+                  className="text-[11px] font-bold flex items-center gap-1 text-rose-500 hover:text-rose-600 transition-colors"
+                >
+                  <Eraser size={12} />
+                  Clear Signature
+                </button>
+              </div>
+
+              <div className={`h-36 rounded-2xl border-2 border-dashed overflow-hidden transition-all ${
+                isDarkMode 
+                  ? 'bg-[#181a20] border-zinc-700 hover:border-zinc-500' 
+                  : 'bg-white border-slate-300 hover:border-red-400'
+              }`}>
+                <SignatureCanvas
+                  ref={sigCanvasRef}
+                  penColor={isDarkMode ? '#ffffff' : '#000000'}
+                  canvasProps={{
+                    className: 'w-full h-full cursor-crosshair'
+                  }}
+                />
+              </div>
+              <span className={`text-[10px] mt-1.5 block ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>
+                Sign within the box above using your mouse, trackpad, or touch screen.
+              </span>
             </div>
 
-            {/* BIG SIGNATURE ROW */}
-            <div className="w-full">
-                <div className="flex justify-between items-center mb-2">
-                    <label className={labelClass}>Digital Signature</label>
-                    <button type="button" onClick={clearSignature} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium px-3 py-1.5 rounded-lg border border-red-200 hover:bg-red-50 transition-colors"><Eraser size={14}/> Clear Signature</button>
-                </div>
-                
-                <div ref={containerRef} className="border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-white hover:border-blue-500 transition-all h-56 w-full relative cursor-crosshair">
-                    <SignatureCanvas 
-                        ref={sigCanvasRef}
-                        penColor="black"
-                        velocityFilterWeight={0.7}
-                        canvasProps={{ className: 'sigCanvas w-full h-full' }}
-                        onEnd={handleSignatureEnd}
-                    />
-                    {!formData.signature_image && (
-                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-gray-400 gap-2">
-                          <PenTool size={24} className="opacity-50" />
-                          <span className="font-medium">Sign Here</span>
-                       </div>
-                    )}
-                </div>
-            </div>
-        </section>
+            <div className="sm:col-span-4 flex flex-col justify-between">
+              <div>
+                <label className="block text-xs font-bold mb-1">Date Signed *</label>
+                <input
+                  type="date"
+                  required
+                  value={formData.confirmation_date}
+                  onChange={e => setFormData({ ...formData, confirmation_date: e.target.value })}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-medium outline-none transition-all ${
+                    isDarkMode ? 'bg-[#1c202a] border-zinc-700 text-white focus:border-red-500' : 'bg-white border-slate-300 text-slate-800 focus:border-red-500'
+                  }`}
+                />
+              </div>
 
-        {/* SUBMIT */}
-        <div className="flex justify-end pt-8 pb-4 border-t border-gray-100 mt-6">
-            <button type="submit" disabled={!formData.signature_image} className={`px-10 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all flex items-center gap-2 ${formData.signature_image ? 'bg-blue-600 hover:bg-blue-700 text-white hover:-translate-y-0.5 hover:shadow-xl' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
-                <Save size={22} /> Confirm & Generate PDF
-            </button>
+              <button
+                type="submit"
+                className="w-full mt-4 py-3.5 rounded-2xl font-extrabold text-xs uppercase tracking-wider text-white shadow-xl transition-all duration-200 hover:brightness-110 active:scale-95 flex items-center justify-center gap-2"
+                style={{ backgroundColor: activeColor }}
+              >
+                <span>Confirm &amp; Generate Form WT-4</span>
+                <ArrowRight size={15} />
+              </button>
+            </div>
+          </div>
         </div>
 
       </form>

@@ -398,3 +398,5 @@ export const StunningDatePicker = ({
     </div>
   );
 };
+
+export default StunningSelect;

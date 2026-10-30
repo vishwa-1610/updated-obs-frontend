@@ -1,40 +1,59 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import { User, Shield, DollarSign, Calendar, ChevronDown, Eraser, Save, PenTool, FileText, Calculator, Loader2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
-
-// --- COMPONENTS ---
+import { 
+  User, Shield, DollarSign, Calendar, ChevronDown, Eraser, Save, 
+  PenTool, FileText, Calculator, Loader2, XCircle, ChevronLeft, ChevronRight, Check
+} from 'lucide-react';
+import { useTheme, THEME_COLORS } from '../../Theme/ThemeProvider';
+import { StunningSelect } from '../../tasks/StunningSelect';
 
 // 1. LOADING OVERLAY
-const LoadingOverlay = () => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm transition-all duration-300">
-    <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
-      <div className="relative">
-        <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-8 h-8 bg-blue-50 rounded-full"></div>
+const LoadingOverlay = () => {
+  const { isDarkMode } = useTheme();
+  return (
+    <div className={`fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md transition-all duration-300 ${
+      isDarkMode ? 'bg-black/80' : 'bg-white/80'
+    }`}>
+      <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <div className={`absolute inset-0 flex items-center justify-center ${
+            isDarkMode ? 'text-blue-400' : 'text-blue-600'
+          }`}>
+            <Calculator size={20} />
+          </div>
         </div>
+        <h3 className={`mt-4 text-lg font-bold tracking-tight ${isDarkMode ? 'text-zinc-100' : 'text-slate-800'}`}>
+          Processing Colorado DR 0004...
+        </h3>
+        <p className={`text-xs mt-1 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+          Securely validating allowances and compiling official certificate
+        </p>
       </div>
-      <h3 className="mt-4 text-lg font-bold text-gray-800 tracking-tight">Processing...</h3>
-      <p className="text-gray-500 text-sm">Securely encrypting and submitting your data</p>
     </div>
-  </div>
-);
+  );
+};
 
 // 2. ERROR MODAL
 const ErrorModal = ({ isOpen, title, message, onClose }) => {
+  const { isDarkMode } = useTheme();
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom-8 duration-300 transform transition-all border border-gray-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className={`rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in slide-in-from-bottom-8 duration-300 transform transition-all border ${
+        isDarkMode ? 'bg-[#18181b] border-zinc-800 text-zinc-100' : 'bg-white border-slate-100 text-slate-900'
+      }`}>
         <div className="flex flex-col items-center text-center">
-          <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-4">
-            <XCircle className="text-red-500 w-8 h-8" />
+          <div className="w-14 h-14 bg-rose-500/10 rounded-full flex items-center justify-center mb-4">
+            <XCircle className="text-rose-500 w-8 h-8" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">{title || "Action Required"}</h3>
-          <p className="text-gray-500 mb-6 text-sm leading-relaxed">{message || "Please check your inputs."}</p>
+          <h3 className="text-xl font-bold mb-2">{title || "Action Required"}</h3>
+          <p className={`mb-6 text-sm leading-relaxed ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+            {message || "Please check your inputs."}
+          </p>
           <button 
             onClick={onClose}
-            className="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl font-bold transition-transform active:scale-95 shadow-lg"
+            className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-transform active:scale-95 shadow-lg"
           >
             Okay, I'll Fix It
           </button>
@@ -46,6 +65,8 @@ const ErrorModal = ({ isOpen, title, message, onClose }) => {
 
 // 3. CUSTOM DATE PICKER
 const CustomDatePicker = ({ label, name, value, onChange, placeholder }) => {
+  const { isDarkMode, accentColor } = useTheme();
+  const activeHexColor = THEME_COLORS.find(c => c.id === accentColor)?.color || '#2563eb';
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('calendar');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -85,33 +106,90 @@ const CustomDatePicker = ({ label, name, value, onChange, placeholder }) => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <label className="block text-sm font-semibold mb-1.5 text-gray-800 tracking-wide">{label}</label>
+      <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${
+        isDarkMode ? 'text-zinc-400' : 'text-slate-500'
+      }`}>{label}</label>
       <div className="relative cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
         <Calendar size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-500" />
-        <input readOnly type="text" value={value || ''} placeholder={placeholder || "YYYY-MM-DD"} className="w-full pl-10 pr-4 py-3.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none cursor-pointer placeholder-gray-400 shadow-sm" />
-        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <input 
+          readOnly 
+          type="text" 
+          value={value || ''} 
+          placeholder={placeholder || "YYYY-MM-DD"} 
+          className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm font-medium transition-all outline-none cursor-pointer shadow-xs ${
+            isDarkMode 
+              ? 'bg-[#18181b] border-zinc-800 text-zinc-100 hover:border-zinc-700' 
+              : 'bg-white border-slate-200 text-slate-800 hover:border-slate-300'
+          }`} 
+        />
+        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
       </div>
       {isOpen && (
-        <div className="absolute z-50 mb-2 p-4 rounded-xl shadow-2xl border border-gray-200 w-72 bottom-full left-0 bg-white text-gray-800">
+        <div className={`absolute z-50 mb-2 p-4 rounded-2xl shadow-2xl border w-72 bottom-full left-0 animate-in fade-in zoom-in-95 duration-150 ${
+          isDarkMode ? 'bg-[#18181b] border-zinc-800 text-zinc-100' : 'bg-white border-slate-200 text-slate-800'
+        }`}>
            <div className="flex justify-between items-center mb-4">
-              {view === 'calendar' && <button type="button" onClick={() => changeMonth(-1)}><ChevronLeft size={18}/></button>}
+              {view === 'calendar' && (
+                <button type="button" onClick={() => changeMonth(-1)} className="p-1 rounded-lg hover:bg-zinc-800 transition-colors">
+                  <ChevronLeft size={18}/>
+                </button>
+              )}
               <div className="flex gap-2">
-                 <button type="button" onClick={() => setView(view === 'month' ? 'calendar' : 'month')} className="font-bold hover:bg-gray-100 px-2 rounded">{monthNames[currentDate.getMonth()]}</button>
-                 <button type="button" onClick={() => setView(view === 'year' ? 'calendar' : 'year')} className="font-bold hover:bg-gray-100 px-2 rounded">{currentDate.getFullYear()}</button>
+                 <button type="button" onClick={() => setView(view === 'month' ? 'calendar' : 'month')} className="font-bold text-xs px-2 py-1 rounded hover:bg-zinc-500/10">
+                   {monthNames[currentDate.getMonth()]}
+                 </button>
+                 <button type="button" onClick={() => setView(view === 'year' ? 'calendar' : 'year')} className="font-bold text-xs px-2 py-1 rounded hover:bg-zinc-500/10">
+                   {currentDate.getFullYear()}
+                 </button>
               </div>
-              {view === 'calendar' && <button type="button" onClick={() => changeMonth(1)}><ChevronRight size={18}/></button>}
+              {view === 'calendar' && (
+                <button type="button" onClick={() => changeMonth(1)} className="p-1 rounded-lg hover:bg-zinc-800 transition-colors">
+                  <ChevronRight size={18}/>
+                </button>
+              )}
            </div>
            {view === 'calendar' && (
              <div className="grid grid-cols-7 gap-1 text-center">
-                {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=><span key={d} className="text-xs text-gray-400 font-bold">{d}</span>)}
+                {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=><span key={d} className="text-xs text-zinc-400 font-bold">{d}</span>)}
                 {Array(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay()).fill(null).map((_,i)=><div key={i}/>)}
                 {Array.from({length: new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 0).getDate()}, (_,i)=>i+1).map(d => (
-                   <button key={d} type="button" onClick={() => handleDateClick(d)} className="h-8 w-8 text-sm rounded-full hover:bg-blue-100">{d}</button>
+                   <button 
+                     key={d} 
+                     type="button" 
+                     onClick={() => handleDateClick(d)} 
+                     className="h-8 w-8 text-xs font-semibold rounded-lg hover:bg-blue-600/20 hover:text-blue-500 transition-colors"
+                   >
+                     {d}
+                   </button>
                 ))}
              </div>
            )}
-           {view === 'month' && <div className="grid grid-cols-3 gap-2">{monthNames.map((m,i)=><button key={m} onClick={()=>{setCurrentDate(new Date(currentDate.getFullYear(),i,1));setView('calendar')}} className="p-2 text-sm hover:bg-gray-100 rounded">{m}</button>)}</div>}
-           {view === 'year' && <div ref={yearScrollRef} className="h-48 overflow-y-auto grid grid-cols-3 gap-2">{years.map(y=><button key={y} onClick={()=>{setCurrentDate(new Date(y,currentDate.getMonth(),1));setView('calendar')}} className="p-2 text-sm hover:bg-gray-100 rounded">{y}</button>)}</div>}
+           {view === 'month' && (
+             <div className="grid grid-cols-3 gap-2">
+               {monthNames.map((m,i)=>(
+                 <button 
+                   key={m} 
+                   onClick={()=>{setCurrentDate(new Date(currentDate.getFullYear(),i,1));setView('calendar')}} 
+                   className="p-2 text-xs font-semibold hover:bg-blue-600/20 rounded-lg"
+                 >
+                   {m}
+                 </button>
+               ))}
+             </div>
+           )}
+           {view === 'year' && (
+             <div ref={yearScrollRef} className="h-48 overflow-y-auto grid grid-cols-3 gap-2 custom-scrollbar">
+               {years.map(y=>(
+                 <button 
+                   key={y} 
+                   onClick={()=>{setCurrentDate(new Date(y,currentDate.getMonth(),1));setView('calendar')}} 
+                   className={`p-2 text-xs font-semibold rounded-lg hover:bg-blue-600/20 ${y === currentDate.getFullYear() ? 'selected-year font-bold text-blue-500' : ''}`}
+                 >
+                   {y}
+                 </button>
+               ))}
+             </div>
+           )}
         </div>
       )}
     </div>
@@ -120,6 +198,9 @@ const CustomDatePicker = ({ label, name, value, onChange, placeholder }) => {
 
 // --- MAIN COLORADO FORM ---
 const ColoradoTaxForm = ({ initialData, onSubmit }) => {
+  const { isDarkMode, accentColor } = useTheme();
+  const activeHexColor = THEME_COLORS.find(c => c.id === accentColor)?.color || '#2563eb';
+
   const sigCanvasRef = useRef({}); 
   const containerRef = useRef(null);
 
@@ -155,11 +236,11 @@ const ColoradoTaxForm = ({ initialData, onSubmit }) => {
   });
 
   const filingStatusOptions = [
-    { code: "1", label: "Single" },
-    { code: "2", label: "Married Filing Jointly" },
-    { code: "3", label: "Married Filing Separately" },
-    { code: "4", label: "Head of Household" },
-    { code: "5", label: "Qualifying Surviving Spouse" }
+    { value: "1", label: "Single" },
+    { value: "2", label: "Married Filing Jointly" },
+    { value: "3", label: "Married Filing Separately" },
+    { value: "4", label: "Head of Household" },
+    { value: "5", label: "Qualifying Surviving Spouse" }
   ];
 
   // Initialize
@@ -215,17 +296,19 @@ const ColoradoTaxForm = ({ initialData, onSubmit }) => {
   };
 
   const clearSignature = () => {
-    sigCanvasRef.current.clear();
+    if (sigCanvasRef.current && typeof sigCanvasRef.current.clear === 'function') {
+      sigCanvasRef.current.clear();
+    }
     setFormData(prev => ({ ...prev, signature_image: null }));
   };
 
   // --- SUBMIT HANDLER ---
   const handleSubmit = async (e) => {
-      e.preventDefault();
+      e?.preventDefault?.();
       
       // 1. CAPTURE SIGNATURE
       let sig = formData.signature_image;
-      if (sigCanvasRef.current && !sigCanvasRef.current.isEmpty()) {
+      if (sigCanvasRef.current && typeof sigCanvasRef.current.isEmpty === 'function' && !sigCanvasRef.current.isEmpty()) {
           sig = sigCanvasRef.current.getCanvas().toDataURL('image/png');
       }
 
@@ -252,7 +335,23 @@ const ColoradoTaxForm = ({ initialData, onSubmit }) => {
       setIsSubmitting(true);
 
       try {
-          const finalData = { ...formData, signature_image: sig };
+          const jobsKey = Math.min(Math.max(Number(formData.num_jobs) || 1, 1), 4);
+          let computedAllowance = formData.annual_withholding_allowance;
+          if (!formData.use_worksheet_1 && formData.use_table_1) {
+            const table1Lookup = {
+              "1": { 1: 12500, 2: 6000, 3: 4000, 4: 3000 },
+              "2": { 1: 27000, 2: 13500, 3: 9000, 4: 6500 },
+              "3": { 1: 12500, 2: 6000, 3: 4000, 4: 3000 },
+              "4": { 1: 19500, 2: 10000, 3: 6500, 4: 5000 },
+              "5": { 1: 27000, 2: 13500, 3: 9000, 4: 6500 }
+            };
+            computedAllowance = String((table1Lookup[formData.filing_status] || table1Lookup["1"])[jobsKey]);
+          }
+          const finalData = { 
+            ...formData, 
+            annual_withholding_allowance: computedAllowance,
+            signature_image: sig 
+          };
           await onSubmit(finalData);
           setIsSubmitting(false);
       } catch (error) {
@@ -263,16 +362,32 @@ const ColoradoTaxForm = ({ initialData, onSubmit }) => {
       }
   };
 
-  // --- STYLE DEFINITIONS ---
-  const inputClass = "w-full px-4 py-3.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none placeholder-gray-400 shadow-sm";
-  
-  // FIX: Force ring/border on focus by overriding browser defaults
-  const selectClass = "w-full px-4 py-3.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none shadow-sm appearance-none cursor-pointer pr-10";
+  // --- THEME-REACTIVE STYLES ---
+  const inputClass = `w-full px-4 py-3 rounded-xl border text-sm font-medium transition-all outline-none shadow-xs ${
+    isDarkMode 
+      ? 'bg-[#18181b] border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20' 
+      : 'bg-white border-slate-200 text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+  }`;
 
-  const labelClass = "block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5";
-  const sectionHeader = "text-xl font-bold text-gray-900 flex items-center gap-3 mb-6 pb-4 border-b border-gray-100";
-  const checkboxCardClass = "flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-all hover:border-blue-400";
-  const activeCheckboxClass = "border-blue-600 ring-1 ring-blue-600 bg-blue-50/20";
+  const labelClass = `block text-xs font-bold uppercase tracking-wider mb-1.5 ${
+    isDarkMode ? 'text-zinc-400' : 'text-slate-500'
+  }`;
+
+  const sectionCard = `p-6 sm:p-8 rounded-2xl border transition-all ${
+    isDarkMode ? 'bg-[#121217] border-zinc-800 shadow-xl' : 'bg-white border-slate-100 shadow-sm'
+  }`;
+
+  const sectionHeader = `text-lg font-bold flex items-center gap-3 mb-6 pb-4 border-b ${
+    isDarkMode ? 'border-zinc-800/80 text-zinc-100' : 'border-slate-100 text-slate-900'
+  }`;
+
+  const checkboxCardClass = `flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all ${
+    isDarkMode ? 'border-zinc-800 hover:border-zinc-700 bg-[#18181b]' : 'border-slate-200 hover:border-slate-300 bg-white'
+  }`;
+
+  const activeCheckboxClass = `ring-2 ${
+    isDarkMode ? 'border-blue-500 ring-blue-500/30 bg-blue-500/10' : 'border-blue-600 ring-blue-500/20 bg-blue-50/40'
+  }`;
 
   return (
     <>
@@ -287,96 +402,159 @@ const ColoradoTaxForm = ({ initialData, onSubmit }) => {
         onClose={() => setErrorState({ isOpen: false, title: '', message: '' })} 
       />
 
-      <div className="bg-white px-4 py-2 text-left relative">
-        <div className="mb-10 text-center">
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Colorado Withholding Certificate</h2>
-          <p className="text-gray-500 text-sm mt-1">Form DR 0004</p>
+      <div className={`px-2 py-4 text-left relative max-w-5xl mx-auto ${
+        isDarkMode ? 'text-zinc-100' : 'text-slate-800'
+      }`}>
+        <div className="mb-8 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2" style={{ backgroundColor: `${activeHexColor}15`, color: activeHexColor }}>
+            <FileText size={13} /> Official State Form
+          </div>
+          <h2 className="text-2xl font-extrabold tracking-tight">Colorado Withholding Certificate</h2>
+          <p className={`text-xs mt-1 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+            Form DR 0004 &bull; Colorado Department of Revenue
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-12">
+        <form onSubmit={handleSubmit} className="space-y-8">
           
           {/* 1. PERSONAL INFORMATION */}
-          <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all">
-            <h3 className={sectionHeader}><User className="text-blue-600" size={24}/> Personal Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                <div className="md:col-span-5"><label className={labelClass}>First Name</label><input type="text" name="first_name" value={formData.first_name} onChange={handleChange} className={inputClass} placeholder="First Name" /></div>
-                <div className="md:col-span-2"><label className={labelClass}>M.I.</label><input type="text" name="initial" maxLength="1" value={formData.initial} onChange={handleChange} className={`${inputClass} text-center uppercase`} placeholder="M" /></div>
-                <div className="md:col-span-5"><label className={labelClass}>Last Name</label><input type="text" name="last_name" value={formData.last_name} onChange={handleChange} className={inputClass} placeholder="Last Name" /></div>
+          <section className={sectionCard}>
+            <h3 className={sectionHeader}>
+              <div className="p-2 rounded-xl" style={{ backgroundColor: `${activeHexColor}15`, color: activeHexColor }}>
+                <User size={20} />
+              </div>
+              <span>Personal Information</span>
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+                <div className="md:col-span-5">
+                  <label className={labelClass}>First Name</label>
+                  <input type="text" name="first_name" value={formData.first_name} onChange={handleChange} className={inputClass} placeholder="First Name" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className={labelClass}>M.I.</label>
+                  <input type="text" name="initial" maxLength="1" value={formData.initial} onChange={handleChange} className={`${inputClass} text-center uppercase`} placeholder="M" />
+                </div>
+                <div className="md:col-span-5">
+                  <label className={labelClass}>Last Name</label>
+                  <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} className={inputClass} placeholder="Last Name" />
+                </div>
                 
-                <div className="md:col-span-6 relative"><label className={labelClass}>SSN</label><div className="relative"><input type="text" name="ssn" value={formData.ssn} onChange={handleChange} className={`${inputClass} pl-10 tracking-widest`} placeholder="XXXXXXXXX"/><Shield size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"/></div></div>
-                <div className="md:col-span-6"><label className={labelClass}>Email (Optional)</label><input type="email" name="email" value={formData.email} onChange={handleChange} className={inputClass} placeholder="john@example.com" /></div>
+                <div className="md:col-span-6 relative">
+                  <label className={labelClass}>SSN</label>
+                  <div className="relative">
+                    <input type="text" name="ssn" value={formData.ssn} onChange={handleChange} className={`${inputClass} pl-10 tracking-widest`} placeholder="XXXXXXXXX"/>
+                    <Shield size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"/>
+                  </div>
+                </div>
+                <div className="md:col-span-6">
+                  <label className={labelClass}>Email (Optional)</label>
+                  <input type="email" name="email" value={formData.email} onChange={handleChange} className={inputClass} placeholder="john@example.com" />
+                </div>
 
-                <div className="md:col-span-6"><label className={labelClass}>Address</label><input type="text" name="address" value={formData.address} onChange={handleChange} className={inputClass} placeholder="Street Address" /></div>
+                <div className="md:col-span-6">
+                  <label className={labelClass}>Address</label>
+                  <input type="text" name="address" value={formData.address} onChange={handleChange} className={inputClass} placeholder="Street Address" />
+                </div>
                 
-                <div className="md:col-span-5"><label className={labelClass}>City</label><input type="text" name="city" value={formData.city} onChange={handleChange} className={inputClass} /></div>
-                <div className="md:col-span-3"><label className={labelClass}>State</label><input type="text" name="state" value="CO" readOnly className={`${inputClass} bg-gray-50 text-gray-500 cursor-not-allowed text-center`} /></div>
-                <div className="md:col-span-4"><label className={labelClass}>Zip Code</label><input type="text" name="zipcode" value={formData.zipcode} onChange={handleChange} className={inputClass} /></div>
+                <div className="md:col-span-4">
+                  <label className={labelClass}>City</label>
+                  <input type="text" name="city" value={formData.city} onChange={handleChange} className={inputClass} placeholder="City" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className={labelClass}>State</label>
+                  <input type="text" name="state" value="CO" readOnly className={`${inputClass} opacity-60 cursor-not-allowed text-center font-bold`} />
+                </div>
+                <div className="md:col-span-6">
+                  <label className={labelClass}>Zip Code</label>
+                  <input type="text" name="zipcode" value={formData.zipcode} onChange={handleChange} className={inputClass} placeholder="80202" />
+                </div>
             </div>
           </section>
 
           {/* 2. FILING STATUS & JOBS */}
-          <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all">
-            <h3 className={sectionHeader}><FileText className="text-blue-600" size={24}/> Filing Status & Jobs</h3>
+          <section className={sectionCard}>
+            <h3 className={sectionHeader}>
+              <div className="p-2 rounded-xl" style={{ backgroundColor: `${activeHexColor}15`, color: activeHexColor }}>
+                <FileText size={20} />
+              </div>
+              <span>Filing Status & Jobs</span>
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label className={labelClass}>Filing Status</label>
-                    <div className="relative">
-                        <select name="filing_status" value={formData.filing_status} onChange={handleChange} className={selectClass}>
-                            {filingStatusOptions.map(opt => <option key={opt.code} value={opt.code}>{opt.label}</option>)}
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
-                            <ChevronDown size={18} />
-                        </div>
-                    </div>
+                    <StunningSelect
+                      label="Filing Status"
+                      value={formData.filing_status}
+                      onChange={(e) => handleChange({ target: { name: 'filing_status', value: e.target.value } })}
+                      options={filingStatusOptions}
+                      placeholder="Select Filing Status"
+                      required
+                    />
                 </div>
                 <div>
                     <label className={labelClass}>Number of Jobs</label>
                     <input type="number" name="num_jobs" min="1" value={formData.num_jobs} onChange={handleChange} className={inputClass} />
-                    <p className="text-xs text-gray-500 mt-2 font-medium ml-1">Total qualifying jobs for this household.</p>
+                    <p className={`text-xs mt-2 font-medium ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                      Total qualifying jobs for this household.
+                    </p>
                 </div>
             </div>
           </section>
 
           {/* 3. ALLOWANCE CALCULATION (LINE 2) */}
-          <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all">
-            <h3 className={sectionHeader}><Calculator className="text-blue-600" size={24}/> Annual Allowance (Line 2)</h3>
+          <section className={sectionCard}>
+            <h3 className={sectionHeader}>
+              <div className="p-2 rounded-xl" style={{ backgroundColor: `${activeHexColor}15`, color: activeHexColor }}>
+                <Calculator size={20} />
+              </div>
+              <span>Annual Allowance (Line 2)</span>
+            </h3>
             
-            <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-6 space-y-6">
+            <div className={`p-6 rounded-2xl border space-y-6 ${
+              isDarkMode ? 'bg-[#18181b]/50 border-zinc-800' : 'bg-slate-50/70 border-slate-200'
+            }`}>
                 
                 {/* Worksheet 1 Toggle */}
-                <label className={`${checkboxCardClass} ${formData.use_worksheet_1 ? activeCheckboxClass : 'bg-white border-gray-200'}`}>
+                <label className={`${checkboxCardClass} ${formData.use_worksheet_1 ? activeCheckboxClass : ''}`}>
                     <input 
                         type="checkbox" 
                         name="use_worksheet_1" 
                         checked={formData.use_worksheet_1} 
                         onChange={handleChange} 
-                        className="mt-1 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        className="w-5 h-5 text-blue-600 rounded"
                     />
                     <div>
-                        <span className="block font-bold text-gray-900">Use Worksheet 1</span>
-                        <span className="text-xs text-gray-500 block mt-1">Calculate based on income, deductions, and dependents.</span>
+                        <span className="block font-bold text-sm">Use Worksheet 1</span>
+                        <span className={`text-xs block mt-0.5 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                          Calculate based on income, deductions, and dependents.
+                        </span>
                     </div>
                 </label>
 
                 {/* Logic A: Worksheet 1 Active */}
                 {formData.use_worksheet_1 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-4 border-l-4 border-blue-400 animate-in fade-in slide-in-from-top-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pl-4 border-l-2 border-blue-500 animate-in fade-in slide-in-from-top-2">
                         <div>
                             <label className={labelClass}>Total Annual Income ($)</label>
-                            <div className="relative"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span><input type="number" name="annual_income" value={formData.annual_income} onChange={handleChange} className={`${inputClass} pl-8`} /></div>
+                            <div className="relative">
+                              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-zinc-400">$</span>
+                              <input type="number" name="annual_income" value={formData.annual_income} onChange={handleChange} className={`${inputClass} pl-8`} placeholder="e.g. 75000" />
+                            </div>
                         </div>
                         <div>
                             <label className={labelClass}>Federal Deductions ($)</label>
-                            <div className="relative"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span><input type="number" name="federal_deductions" value={formData.federal_deductions} onChange={handleChange} className={`${inputClass} pl-8`} /></div>
+                            <div className="relative">
+                              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-zinc-400">$</span>
+                              <input type="number" name="federal_deductions" value={formData.federal_deductions} onChange={handleChange} className={`${inputClass} pl-8`} placeholder="0.00" />
+                            </div>
                         </div>
                         <div>
                             <label className={labelClass}>Dependents (Count)</label>
                             <input type="number" name="dependents" value={formData.dependents} onChange={handleChange} className={inputClass} />
                         </div>
                         <div className="flex items-center pt-6">
-                            <label className="flex items-center gap-2 cursor-pointer hover:bg-blue-100/50 p-2 rounded-lg transition-colors">
-                                <input type="checkbox" name="child_tax_credit" checked={formData.child_tax_credit} onChange={handleChange} className="w-5 h-5 text-blue-600 rounded border-gray-300" />
-                                <span className="text-sm font-bold text-gray-700">Claim Child Tax Credit?</span>
+                            <label className="flex items-center gap-2 cursor-pointer p-2 rounded-xl transition-colors">
+                                <input type="checkbox" name="child_tax_credit" checked={formData.child_tax_credit} onChange={handleChange} className="w-5 h-5 text-blue-600 rounded" />
+                                <span className="text-xs sm:text-sm font-bold">Claim Child Tax Credit?</span>
                             </label>
                         </div>
                     </div>
@@ -384,39 +562,44 @@ const ColoradoTaxForm = ({ initialData, onSubmit }) => {
 
                 {/* Logic B: Standard/Manual (Only if WS1 is OFF) */}
                 {!formData.use_worksheet_1 && (
-                    <div className="space-y-4 pt-4 border-t border-blue-200/50">
-                         <p className="text-xs font-bold text-blue-600 uppercase tracking-wide flex items-center gap-1"><Shield size={12}/> Method Selection</p>
+                    <div className={`space-y-4 pt-4 border-t ${isDarkMode ? 'border-zinc-800' : 'border-slate-200'}`}>
+                         <p className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5" style={{ color: activeHexColor }}>
+                           <Shield size={13}/> Method Selection
+                         </p>
                          
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Option 1: Standard Table */}
-                            <label className={`${checkboxCardClass} ${formData.use_table_1 ? activeCheckboxClass : 'bg-white border-gray-200'}`}>
+                            <label className={`${checkboxCardClass} ${formData.use_table_1 ? activeCheckboxClass : ''}`}>
                                 <input 
                                     type="radio" 
                                     name="allowance_method" 
                                     checked={formData.use_table_1} 
                                     onChange={() => setFormData(prev => ({ ...prev, use_table_1: true }))}
-                                    className="mt-1 w-5 h-5 text-blue-600 border-gray-300"
+                                    className="w-4 h-4 text-blue-600"
                                 />
-                                <span className="font-bold text-gray-900 ml-2">Use Standard Table</span>
+                                <span className="font-bold text-xs sm:text-sm ml-2">Use Standard Table</span>
                             </label>
 
                             {/* Option 2: Manual */}
-                            <label className={`${checkboxCardClass} ${!formData.use_table_1 ? activeCheckboxClass : 'bg-white border-gray-200'}`}>
+                            <label className={`${checkboxCardClass} ${!formData.use_table_1 ? activeCheckboxClass : ''}`}>
                                 <input 
                                     type="radio" 
                                     name="allowance_method" 
                                     checked={!formData.use_table_1} 
                                     onChange={() => setFormData(prev => ({ ...prev, use_table_1: false }))}
-                                    className="mt-1 w-5 h-5 text-blue-600 border-gray-300"
+                                    className="w-4 h-4 text-blue-600"
                                 />
-                                <span className="font-bold text-gray-900 ml-2">Enter Manually</span>
+                                <span className="font-bold text-xs sm:text-sm ml-2">Enter Manually</span>
                             </label>
                          </div>
 
                          {!formData.use_table_1 && (
                              <div className="mt-4 animate-in fade-in slide-in-from-top-1">
                                 <label className={labelClass}>Manual Allowance Amount ($)</label>
-                                <div className="relative max-w-sm"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span><input type="number" name="annual_withholding_allowance" value={formData.annual_withholding_allowance} onChange={handleChange} className={`${inputClass} pl-8`} placeholder="0.00" /></div>
+                                <div className="relative max-w-sm">
+                                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-zinc-400">$</span>
+                                  <input type="number" name="annual_withholding_allowance" value={formData.annual_withholding_allowance} onChange={handleChange} className={`${inputClass} pl-8`} placeholder="0.00" />
+                                </div>
                              </div>
                          )}
                     </div>
@@ -425,35 +608,50 @@ const ColoradoTaxForm = ({ initialData, onSubmit }) => {
           </section>
 
           {/* 4. ADDITIONAL WITHHOLDING (LINE 3) */}
-          <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all">
-            <h3 className={sectionHeader}><DollarSign className="text-blue-600" size={24}/> Additional Withholding (Line 3)</h3>
+          <section className={sectionCard}>
+            <h3 className={sectionHeader}>
+              <div className="p-2 rounded-xl" style={{ backgroundColor: `${activeHexColor}15`, color: activeHexColor }}>
+                <DollarSign size={20} />
+              </div>
+              <span>Additional Withholding (Line 3)</span>
+            </h3>
             
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 space-y-6">
+            <div className={`p-6 rounded-2xl border space-y-6 ${
+              isDarkMode ? 'bg-[#18181b]/50 border-zinc-800' : 'bg-slate-50/70 border-slate-200'
+            }`}>
                  {/* Worksheet 2 Toggle */}
-                 <label className={`${checkboxCardClass} ${formData.use_worksheet_2 ? 'border-green-500 ring-1 ring-green-500 bg-green-50/10' : 'bg-white border-gray-200'}`}>
+                 <label className={`${checkboxCardClass} ${formData.use_worksheet_2 ? activeCheckboxClass : ''}`}>
                     <input 
                         type="checkbox" 
                         name="use_worksheet_2" 
                         checked={formData.use_worksheet_2} 
                         onChange={handleChange} 
-                        className="mt-1 w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                        className="w-5 h-5 text-emerald-600 rounded"
                     />
                     <div>
-                        <span className="block font-bold text-gray-900">Use Worksheet 2</span>
-                        <span className="text-xs text-gray-500 block mt-1">For non-wage income (interest, dividends, etc).</span>
+                        <span className="block font-bold text-sm">Use Worksheet 2</span>
+                        <span className={`text-xs block mt-0.5 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                          For non-wage income (interest, dividends, freelance, etc).
+                        </span>
                     </div>
                 </label>
 
                 {/* Logic A: Worksheet 2 Active */}
                 {formData.use_worksheet_2 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-4 border-l-4 border-green-400 animate-in fade-in slide-in-from-top-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pl-4 border-l-2 border-emerald-500 animate-in fade-in slide-in-from-top-2">
                          <div>
                             <label className={labelClass}>Non-Business Income ($)</label>
-                            <div className="relative"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span><input type="number" name="non_business_income" value={formData.non_business_income} onChange={handleChange} className={`${inputClass} pl-8`} /></div>
+                            <div className="relative">
+                              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-zinc-400">$</span>
+                              <input type="number" name="non_business_income" value={formData.non_business_income} onChange={handleChange} className={`${inputClass} pl-8`} placeholder="0.00" />
+                            </div>
                         </div>
                         <div>
                             <label className={labelClass}>Other Non-Wage Income ($)</label>
-                            <div className="relative"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span><input type="number" name="other_non_wage_income" value={formData.other_non_wage_income} onChange={handleChange} className={`${inputClass} pl-8`} /></div>
+                            <div className="relative">
+                              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-zinc-400">$</span>
+                              <input type="number" name="other_non_wage_income" value={formData.other_non_wage_income} onChange={handleChange} className={`${inputClass} pl-8`} placeholder="0.00" />
+                            </div>
                         </div>
                         <div className="md:col-span-2">
                             <label className={labelClass}>Pay Periods per Year</label>
@@ -464,39 +662,66 @@ const ColoradoTaxForm = ({ initialData, onSubmit }) => {
                     /* Logic B: Manual Entry */
                     <div className="pt-2">
                          <label className={labelClass}>Manual Additional Withholding ($)</label>
-                         <div className="relative max-w-sm"><span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span><input type="number" name="additional_withholding" value={formData.additional_withholding} onChange={handleChange} className={`${inputClass} pl-8`} placeholder="0.00" /></div>
-                         <p className="text-xs text-gray-500 mt-2 font-medium">Optional extra amount to withhold per paycheck.</p>
+                         <div className="relative max-w-sm">
+                           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-zinc-400">$</span>
+                           <input type="number" name="additional_withholding" value={formData.additional_withholding} onChange={handleChange} className={`${inputClass} pl-8`} placeholder="0.00" />
+                         </div>
+                         <p className={`text-xs mt-2 font-medium ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                           Optional extra amount to withhold per paycheck.
+                         </p>
                     </div>
                 )}
             </div>
           </section>
 
           {/* 5. SIGNATURE */}
-          <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all">
-            <h3 className={sectionHeader}><PenTool className="text-blue-600" size={24}/> Attestation & Signature</h3>
+          <section className={sectionCard}>
+            <h3 className={sectionHeader}>
+              <div className="p-2 rounded-xl" style={{ backgroundColor: `${activeHexColor}15`, color: activeHexColor }}>
+                <PenTool size={20} />
+              </div>
+              <span>Attestation & Signature</span>
+            </h3>
             
-            <div className="mb-8 max-w-xs">
+            <div className="mb-6 max-w-xs">
                 <CustomDatePicker label="Date of Signing" name="confirmation_date" value={formData.confirmation_date} onChange={handleChange} />
             </div>
 
             <div className="w-full">
                 <div className="flex justify-between items-center mb-3">
-                    <label className={labelClass}>Digital Signature <span className="text-red-500">*</span></label>
-                    <button type="button" onClick={clearSignature} className="text-xs font-bold text-red-500 hover:text-red-700 flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"><Eraser size={14}/> Clear Signature</button>
+                    <label className={labelClass}>Digital Signature <span className="text-rose-500">*</span></label>
+                    <button 
+                      type="button" 
+                      onClick={clearSignature} 
+                      className="text-xs font-bold text-rose-500 hover:text-rose-600 flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-rose-500/10 transition-colors"
+                    >
+                      <Eraser size={14}/> Clear Signature
+                    </button>
                 </div>
                 
-                <div ref={containerRef} className="border-2 border-dashed border-gray-200 rounded-2xl overflow-hidden bg-white h-56 w-full relative hover:border-blue-400 transition-colors shadow-inner group cursor-crosshair">
+                <div 
+                  ref={containerRef} 
+                  className={`border-2 border-dashed rounded-2xl overflow-hidden h-52 w-full relative transition-colors cursor-crosshair group ${
+                    isDarkMode 
+                      ? 'border-zinc-700 bg-zinc-900/50 hover:border-blue-500' 
+                      : 'border-slate-300 bg-slate-50/50 hover:border-blue-500'
+                  }`}
+                >
                     <SignatureCanvas 
                         ref={sigCanvasRef}
-                        penColor="black"
+                        penColor={isDarkMode ? 'white' : 'black'}
                         velocityFilterWeight={0.7}
                         canvasProps={{ className: 'sigCanvas w-full h-full' }}
                         onEnd={handleSignatureEnd}
                     />
                     {!formData.signature_image && (
-                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-gray-400 gap-3 group-hover:text-blue-400 transition-colors">
-                          <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center group-hover:bg-blue-50 transition-colors"><PenTool size={20} className="opacity-50"/></div>
-                          <span className="font-medium text-sm">Sign Here</span>
+                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-zinc-400 gap-2 group-hover:text-blue-500 transition-colors">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            isDarkMode ? 'bg-zinc-800' : 'bg-white shadow-xs'
+                          }`}>
+                            <PenTool size={18} className="opacity-70"/>
+                          </div>
+                          <span className="font-semibold text-xs">Draw signature here</span>
                        </div>
                     )}
                 </div>
@@ -504,19 +729,18 @@ const ColoradoTaxForm = ({ initialData, onSubmit }) => {
           </section>
 
           {/* SUBMIT BUTTON */}
-          <div className="flex justify-end pt-6">
+          <div className="flex justify-end pt-4 pb-8">
             <button 
-                onClick={handleSubmit} 
+                type="submit"
                 disabled={isSubmitting} 
+                style={{ backgroundColor: activeHexColor }}
                 className={`
-                    relative overflow-hidden px-10 py-4 rounded-xl font-bold text-lg shadow-xl transform transition-all duration-200 flex items-center gap-3
-                    ${isSubmitting 
-                        ? 'bg-gray-400 cursor-not-allowed' 
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-2xl hover:-translate-y-1 active:scale-95'}
+                    px-8 py-3.5 rounded-xl font-bold text-sm text-white shadow-xl hover:shadow-2xl active:scale-95 transition-all flex items-center gap-2.5
+                    ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-95'}
                 `}
             >
-                {isSubmitting ? <Loader2 className="animate-spin" size={22} /> : <Save size={22} />}
-                {isSubmitting ? 'Submitting...' : 'Confirm & Generate PDF'}
+                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                <span>{isSubmitting ? 'Processing...' : 'Confirm & Generate PDF'}</span>
             </button>
           </div>
 
