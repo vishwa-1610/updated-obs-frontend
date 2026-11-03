@@ -1,3 +1,4 @@
+import { FEATURES } from '../../config/features';
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -55,14 +56,14 @@ const Sidebar = ({ isOpen, onToggle, isExpanded = true, onToggleExpand }) => {
           badge: 'ATS',
           badgeColor: 'bg-purple-500/10 text-purple-600 border border-purple-500/20'
         },
-        { 
+        ...(FEATURES.TASKS ? [{ 
           id: 'tasks', 
           label: 'Tasks & Projects', 
           icon: CheckSquare, 
           path: '/tasks',
           badge: 'Live',
           badgeColor: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
-        },
+        }] : []),
       ]
     },
     {
@@ -91,12 +92,12 @@ const Sidebar = ({ isOpen, onToggle, isExpanded = true, onToggleExpand }) => {
     {
       group: 'OPERATIONS & COMPLIANCE',
       items: [
-        { 
+        ...(FEATURES.ATTENDANCE ? [{ 
           id: 'attendance', 
           label: 'Attendance & PTO', 
           icon: Clock, 
           path: '/attendance' 
-        },
+        }] : []),
         { 
           id: 'templates', 
           label: 'Document Templates', 
@@ -104,14 +105,14 @@ const Sidebar = ({ isOpen, onToggle, isExpanded = true, onToggleExpand }) => {
   FileCheck, 
           path: '/templates' 
         },
-        { 
+        ...(FEATURES.FORM_RULES ? [{ 
           id: 'ruleengine', 
           label: 'Form Rules & PDF Mapper', 
           icon: Sliders, 
           path: '/rules',
           badge: 'Pro',
           badgeColor: 'bg-indigo-500/10 text-indigo-600 border border-indigo-500/20'
-        },
+        }] : []),
         { 
           id: 'reports', 
           label: 'Reports & Analytics', 

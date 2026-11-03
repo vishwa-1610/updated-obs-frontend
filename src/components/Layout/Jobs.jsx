@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { 
   Briefcase, Users, Plus, Search, Filter, Play, CheckCircle, 
-  Clock, AlertCircle, X, ChevronRight, Hash, Star, Calendar, 
+  Clock, AlertCircle, X, ChevronRight, ChevronLeft, Hash, Star, Calendar, 
   MapPin, DollarSign, Building, Building2, Eye, Edit3, Trash2, 
   Check, ArrowRight, UserPlus, FileText, ExternalLink, 
   Share2, Award, Laptop, Layers, ShieldCheck, RefreshCw, Send,
@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { useTheme } from '../Theme/ThemeProvider';
 import { StunningSelect, StunningDatePicker } from '../tasks/StunningSelect';
+import CommonStunningSelect from '../common/StunningSelect';
 import PageLoader from '../common/LoadingScreen/LoadingScreen';
 import { 
   fetchJobStats, 
@@ -100,8 +101,12 @@ const JobsDashboard = () => {
   const { 
     stats, 
     jobs = [], 
+    totalJobsCount,
+    jobsTotalPages,
     selectedJob, 
     applications = [], 
+    totalApplicationsCount,
+    applicationsTotalPages,
     selectedApplication, 
     interviews = [], 
     loading, 
@@ -113,15 +118,25 @@ const JobsDashboard = () => {
   // Active Main Navigation Tab
   const [activeTab, setActiveTab] = useState('JOBS'); // 'JOBS' | 'CANDIDATES' | 'INTERVIEWS' | 'ANALYTICS'
 
-  // Job Filters
+  // Job Filters, Search, Pagination & Sorting
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedJobSearch, setDebouncedJobSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [departmentFilter, setDepartmentFilter] = useState('ALL');
   const [workplaceFilter, setWorkplaceFilter] = useState('ALL');
+  const [jobsSortField, setJobsSortField] = useState('created_at');
+  const [jobsSortDirection, setJobsSortDirection] = useState('desc');
+  const [jobsCurrentPage, setJobsCurrentPage] = useState(1);
+  const [jobsPageSize, setJobsPageSize] = useState(9);
 
-  // Candidate Stage Filter
+  // Candidate Stage Filter, Search, Pagination & Sorting
   const [candidateStageFilter, setCandidateStageFilter] = useState('ALL');
   const [candidateSearch, setCandidateSearch] = useState('');
+  const [debouncedCandidateSearch, setDebouncedCandidateSearch] = useState('');
+  const [candidatesSortField, setCandidatesSortField] = useState('applied_at');
+  const [candidatesSortDirection, setCandidatesSortDirection] = useState('desc');
+  const [candidatesCurrentPage, setCandidatesCurrentPage] = useState(1);
+  const [candidatesPageSize, setCandidatesPageSize] = useState(10);
 
   // Unified Feedback & Confirm Modals
   const [feedbackModal, setFeedbackModal] = useState({
@@ -193,8 +208,6 @@ const JobsDashboard = () => {
   // Initial Fetch
   useEffect(() => {
     dispatch(fetchJobStats());
-    dispatch(fetchJobs());
-    dispatch(fetchApplications());
     dispatch(fetchInterviews());
   }, [dispatch]);
 
@@ -306,36 +319,164 @@ const JobsDashboard = () => {
     }
   };
 
-  // Filtered Jobs
-  const filteredJobs = useMemo(() => {
-    return jobs.filter((job) => {
-      const matchSearch = job.job_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          job.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (job.department || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (job.skills || '').toLowerCase().includes(searchQuery.toLowerCase());
-      const matchStatus = statusFilter === 'ALL' || job.status === statusFilter;
-      const matchDept = departmentFilter === 'ALL' || job.department === departmentFilter;
-      const matchWorkplace = workplaceFilter === 'ALL' || job.workplace_type === workplaceFilter;
-      return matchSearch && matchStatus && matchDept && matchWorkplace;
-    });
-  }, [jobs, searchQuery, statusFilter, departmentFilter, workplaceFilter]);
+  // Debounce Job Search input (350ms)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedJobSearch(searchQuery);
+      setJobsCurrentPage(1);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
-  // Filtered Applications
-  const filteredApplications = useMemo(() => {
-    return applications.filter((app) => {
-      const matchSearch = app.full_name.toLowerCase().includes(candidateSearch.toLowerCase()) ||
-                          app.email.toLowerCase().includes(candidateSearch.toLowerCase()) ||
-                          (app.current_job_title || '').toLowerCase().includes(candidateSearch.toLowerCase()) ||
-                          (app.job_title || '').toLowerCase().includes(candidateSearch.toLowerCase());
-      const matchStage = candidateStageFilter === 'ALL' || app.stage === candidateStageFilter;
-      return matchSearch && matchStage;
-    });
-  }, [applications, candidateSearch, candidateStageFilter]);
+  // Debounce Candidate Search input (350ms)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedCandidateSearch(candidateSearch);
+      setCandidatesCurrentPage(1);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [candidateSearch]);
+
+  // Fetch Jobs from backend with server-side pagination, search, filters & sorting
+  const fetchJobsData = useCallback(() => {
+    const params = {
+      page: jobsCurrentPage,
+      page_size: jobsPageSize,
+      ordering: jobsSortDirection === 'desc' ? `-${jobsSortField}` : jobsSortField,
+    };
+    if (debouncedJobSearch && debouncedJobSearch.trim()) {
+      params.search = debouncedJobSearch.trim();
+    }
+    if (statusFilter && statusFilter !== 'ALL') {
+      params.status = statusFilter;
+    }
+    if (departmentFilter && departmentFilter !== 'ALL') {
+      params.department = departmentFilter;
+    }
+    if (workplaceFilter && workplaceFilter !== 'ALL') {
+      params.workplace_type = workplaceFilter;
+    }
+    dispatch(fetchJobs(params));
+  }, [dispatch, jobsCurrentPage, jobsPageSize, jobsSortField, jobsSortDirection, debouncedJobSearch, statusFilter, departmentFilter, workplaceFilter]);
+
+  // Trigger Job fetch
+  useEffect(() => {
+    fetchJobsData();
+  }, [fetchJobsData]);
+
+  // Fetch Candidates from backend with server-side pagination, search, stage filter & sorting
+  const fetchApplicationsData = useCallback(() => {
+    const params = {
+      page: candidatesCurrentPage,
+      page_size: candidatesPageSize,
+      ordering: candidatesSortDirection === 'desc' ? `-${candidatesSortField}` : candidatesSortField,
+    };
+    if (debouncedCandidateSearch && debouncedCandidateSearch.trim()) {
+      params.search = debouncedCandidateSearch.trim();
+    }
+    if (candidateStageFilter && candidateStageFilter !== 'ALL') {
+      params.stage = candidateStageFilter;
+    }
+    dispatch(fetchApplications(params));
+  }, [dispatch, candidatesCurrentPage, candidatesPageSize, candidatesSortField, candidatesSortDirection, debouncedCandidateSearch, candidateStageFilter]);
+
+  // Trigger Candidate fetch
+  useEffect(() => {
+    fetchApplicationsData();
+  }, [fetchApplicationsData]);
+
+  // Safe Counts and Page Bounds for Jobs
+  const safeTotalJobsCount = totalJobsCount !== undefined ? totalJobsCount : (jobs?.count ?? jobs.length);
+  const safeTotalJobsPages = Math.max(1, Math.ceil(safeTotalJobsCount / jobsPageSize));
+  const jobsFromRecord = safeTotalJobsCount > 0 ? (jobsCurrentPage - 1) * jobsPageSize + 1 : 0;
+  const jobsToRecord = Math.min(jobsCurrentPage * jobsPageSize, safeTotalJobsCount);
+
+  useEffect(() => {
+    if (jobsCurrentPage > safeTotalJobsPages) {
+      setJobsCurrentPage(1);
+    }
+  }, [jobsCurrentPage, safeTotalJobsPages]);
+
+  const handleJobsPageChange = (newPage) => {
+    if (newPage < 1 || newPage > safeTotalJobsPages || newPage === jobsCurrentPage || loading) return;
+    setJobsCurrentPage(newPage);
+    const elem = document.getElementById('jobs-grid-container');
+    if (elem) elem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  const handleJobsPageSizeChange = (newSize) => {
+    const size = Number(newSize);
+    if (!size || size === jobsPageSize) return;
+    setJobsPageSize(size);
+    setJobsCurrentPage(1);
+  };
+
+  const getJobsPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (safeTotalJobsPages <= maxVisible) {
+      for (let i = 1; i <= safeTotalJobsPages; i++) pages.push(i);
+    } else {
+      let start = Math.max(1, jobsCurrentPage - 2);
+      let end = Math.min(safeTotalJobsPages, start + maxVisible - 1);
+      if (end - start < maxVisible - 1) {
+        start = Math.max(1, end - maxVisible + 1);
+      }
+      for (let i = start; i <= end; i++) pages.push(i);
+    }
+    return pages;
+  };
+
+  // Safe Counts and Page Bounds for Candidates
+  const safeTotalCandidatesCount = totalApplicationsCount !== undefined ? totalApplicationsCount : (applications?.count ?? applications.length);
+  const safeTotalCandidatesPages = Math.max(1, Math.ceil(safeTotalCandidatesCount / candidatesPageSize));
+  const candidatesFromRecord = safeTotalCandidatesCount > 0 ? (candidatesCurrentPage - 1) * candidatesPageSize + 1 : 0;
+  const candidatesToRecord = Math.min(candidatesCurrentPage * candidatesPageSize, safeTotalCandidatesCount);
+
+  useEffect(() => {
+    if (candidatesCurrentPage > safeTotalCandidatesPages) {
+      setCandidatesCurrentPage(1);
+    }
+  }, [candidatesCurrentPage, safeTotalCandidatesPages]);
+
+  const handleCandidatesPageChange = (newPage) => {
+    if (newPage < 1 || newPage > safeTotalCandidatesPages || newPage === candidatesCurrentPage || loading) return;
+    setCandidatesCurrentPage(newPage);
+    const elem = document.getElementById('candidates-table-container');
+    if (elem) elem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  const handleCandidatesPageSizeChange = (newSize) => {
+    const size = Number(newSize);
+    if (!size || size === candidatesPageSize) return;
+    setCandidatesPageSize(size);
+    setCandidatesCurrentPage(1);
+  };
+
+  const getCandidatesPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (safeTotalCandidatesPages <= maxVisible) {
+      for (let i = 1; i <= safeTotalCandidatesPages; i++) pages.push(i);
+    } else {
+      let start = Math.max(1, candidatesCurrentPage - 2);
+      let end = Math.min(safeTotalCandidatesPages, start + maxVisible - 1);
+      if (end - start < maxVisible - 1) {
+        start = Math.max(1, end - maxVisible + 1);
+      }
+      for (let i = start; i <= end; i++) pages.push(i);
+    }
+    return pages;
+  };
+
+  // Direct array bindings (server-side filtered & paginated)
+  const displayedJobs = jobs || [];
+  const displayedApplications = applications || [];
 
   // Unique Departments
   const departments = useMemo(() => {
     const set = new Set(jobs.map(j => j.department).filter(Boolean));
-    return ['ALL', ...Array.from(set)];
+    return ['ALL', 'Engineering', 'Human Resources', 'Sales & Revenue', 'Operations', 'Finance', 'Product & Design', ...Array.from(set)];
   }, [jobs]);
 
   if (loading && (!jobs || jobs.length === 0) && (!applications || applications.length === 0)) {
@@ -569,12 +710,15 @@ const JobsDashboard = () => {
                 />
               </div>
 
-              {/* Status, Department, Workplace Filters with StunningSelect */}
+              {/* Status, Department, Workplace Filters & Backend Sorting with StunningSelect */}
               <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
-                <div className="w-40">
-                  <StunningSelect
+                <div className="w-36 shrink-0">
+                  <CommonStunningSelect
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value);
+                      setJobsCurrentPage(1);
+                    }}
                     options={[
                       { value: 'ALL', label: 'All Statuses' },
                       { value: 'PUBLISHED', label: 'Active / Published' },
@@ -583,40 +727,87 @@ const JobsDashboard = () => {
                       { value: 'CLOSED', label: 'Closed' },
                       { value: 'FILLED', label: 'Filled' },
                     ]}
+                    activeHexColor={activeHexColor}
+                    isDarkMode={isDarkMode}
                   />
                 </div>
 
-                <div className="w-40">
-                  <StunningSelect
+                <div className="w-36 shrink-0">
+                  <CommonStunningSelect
                     value={departmentFilter}
-                    onChange={(e) => setDepartmentFilter(e.target.value)}
+                    onChange={(e) => {
+                      setDepartmentFilter(e.target.value);
+                      setJobsCurrentPage(1);
+                    }}
                     options={departments.map(d => ({
                       value: d,
-                      label: d === 'ALL' ? 'All Departments' : d
+                      label: d === 'ALL' ? 'All Depts' : d
                     }))}
+                    activeHexColor={activeHexColor}
+                    isDarkMode={isDarkMode}
                   />
                 </div>
 
-                <div className="w-44">
-                  <StunningSelect
+                <div className="w-36 shrink-0">
+                  <CommonStunningSelect
                     value={workplaceFilter}
-                    onChange={(e) => setWorkplaceFilter(e.target.value)}
+                    onChange={(e) => {
+                      setWorkplaceFilter(e.target.value);
+                      setJobsCurrentPage(1);
+                    }}
                     options={[
-                      { value: 'ALL', label: 'All Workplace Types' },
+                      { value: 'ALL', label: 'All Workplace' },
                       { value: 'REMOTE', label: 'Remote' },
                       { value: 'HYBRID', label: 'Hybrid' },
                       { value: 'ONSITE', label: 'On-Site' },
                     ]}
+                    activeHexColor={activeHexColor}
+                    isDarkMode={isDarkMode}
+                  />
+                </div>
+
+                <div className="w-44 shrink-0">
+                  <CommonStunningSelect
+                    value={jobsSortDirection === 'desc' ? `-${jobsSortField}` : jobsSortField}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.startsWith('-')) {
+                        setJobsSortField(val.substring(1));
+                        setJobsSortDirection('desc');
+                      } else {
+                        setJobsSortField(val);
+                        setJobsSortDirection('asc');
+                      }
+                      setJobsCurrentPage(1);
+                    }}
+                    options={[
+                      { value: '-created_at', label: 'Sort: Newest First' },
+                      { value: 'created_at', label: 'Sort: Oldest First' },
+                      { value: 'job_name', label: 'Sort: Title (A-Z)' },
+                      { value: '-job_name', label: 'Sort: Title (Z-A)' },
+                      { value: '-openings_count', label: 'Sort: Most Openings' },
+                    ]}
+                    activeHexColor={activeHexColor}
+                    isDarkMode={isDarkMode}
                   />
                 </div>
               </div>
             </div>
 
             {/* Jobs Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredJobs.map((job) => {
-                const statusBadge = getStatusBadge(job.status);
-                const applicantCount = job.applications_count || job.applications?.length || 0;
+            <div id="jobs-grid-container" className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 relative transition-opacity duration-200 ${loading ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
+              {displayedJobs.length === 0 ? (
+                <div className={`col-span-full py-16 text-center rounded-3xl border ${
+                  isDarkMode ? 'bg-[#121217] border-[#27272a] text-slate-400' : 'bg-white border-slate-200 text-slate-500 shadow-xs'
+                }`}>
+                  <Briefcase className="w-10 h-10 mx-auto mb-3 opacity-30 text-slate-400" />
+                  <p className="text-sm font-bold">No job openings found</p>
+                  <p className="text-xs text-slate-400 mt-1">Try adjusting your search criteria, status, or department filters.</p>
+                </div>
+              ) : (
+                displayedJobs.map((job) => {
+                  const statusBadge = getStatusBadge(job.status);
+                  const applicantCount = job.applications_count || job.applications?.length || 0;
 
                 return (
                   <div
@@ -759,8 +950,101 @@ const JobsDashboard = () => {
                     </div>
                   </div>
                 );
-              })}
+              }))}
             </div>
+
+            {/* Stunning Pagination Controls for Jobs */}
+            <div className={`mt-6 p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 transition-all shadow-sm ${
+              isDarkMode 
+                ? 'bg-[#121217]/95 border-zinc-800 text-zinc-300 shadow-zinc-950/40 backdrop-blur-sm' 
+                : 'bg-white border-slate-200/90 text-slate-700 shadow-slate-100/80'
+            }`}>
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>
+                  Showing <strong className="font-bold text-current">{safeTotalJobsCount > 0 ? jobsFromRecord : 0}</strong> to{' '}
+                  <strong className="font-bold text-current">{jobsToRecord}</strong> of{' '}
+                  <strong className="font-bold text-current">{safeTotalJobsCount}</strong> job requisitions
+                </span>
+
+                <div className="flex items-center gap-2 ml-2">
+                  <span className={`text-[11px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>Rows:</span>
+                  <CommonStunningSelect
+                    value={jobsPageSize}
+                    onChange={(e) => handleJobsPageSizeChange(e.target.value)}
+                    options={[
+                      { value: 6, label: '6 jobs' },
+                      { value: 9, label: '9 jobs' },
+                      { value: 15, label: '15 jobs' },
+                      { value: 30, label: '30 jobs' },
+                      { value: 60, label: '60 jobs' },
+                    ]}
+                    dropUp={true}
+                    className="w-28"
+                    buttonClassName="py-1 px-2.5 rounded-xl border text-xs font-semibold"
+                    activeHexColor={activeHexColor}
+                    isDarkMode={isDarkMode}
+                  />
+                </div>
+              </div>
+
+              {/* Page buttons */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => handleJobsPageChange(jobsCurrentPage - 1)}
+                  disabled={jobsCurrentPage <= 1 || loading}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                    jobsCurrentPage <= 1 || loading
+                      ? 'opacity-40 cursor-not-allowed border-transparent'
+                      : isDarkMode
+                      ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                      : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                  }`}
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Previous</span>
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {getJobsPageNumbers().map((pageNum) => {
+                    const isActive = pageNum === jobsCurrentPage;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handleJobsPageChange(pageNum)}
+                        disabled={loading}
+                        style={isActive ? { backgroundColor: activeHexColor, color: '#ffffff', borderColor: activeHexColor } : undefined}
+                        className={`w-8 h-8 rounded-xl border text-xs font-bold transition-all flex items-center justify-center ${
+                          isActive
+                            ? 'shadow-md shadow-blue-500/25 ring-2 ring-offset-1 ring-blue-400/40'
+                            : isDarkMode
+                            ? 'bg-[#181a20] border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-700 hover:bg-zinc-800/60'
+                            : 'bg-white border-slate-200/80 text-slate-600 hover:text-slate-900 hover:border-slate-300 hover:bg-slate-50 shadow-2xs'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => handleJobsPageChange(jobsCurrentPage + 1)}
+                  disabled={jobsCurrentPage >= safeTotalJobsPages || loading}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                    jobsCurrentPage >= safeTotalJobsPages || loading
+                      ? 'opacity-40 cursor-not-allowed border-transparent'
+                      : isDarkMode
+                      ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                      : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                  }`}
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            
           </div>
         )}
 
@@ -788,29 +1072,60 @@ const JobsDashboard = () => {
                 />
               </div>
 
-              {/* Stage Filter Buttons */}
-              <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto">
-                {['ALL', 'APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER_EXTENDED', 'HIRED'].map((st) => (
-                  <button
-                    key={st}
-                    onClick={() => setCandidateStageFilter(st)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      candidateStageFilter === st 
-                        ? 'theme-bg-primary text-white shadow-sm' 
-                        : isDarkMode ? 'bg-zinc-900 text-slate-400 hover:text-white' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {st === 'ALL' ? 'All Stages' : st.replace(/_/g, ' ')}
-                  </button>
-                ))}
+              {/* Stage Filter Buttons & Backend Sorting */}
+              <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
+                <div className="flex items-center gap-1.5 overflow-x-auto">
+                  {['ALL', 'APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER_EXTENDED', 'HIRED'].map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => {
+                        setCandidateStageFilter(st);
+                        setCandidatesCurrentPage(1);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                        candidateStageFilter === st 
+                          ? 'theme-bg-primary text-white shadow-sm' 
+                          : isDarkMode ? 'bg-zinc-900 text-slate-400 hover:text-white' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {st === 'ALL' ? 'All Stages' : st.replace(/_/g, ' ')}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="w-44 shrink-0">
+                  <CommonStunningSelect
+                    value={candidatesSortDirection === 'desc' ? `-${candidatesSortField}` : candidatesSortField}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.startsWith('-')) {
+                        setCandidatesSortField(val.substring(1));
+                        setCandidatesSortDirection('desc');
+                      } else {
+                        setCandidatesSortField(val);
+                        setCandidatesSortDirection('asc');
+                      }
+                      setCandidatesCurrentPage(1);
+                    }}
+                    options={[
+                      { value: '-applied_at', label: 'Sort: Newest Applied' },
+                      { value: 'applied_at', label: 'Sort: Oldest Applied' },
+                      { value: 'full_name', label: 'Sort: Name (A-Z)' },
+                      { value: '-full_name', label: 'Sort: Name (Z-A)' },
+                      { value: '-rating', label: 'Sort: Highest Rating' },
+                    ]}
+                    activeHexColor={activeHexColor}
+                    isDarkMode={isDarkMode}
+                  />
+                </div>
               </div>
             </div>
 
             {/* Candidates Table & Cards */}
-            <div className={`rounded-3xl border overflow-hidden ${
+            <div id="candidates-table-container" className={`rounded-3xl border overflow-hidden ${
               isDarkMode ? 'bg-[#121217] border-[#27272a]' : 'bg-white border-slate-200 shadow-xs'
             }`}>
-              <div className="overflow-x-auto">
+              <div className={`overflow-x-auto relative transition-opacity duration-200 ${loading ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className={`border-b font-bold uppercase tracking-wider text-[10px] ${
@@ -827,14 +1142,14 @@ const JobsDashboard = () => {
                   <tbody className={`divide-y font-medium ${
                     isDarkMode ? 'divide-zinc-800' : 'divide-slate-200'
                   }`}>
-                    {filteredApplications.length === 0 ? (
+                    {displayedApplications.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="py-12 text-center text-slate-400">
                           No candidates found matching the selected filter criteria.
                         </td>
                       </tr>
                     ) : (
-                      filteredApplications.map((app) => {
+                      displayedApplications.map((app) => {
                         const stageBadge = getStageBadge(app.stage);
                         const isConverted = app.is_converted_to_onboarding;
 
@@ -924,7 +1239,99 @@ const JobsDashboard = () => {
                       })
                     )}
                   </tbody>
+                  
                 </table>
+              </div>
+            </div>
+
+            {/* Stunning Pagination Controls for Candidates */}
+            <div className={`mt-6 p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 transition-all shadow-sm ${
+              isDarkMode 
+                ? 'bg-[#121217]/95 border-zinc-800 text-zinc-300 shadow-zinc-950/40 backdrop-blur-sm' 
+                : 'bg-white border-slate-200/90 text-slate-700 shadow-slate-100/80'
+            }`}>
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>
+                  Showing <strong className="font-bold text-current">{safeTotalCandidatesCount > 0 ? candidatesFromRecord : 0}</strong> to{' '}
+                  <strong className="font-bold text-current">{candidatesToRecord}</strong> of{' '}
+                  <strong className="font-bold text-current">{safeTotalCandidatesCount}</strong> applicants
+                </span>
+
+                <div className="flex items-center gap-2 ml-2">
+                  <span className={`text-[11px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>Rows:</span>
+                  <CommonStunningSelect
+                    value={candidatesPageSize}
+                    onChange={(e) => handleCandidatesPageSizeChange(e.target.value)}
+                    options={[
+                      { value: 5, label: '5 rows' },
+                      { value: 10, label: '10 rows' },
+                      { value: 20, label: '20 rows' },
+                      { value: 50, label: '50 rows' },
+                      { value: 100, label: '100 rows' },
+                    ]}
+                    dropUp={true}
+                    className="w-28"
+                    buttonClassName="py-1 px-2.5 rounded-xl border text-xs font-semibold"
+                    activeHexColor={activeHexColor}
+                    isDarkMode={isDarkMode}
+                  />
+                </div>
+              </div>
+
+              {/* Page buttons */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => handleCandidatesPageChange(candidatesCurrentPage - 1)}
+                  disabled={candidatesCurrentPage <= 1 || loading}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                    candidatesCurrentPage <= 1 || loading
+                      ? 'opacity-40 cursor-not-allowed border-transparent'
+                      : isDarkMode
+                      ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                      : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                  }`}
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Previous</span>
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {getCandidatesPageNumbers().map((pageNum) => {
+                    const isActive = pageNum === candidatesCurrentPage;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handleCandidatesPageChange(pageNum)}
+                        disabled={loading}
+                        style={isActive ? { backgroundColor: activeHexColor, color: '#ffffff', borderColor: activeHexColor } : undefined}
+                        className={`w-8 h-8 rounded-xl border text-xs font-bold transition-all flex items-center justify-center ${
+                          isActive
+                            ? 'shadow-md shadow-blue-500/25 ring-2 ring-offset-1 ring-blue-400/40'
+                          : isDarkMode
+                          ? 'bg-[#181a20] border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-700 hover:bg-zinc-800/60'
+                          : 'bg-white border-slate-200/80 text-slate-600 hover:text-slate-900 hover:border-slate-300 hover:bg-slate-50 shadow-2xs'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => handleCandidatesPageChange(candidatesCurrentPage + 1)}
+                  disabled={candidatesCurrentPage >= safeTotalCandidatesPages || loading}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                    candidatesCurrentPage >= safeTotalCandidatesPages || loading
+                      ? 'opacity-40 cursor-not-allowed border-transparent'
+                      : isDarkMode
+                      ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                      : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                  }`}
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
           </div>
@@ -1045,6 +1452,8 @@ const JobsDashboard = () => {
                 ))}
               </div>
             </div>
+
+            
           </div>
         )}
 
@@ -1122,6 +1531,8 @@ const JobsDashboard = () => {
                 </div>
               </div>
             </div>
+
+            
           </div>
         )}
 
@@ -1386,6 +1797,8 @@ const JobsDashboard = () => {
                 </div>
               </div>
             </div>
+
+            
           </div>
         )}
 
@@ -1534,6 +1947,8 @@ const JobsDashboard = () => {
                 </button>
               </div>
             </div>
+
+            
           </div>
         )}
 
@@ -1577,6 +1992,8 @@ const JobsDashboard = () => {
                 </button>
               </div>
             </div>
+
+            
           </div>
         )}
 

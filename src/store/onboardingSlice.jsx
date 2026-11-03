@@ -4,9 +4,9 @@ import onboardingService from '../services/onboardingService';
 // Candidate Lifecycle Thunks
 export const fetchAllOnboardings = createAsyncThunk(
   'onboarding/fetchAllOnboardings',
-  async (_, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await onboardingService.getAllOnboardings();
+      const response = await onboardingService.getAllOnboardings(params);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -226,6 +226,16 @@ export const fetchDocumentExpirations = createAsyncThunk(
 const initialState = {
   allOnboardings: [],
   onboardings: [],
+  totalCount: 0,
+  currentPage: 1,
+  pageSize: 10,
+  totalPages: 1,
+  metrics: {
+    total: 0,
+    pending: 0,
+    inProgress: 0,
+    confirmed: 0
+  },
   pendingOnboardings: [],
   inProgressOnboardings: [],
   confirmedOnboardings: [],
@@ -237,7 +247,6 @@ const initialState = {
   currentOnboarding: null,
   bankDetails: null,
   page: 1,
-  totalPages: 1,
   loading: false,
   error: null,
   successMessage: null,
@@ -265,6 +274,12 @@ const onboardingSlice = createSlice({
     },
     setPage: (state, action) => {
       state.page = action.payload;
+      state.currentPage = action.payload;
+    },
+    setPageSize: (state, action) => {
+      state.pageSize = action.payload;
+      state.currentPage = 1;
+      state.page = 1;
     },
     clearOnboardingError: (state) => {
       state.error = null;
@@ -284,9 +299,43 @@ const onboardingSlice = createSlice({
       .addCase(fetchAllOnboardings.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(fetchAllOnboardings.fulfilled, (state, action) => {
         state.loading = false;
-        const list = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
-        state.allOnboardings = list;
-        state.onboardings = list;
+        const payload = action.payload;
+        const argPageSize = action.meta?.arg?.page_size;
+        const argPage = action.meta?.arg?.page;
+        if (payload && typeof payload === 'object' && !Array.isArray(payload) && Array.isArray(payload.results)) {
+          const results = payload.results || [];
+          state.allOnboardings = results;
+          state.onboardings = results;
+          state.totalCount = payload.count !== undefined ? payload.count : results.length;
+          const limit = argPageSize || payload.page_size || state.pageSize || 10;
+          state.pageSize = limit;
+          if (argPage) state.currentPage = argPage;
+          state.totalPages = Math.max(1, Math.ceil(state.totalCount / limit));
+          if (payload.metrics) {
+            state.metrics = {
+              total: payload.metrics.total ?? state.totalCount,
+              pending: payload.metrics.pending ?? 0,
+              inProgress: payload.metrics.in_progress ?? 0,
+              confirmed: payload.metrics.confirmed ?? 0
+            };
+          }
+        } else if (Array.isArray(payload)) {
+          state.allOnboardings = payload;
+          state.onboardings = payload;
+          state.totalCount = payload.count !== undefined ? payload.count : (payload.totalCount !== undefined ? payload.totalCount : payload.length);
+          const limit = argPageSize || payload.page_size || state.pageSize || 10;
+          state.pageSize = limit;
+          if (argPage) state.currentPage = argPage;
+          state.totalPages = Math.max(1, Math.ceil(state.totalCount / limit));
+          if (payload.metrics) {
+            state.metrics = {
+              total: payload.metrics.total ?? state.totalCount,
+              pending: payload.metrics.pending ?? 0,
+              inProgress: payload.metrics.in_progress ?? 0,
+              confirmed: payload.metrics.confirmed ?? 0
+            };
+          }
+        }
       })
       .addCase(fetchAllOnboardings.rejected, (state, action) => {
         state.loading = false;
@@ -350,6 +399,7 @@ export const {
   clearCurrentOnboarding,
   clearBankDetails,
   setPage,
+  setPageSize,
   clearOnboardingError,
   clearOnboardingSuccess,
   clearSuccess

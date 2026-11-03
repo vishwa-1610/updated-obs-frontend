@@ -1442,14 +1442,20 @@ export default function Templates() {
                 <div>
                   <label className="font-bold text-slate-500 dark:text-zinc-400 block mb-1">Brand Accent Color</label>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={formData.accent_color}
-                      onChange={(e) => setFormData({ ...formData, accent_color: e.target.value })}
-                      className={`w-10 h-10 p-0 rounded-xl border cursor-pointer bg-transparent ${
-                        isDarkMode ? 'border-zinc-700' : 'border-slate-200'
-                      }`}
-                    />
+                    <div className="relative w-10 h-10 shrink-0">
+                      <div 
+                        className={`w-10 h-10 rounded-xl border shadow-sm transition-transform active:scale-95 ${
+                          isDarkMode ? 'border-zinc-700/80' : 'border-slate-200'
+                        }`}
+                        style={{ backgroundColor: formData.accent_color || '#2563eb' }}
+                      />
+                      <input 
+                        type="color" 
+                        value={formData.accent_color}
+                        onChange={(e) => setFormData({ ...formData, accent_color: e.target.value })}
+                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                      />
+                    </div>
                     <input
                       type="text"
                       value={formData.accent_color}

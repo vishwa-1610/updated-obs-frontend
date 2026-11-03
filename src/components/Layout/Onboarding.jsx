@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   Users, UserCheck, Clock, FileText, Shield, AlertTriangle,
@@ -30,6 +30,7 @@ import { companyIntakeService } from '../../services/companyIntakeService';
 import OnboardingDetailsModal from '../Onboarding/OnboardingDetailsModal';
 import StunningSelect from '../common/StunningSelect';
 import PageLoader from '../common/LoadingScreen/LoadingScreen';
+import { FEATURES } from '../../config/features';
 
 // All 50 US States
 const US_STATES = [
@@ -303,18 +304,26 @@ export default function Onboarding() {
   // Redux state
   const {
     allOnboardings,
+    totalCount,
+    totalPages,
+    metrics: reduxMetrics,
     benefitPlans,
     companyPolicies,
     documentExpirations,
     loading
   } = useSelector((state) => state.onboarding);
 
-  // Local tab and filters
+  // Local tab, search, pagination, and backend sorting
   const [activeTab, setActiveTab] = useState('pipeline');
   const [viewMode, setViewMode] = useState('table');
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [stateFilter, setStateFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortField, setSortField] = useState('created_at');
+  const [sortDirection, setSortDirection] = useState('desc');
 
   // Modals state
   const [selectedCandidate, setSelectedCandidate] = useState(null);
@@ -474,49 +483,140 @@ export default function Onboarding() {
   };
 
 
-  // Initial Load
+  // Debounce search input by 350ms
   useEffect(() => {
-    loadAllData();
-  }, [dispatch]);
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
 
+  // Fetch candidates from backend with server-side pagination, search & sorting
+  const fetchCandidates = useCallback(() => {
+    const params = {
+      page: currentPage,
+      page_size: pageSize,
+      ordering: sortDirection === 'desc' ? `-${sortField}` : sortField,
+    };
+    if (debouncedSearch && debouncedSearch.trim()) {
+      params.search = debouncedSearch.trim();
+    }
+    if (statusFilter && statusFilter !== 'ALL') {
+      params.status = statusFilter;
+    }
+    if (stateFilter && stateFilter !== 'ALL') {
+      params.state = stateFilter;
+    }
+    dispatch(fetchAllOnboardings(params));
+  }, [dispatch, currentPage, pageSize, sortField, sortDirection, debouncedSearch, statusFilter, stateFilter]);
+
+  // Trigger candidate fetch whenever pagination, filters, search, or sorting change
+  useEffect(() => {
+    fetchCandidates();
+  }, [fetchCandidates]);
+
+  // Initial Load & Refresh
   const loadAllData = () => {
-    dispatch(fetchAllOnboardings());
+    fetchCandidates();
     dispatch(fetchPendingOnboardings());
     dispatch(fetchInProgressOnboardings());
     dispatch(fetchConfirmedOnboardings());
-    dispatch(fetchBenefitPlans());
-    dispatch(fetchCompanyPolicies());
-    dispatch(fetchDocumentExpirations());
+    if (FEATURES.BENEFIT_PLANS) dispatch(fetchBenefitPlans());
+    if (FEATURES.COMPANY_POLICIES) dispatch(fetchCompanyPolicies());
+    if (FEATURES.EXPIRATION_RADAR) dispatch(fetchDocumentExpirations());
     loadWorkflowSteps();
   };
 
-  // Filtered Candidates
-  const filteredCandidates = useMemo(() => {
-    return (allOnboardings || []).filter((c) => {
-      const fullName = `${c.first_name || ''} ${c.last_name || ''}`.toLowerCase();
-      const email = (c.email || '').toLowerCase();
-      const jobTitle = (c.job_title || '').toLowerCase();
-      const query = searchTerm.toLowerCase();
+  useEffect(() => {
+    if (FEATURES.BENEFIT_PLANS) dispatch(fetchBenefitPlans());
+    if (FEATURES.COMPANY_POLICIES) dispatch(fetchCompanyPolicies());
+    if (FEATURES.EXPIRATION_RADAR) dispatch(fetchDocumentExpirations());
+    loadWorkflowSteps();
+  }, [dispatch]);
 
-      const matchesSearch = fullName.includes(query) || email.includes(query) || jobTitle.includes(query);
-      const matchesStatus = statusFilter === 'ALL' || (c.status || '').toUpperCase() === statusFilter.toUpperCase();
-      const matchesState = stateFilter === 'ALL' || (c.state || '').toUpperCase() === stateFilter.toUpperCase();
+  // Sorting handlers
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection(field === 'created_at' ? 'desc' : 'asc');
+    }
+    setCurrentPage(1);
+  };
 
-      return matchesSearch && matchesStatus && matchesState;
-    });
-  }, [allOnboardings, searchTerm, statusFilter, stateFilter]);
+  const renderSortIcon = (field) => {
+    if (sortField === field) {
+      return sortDirection === 'asc' ? (
+        <ArrowUp className="w-3.5 h-3.5 inline ml-1 text-blue-500" />
+      ) : (
+        <ArrowDown className="w-3.5 h-3.5 inline ml-1 text-blue-500" />
+      );
+    }
+    return <ArrowUp className="w-3.5 h-3.5 inline ml-1 opacity-0 group-hover:opacity-40 transition-opacity" />;
+  };
 
-  // KPI Metrics calculation
+  // Candidates list & Pagination bounds
+  const candidatesList = allOnboardings || [];
+  const safeTotalCount = 
+    (totalCount !== undefined && totalCount > 0) 
+      ? totalCount 
+      : (allOnboardings?.count ?? reduxMetrics?.total ?? candidatesList.length);
+  const safeTotalPages = Math.max(1, Math.ceil(safeTotalCount / pageSize));
+  const fromRecord = safeTotalCount > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+  const toRecord = Math.min(currentPage * pageSize, safeTotalCount);
+
+  // Auto-clamp currentPage if it exceeds safeTotalPages
+  useEffect(() => {
+    if (currentPage > safeTotalPages) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, safeTotalPages]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > safeTotalPages || newPage === currentPage || loading) return;
+    setCurrentPage(newPage);
+    const tableElem = document.getElementById('onboarding-candidates-table');
+    if (tableElem) {
+      tableElem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  };
+
+  const handlePageSizeChange = (newSize) => {
+    const size = Number(newSize);
+    if (!size || size === pageSize) return;
+    setPageSize(size);
+    setCurrentPage(1);
+  };
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (safeTotalPages <= maxVisible) {
+      for (let i = 1; i <= safeTotalPages; i++) pages.push(i);
+    } else {
+      let start = Math.max(1, currentPage - 2);
+      let end = Math.min(safeTotalPages, start + maxVisible - 1);
+      if (end - start < maxVisible - 1) {
+        start = Math.max(1, end - maxVisible + 1);
+      }
+      for (let i = start; i <= end; i++) pages.push(i);
+    }
+    return pages;
+  };
+
+  // KPI Metrics calculation (using live tenant metrics from backend)
   const metrics = useMemo(() => {
-    const total = (allOnboardings || []).length;
-    const pending = (allOnboardings || []).filter(c => c.status === 'PENDING' || !c.status).length;
-    const inProgress = (allOnboardings || []).filter(c => c.status === 'IN_PROGRESS').length;
-    const confirmed = (allOnboardings || []).filter(c => c.status === 'CONFIRMED' || c.status === 'COMPLETED').length;
+    const total = reduxMetrics?.total ?? safeTotalCount;
+    const pending = reduxMetrics?.pending ?? 0;
+    const inProgress = reduxMetrics?.inProgress ?? 0;
+    const confirmed = reduxMetrics?.confirmed ?? 0;
     const activeBenefits = (benefitPlans || []).length;
     const expiringDocs = (documentExpirations || []).length;
 
     return { total, pending, inProgress, confirmed, activeBenefits, expiringDocs };
-  }, [allOnboardings, benefitPlans, documentExpirations]);
+  }, [reduxMetrics, safeTotalCount, benefitPlans, documentExpirations]);
 
   // Handlers
   const handleOpenDetail = (candidate) => {
@@ -669,6 +769,24 @@ export default function Onboarding() {
     }
   };
 
+  const downloadSampleCsv = () => {
+    const headers = ['first_name', 'last_name', 'email', 'phone_no', 'job_title', 'state', 'start_date', 'client_name'];
+    const sampleRows = [
+      ['Alex', 'Morgan', 'alex.morgan@example.com', '(555) 234-5678', 'Senior Software Engineer', 'CA', '2026-11-15', 'Tech Innovators Inc'],
+      ['Taylor', 'Reed', 'taylor.reed@example.com', '(555) 876-5432', 'Product Manager', 'NY', '2026-12-01', 'Acme Solutions']
+    ];
+    const csvContent = [headers.join(','), ...sampleRows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'candidates_sample_import.csv');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const handleBulkImport = async (e) => {
     e.preventDefault();
     if (!bulkCsvFile) {
@@ -682,12 +800,26 @@ export default function Onboarding() {
       const res = await onboardingService.bulkImportCandidates(formData);
       setIsBulkImportModalOpen(false);
       setBulkCsvFile(null);
-      setFeedback({ type: 'success', message: `Bulk import processed! ${res.data?.created_count || 0} candidates enrolled.` });
+      const created = res.data?.created_count ?? 0;
+      const updated = res.data?.updated_count ?? 0;
+      const failed = res.data?.failed_count ?? 0;
+      let msg = `Bulk import complete! ${created} candidates created`;
+      if (updated > 0) msg += `, ${updated} updated`;
+      if (failed > 0) msg += `, ${failed} errors`;
+      setFeedback({
+        type: failed > 0 && created === 0 && updated === 0 ? 'error' : 'success',
+        message: msg
+      });
       setTimeout(() => {
         loadAllData();
       }, 50);
     } catch (err) {
-      setFeedback({ type: 'error', message: err.response?.data?.detail || 'Failed to import candidates CSV' });
+      const errorMsg =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.response?.data?.detail ||
+        'Failed to import candidates CSV';
+      setFeedback({ type: 'error', message: errorMsg });
     } finally {
       setActionLoading(false);
     }
@@ -760,7 +892,7 @@ export default function Onboarding() {
     );
   };
 
-  if (loading && (!allOnboardings || allOnboardings.length === 0)) {
+  if (loading && (!allOnboardings || allOnboardings.length === 0) && !debouncedSearch && statusFilter === 'ALL' && stateFilter === 'ALL') {
     return (
       <div className={`min-h-screen p-6 md:p-8 transition-colors duration-200 ${isDarkMode ? 'bg-[#0f1117] text-zinc-100' : 'bg-[#f8fafc] text-slate-800'}`}>
         <PageLoader 
@@ -788,25 +920,27 @@ export default function Onboarding() {
               className="px-2.5 py-0.5 text-xs font-semibold rounded-full border flex items-center gap-1"
             >
               <span className="w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: activeHexColor }}></span>
-              6 Enterprise Suites Live
+              Onboarding & Compliance Active
             </span>
           </div>
           <p className={`text-sm mt-1 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
-            Automated I-9 Section 2 verification, 50-state tax onboarding, USCIS E-Verify, and 1-Click Payroll export.
+            Automated Form I-9 verification, 50-state tax withholding, and candidate enrollment pipeline.
           </p>
         </div>
 
         {/* Global Action Suite */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => setIsExportModalOpen(true)}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border transition-all ${
-              isDarkMode ? 'bg-[#181a20] border-zinc-700/60 hover:border-zinc-500 text-zinc-200' : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 shadow-sm'
-            }`}
-          >
-            <Download className="w-4 h-4 text-emerald-500" />
-            <span>Payroll CSV</span>
-          </button>
+          {FEATURES.PAYROLL_EXPORT && (
+            <button
+              onClick={() => setIsExportModalOpen(true)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border transition-all ${
+                isDarkMode ? 'bg-[#181a20] border-zinc-700/60 hover:border-zinc-500 text-zinc-200' : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 shadow-sm'
+              }`}
+            >
+              <Download className="w-4 h-4 text-emerald-500" />
+              <span>Payroll CSV</span>
+            </button>
+          )}
 
           <button
             onClick={() => setIsBulkImportModalOpen(true)}
@@ -830,14 +964,14 @@ export default function Onboarding() {
       </div>
 
       {/* 2. TOP METRIC KPI CARDS */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      <div className={`grid grid-cols-2 md:grid-cols-4 ${FEATURES.BENEFIT_PLANS || FEATURES.EXPIRATION_RADAR ? 'lg:grid-cols-6' : 'lg:grid-cols-4'} gap-4 mb-8`}>
         {[
           { label: 'Total Pipeline', value: metrics.total, sub: 'ALL CANDIDATES', icon: Users, color: activeHexColor },
           { label: 'Pending Invites', value: metrics.pending, sub: 'AWAITING RESPONSE', icon: Clock, color: '#F59E0B' },
           { label: 'Active In-Progress', value: metrics.inProgress, sub: 'FILLING FORMS', icon: Layers, color: '#8B5CF6' },
           { label: 'Confirmed / Ready', value: metrics.confirmed, sub: 'I-9 & TAX VERIFIED', icon: UserCheck, color: '#10B981' },
-          { label: 'Benefit Plans', value: metrics.activeBenefits, sub: 'HEALTH & 401K', icon: Heart, color: '#EC4899' },
-          { label: 'Expiring Docs', value: metrics.expiringDocs, sub: 'REVERIFICATION RADAR', icon: AlertTriangle, color: '#EF4444' }
+          ...(FEATURES.BENEFIT_PLANS ? [{ label: 'Benefit Plans', value: metrics.activeBenefits, sub: 'HEALTH & 401K', icon: Heart, color: '#EC4899' }] : []),
+          ...(FEATURES.EXPIRATION_RADAR ? [{ label: 'Expiring Docs', value: metrics.expiringDocs, sub: 'REVERIFICATION RADAR', icon: AlertTriangle, color: '#EF4444' }] : [])
         ].map((card, idx) => {
           const Icon = card.icon;
           return (
@@ -871,10 +1005,10 @@ export default function Onboarding() {
           {[
             { id: 'pipeline', label: 'Candidate Pipeline', icon: Users },
             { id: 'i9', label: 'Form I-9 & Section 2', icon: FileText },
-            { id: 'everify', label: 'E-Verify & Screening', icon: Shield },
-            { id: 'benefits', label: 'Benefit Plans', icon: Heart },
-            { id: 'policies', label: 'Company Policies', icon: BookOpen },
-            { id: 'expirations', label: 'Expiration Radar', icon: AlertTriangle }
+            ...(FEATURES.E_VERIFY ? [{ id: 'everify', label: 'E-Verify & Screening', icon: Shield }] : []),
+            ...(FEATURES.BENEFIT_PLANS ? [{ id: 'benefits', label: 'Benefit Plans', icon: Heart }] : []),
+            ...(FEATURES.COMPANY_POLICIES ? [{ id: 'policies', label: 'Company Policies', icon: BookOpen }] : []),
+            ...(FEATURES.EXPIRATION_RADAR ? [{ id: 'expirations', label: 'Expiration Radar', icon: AlertTriangle }] : [])
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -939,22 +1073,29 @@ export default function Onboarding() {
       {/* --- TAB 1: CANDIDATE PIPELINE --- */}
       {activeTab === 'pipeline' && (
         <div>
-          {/* Search & Filter bar */}
+          {/* Search & Filter bar with Backend Sorting */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-6">
-            <div className="flex flex-wrap items-center gap-2.5 flex-1 max-w-2xl">
+            <div className="flex flex-wrap items-center gap-2.5 flex-1 max-w-4xl">
               <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border flex-1 min-w-[240px] ${
                 isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-200' : 'bg-white border-slate-200 text-slate-800 shadow-sm'
               }`}>
-                <Search className={`w-4 h-4 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
+                {loading && debouncedSearch ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-500 shrink-0" />
+                ) : (
+                  <Search className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
+                )}
                 <input
                   type="text"
-                  placeholder="Search candidates by name, email, job title..."
+                  placeholder="Search candidates by name, email, job title, state..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="bg-transparent border-none outline-none text-xs w-full"
                 />
                 {searchTerm && (
-                  <button onClick={() => setSearchTerm('')} className="text-xs text-zinc-500 hover:text-zinc-300">
+                  <button 
+                    onClick={() => { setSearchTerm(''); setCurrentPage(1); }} 
+                    className="text-xs text-zinc-500 hover:text-zinc-300 p-0.5"
+                  >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -963,21 +1104,27 @@ export default function Onboarding() {
               {/* Status Filter */}
               <StunningSelect
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 options={[
                   { value: 'ALL', label: 'All Pipeline Stages' },
                   { value: 'PENDING', label: 'Pending Invites' },
                   { value: 'IN_PROGRESS', label: 'In Progress' },
                   { value: 'CONFIRMED', label: 'Confirmed / Ready' }
                 ]}
-                className="w-48"
+                className="w-44"
                 activeHexColor={activeHexColor}
               />
 
               {/* State Filter */}
               <StunningSelect
                 value={stateFilter}
-                onChange={(e) => setStateFilter(e.target.value)}
+                onChange={(e) => {
+                  setStateFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 options={[
                   { value: 'ALL', label: 'All 50 States' },
                   ...US_STATES.map((st) => ({ value: st, label: st }))
@@ -986,35 +1133,98 @@ export default function Onboarding() {
                 searchable={true}
                 activeHexColor={activeHexColor}
               />
+
+              {/* Backend Sort Dropdown */}
+              <StunningSelect
+                value={sortDirection === 'desc' ? `-${sortField}` : sortField}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val.startsWith('-')) {
+                    setSortField(val.substring(1));
+                    setSortDirection('desc');
+                  } else {
+                    setSortField(val);
+                    setSortDirection('asc');
+                  }
+                  setCurrentPage(1);
+                }}
+                options={[
+                  { value: '-created_at', label: 'Sort: Newest First' },
+                  { value: 'created_at', label: 'Sort: Oldest First' },
+                  { value: 'first_name', label: 'Sort: Name (A-Z)' },
+                  { value: '-first_name', label: 'Sort: Name (Z-A)' },
+                  { value: '-start_date', label: 'Sort: Start Date (Latest)' },
+                  { value: 'start_date', label: 'Sort: Start Date (Earliest)' },
+                  { value: 'status', label: 'Sort: Pipeline Stage' },
+                  { value: 'job_title', label: 'Sort: Role / Title' },
+                  { value: 'state', label: 'Sort: State' }
+                ]}
+                className="w-48"
+                activeHexColor={activeHexColor}
+              />
             </div>
 
-            <div className={`text-xs font-medium ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
-              Showing {filteredCandidates.length} of {(allOnboardings || []).length} candidates
+            <div className={`text-xs font-medium whitespace-nowrap ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+              {safeTotalCount > 0 ? (
+                <span>
+                  Showing <strong className="text-current font-bold">{fromRecord} - {toRecord}</strong> of <strong className="text-current font-bold">{safeTotalCount}</strong>
+                </span>
+              ) : (
+                <span>0 candidates</span>
+              )}
             </div>
           </div>
 
           {/* High Density Table View */}
           {viewMode === 'table' ? (
-            <div className={`rounded-2xl border overflow-hidden transition-all ${
-              isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'
-            }`}>
-              <div className="overflow-x-auto">
+            <div
+              id="onboarding-candidates-table"
+              className={`rounded-2xl border overflow-hidden transition-all shadow-sm ${
+                isDarkMode ? 'bg-[#131722] border-zinc-800 shadow-zinc-950/30' : 'bg-white border-slate-200/90 shadow-slate-100/80'
+              }`}
+            >
+              <div className={`overflow-x-auto relative transition-opacity duration-200 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className={`border-b text-[11px] font-bold uppercase tracking-wider ${
                       isDarkMode ? 'border-zinc-800/80 bg-[#181a20] text-zinc-400' : 'border-slate-100 bg-slate-50 text-slate-500'
                     }`}>
-                      <th className="py-3.5 px-4">Candidate</th>
-                      <th className="py-3.5 px-4">Role & Dept</th>
-                      <th className="py-3.5 px-4">State</th>
-                      <th className="py-3.5 px-4">Start Date</th>
-                      <th className="py-3.5 px-4">Status Stage</th>
+                      <th 
+                        onClick={() => handleSort('first_name')} 
+                        className="py-3.5 px-4 cursor-pointer select-none group hover:text-blue-500 transition-colors"
+                      >
+                        <span className="flex items-center gap-1">Candidate {renderSortIcon('first_name')}</span>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('job_title')} 
+                        className="py-3.5 px-4 cursor-pointer select-none group hover:text-blue-500 transition-colors"
+                      >
+                        <span className="flex items-center gap-1">Role & Dept {renderSortIcon('job_title')}</span>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('state')} 
+                        className="py-3.5 px-4 cursor-pointer select-none group hover:text-blue-500 transition-colors"
+                      >
+                        <span className="flex items-center gap-1">State {renderSortIcon('state')}</span>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('start_date')} 
+                        className="py-3.5 px-4 cursor-pointer select-none group hover:text-blue-500 transition-colors"
+                      >
+                        <span className="flex items-center gap-1">Start Date {renderSortIcon('start_date')}</span>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('status')} 
+                        className="py-3.5 px-4 cursor-pointer select-none group hover:text-blue-500 transition-colors"
+                      >
+                        <span className="flex items-center gap-1">Status Stage {renderSortIcon('status')}</span>
+                      </th>
                       <th className="py-3.5 px-4">Compliance / I-9</th>
                       <th className="py-3.5 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className={`divide-y text-xs ${isDarkMode ? 'divide-zinc-800/60' : 'divide-slate-100'}`}>
-                    {filteredCandidates.length === 0 ? (
+                    {candidatesList.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="py-12 text-center text-zinc-500">
                           <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
@@ -1022,7 +1232,7 @@ export default function Onboarding() {
                         </td>
                       </tr>
                     ) : (
-                      filteredCandidates.map((candidate) => (
+                      candidatesList.map((candidate) => (
                         <tr
                           key={candidate.id}
                           onClick={() => handleOpenDetail(candidate)}
@@ -1114,72 +1324,172 @@ export default function Onboarding() {
           ) : (
             /* Cards Grid View */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredCandidates.map((candidate) => (
-                <div
-                  key={candidate.id}
-                  onClick={() => handleOpenDetail(candidate)}
-                  className={`p-5 rounded-2xl border cursor-pointer transition-all hover:scale-[1.01] ${
-                    isDarkMode ? 'bg-[#131722] border-zinc-800 hover:border-zinc-700' : 'bg-white border-slate-100 hover:border-slate-200 shadow-sm'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm uppercase"
-                        style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
-                      >
-                        {(candidate.first_name || 'C')[0]}{(candidate.last_name || '')[0]}
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-sm">{candidate.first_name} {candidate.last_name}</h3>
-                        <p className={`text-xs ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>{candidate.email}</p>
-                      </div>
-                    </div>
-                    {getStatusBadge(candidate.status)}
-                  </div>
-
-                  <div className={`p-3 rounded-xl mb-4 text-xs space-y-2 ${isDarkMode ? 'bg-[#181a20]' : 'bg-slate-50'}`}>
-                    <div className="flex items-center justify-between">
-                      <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Role:</span>
-                      <span className="font-semibold">{candidate.job_title || 'Staff Engineer'}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>State & Dept:</span>
-                      <span className="font-semibold">{candidate.state || 'CA'} • {candidate.department || 'Tech'}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Start Date:</span>
-                      <span className="font-semibold">{candidate.start_date || 'Oct 15, 2026'}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-zinc-800/40 text-xs">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleRemindCandidate(candidate); }}
-                      disabled={remindingCandidateId === candidate.id || actionLoading}
-                      className="flex items-center gap-1.5 font-medium hover:underline disabled:opacity-60 transition-all"
-                      style={{ color: activeHexColor }}
-                    >
-                      {remindingCandidateId === candidate.id ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>Sending Reminder...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-3.5 h-3.5" />
-                          <span>Resend Invite</span>
-                        </>
-                      )}
-                    </button>
-                    <span className="flex items-center gap-1 font-semibold" style={{ color: activeHexColor }}>
-                      Details <ChevronRight className="w-3.5 h-3.5" />
-                    </span>
-                  </div>
+              {candidatesList.length === 0 ? (
+                <div className={`col-span-full py-12 text-center rounded-2xl border ${
+                  isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-500' : 'bg-white border-slate-100 text-slate-500'
+                }`}>
+                  <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  No onboarding candidates match your filter criteria.
                 </div>
-              ))}
+              ) : (
+                candidatesList.map((candidate) => (
+                  <div
+                    key={candidate.id}
+                    onClick={() => handleOpenDetail(candidate)}
+                    className={`p-5 rounded-2xl border cursor-pointer transition-all hover:scale-[1.01] ${
+                      isDarkMode ? 'bg-[#131722] border-zinc-800 hover:border-zinc-700' : 'bg-white border-slate-100 hover:border-slate-200 shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm uppercase"
+                          style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+                        >
+                          {(candidate.first_name || 'C')[0]}{(candidate.last_name || '')[0]}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm">{candidate.first_name} {candidate.last_name}</h3>
+                          <p className={`text-xs ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>{candidate.email}</p>
+                        </div>
+                      </div>
+                      {getStatusBadge(candidate.status)}
+                    </div>
+
+                    <div className={`p-3 rounded-xl mb-4 text-xs space-y-2 ${isDarkMode ? 'bg-[#181a20]' : 'bg-slate-50'}`}>
+                      <div className="flex items-center justify-between">
+                        <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Role:</span>
+                        <span className="font-semibold">{candidate.job_title || 'Staff Engineer'}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>State & Dept:</span>
+                        <span className="font-semibold">{candidate.state || 'CA'} • {candidate.department || 'Tech'}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Start Date:</span>
+                        <span className="font-semibold">{candidate.start_date || 'Oct 15, 2026'}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-zinc-800/40 text-xs">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleRemindCandidate(candidate); }}
+                        disabled={remindingCandidateId === candidate.id || actionLoading}
+                        className="flex items-center gap-1.5 font-medium hover:underline disabled:opacity-60 transition-all"
+                        style={{ color: activeHexColor }}
+                      >
+                        {remindingCandidateId === candidate.id ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Sending Reminder...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-3.5 h-3.5" />
+                            <span>Resend Invite</span>
+                          </>
+                        )}
+                      </button>
+                      <span className="flex items-center gap-1 font-semibold" style={{ color: activeHexColor }}>
+                        Details <ChevronRight className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           )}
+
+          {/* Pagination Controls */}
+          <div className={`mt-6 p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 transition-all shadow-sm ${
+            isDarkMode 
+              ? 'bg-[#131722]/95 border-zinc-800 text-zinc-300 shadow-zinc-950/40 backdrop-blur-sm' 
+              : 'bg-white border-slate-200/90 text-slate-700 shadow-slate-100/80'
+          }`}>
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>
+                Showing <strong className="font-bold text-current">{safeTotalCount > 0 ? fromRecord : 0}</strong> to{' '}
+                <strong className="font-bold text-current">{toRecord}</strong> of{' '}
+                <strong className="font-bold text-current">{safeTotalCount}</strong> candidates
+              </span>
+
+              <div className="flex items-center gap-2 ml-2">
+                <span className={`text-[11px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>Rows:</span>
+                <StunningSelect
+                  value={pageSize}
+                  onChange={(e) => handlePageSizeChange(e.target.value)}
+                  options={[
+                    { value: 10, label: '10' },
+                    { value: 20, label: '20' },
+                    { value: 50, label: '50' },
+                    { value: 100, label: '100' },
+                  ]}
+                  dropUp={true}
+                  className="w-22"
+                  buttonClassName="py-1 px-2.5 rounded-xl border text-xs font-semibold"
+                  activeHexColor={activeHexColor}
+                  isDarkMode={isDarkMode}
+                />
+              </div>
+            </div>
+
+            {/* Page buttons */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage <= 1 || loading}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                  currentPage <= 1 || loading
+                    ? 'opacity-40 cursor-not-allowed border-transparent'
+                    : isDarkMode
+                    ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                    : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                }`}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Previous</span>
+              </button>
+
+              <div className="flex items-center gap-1">
+                {getPageNumbers().map((pageNum) => {
+                  const isActive = pageNum === currentPage;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      disabled={loading}
+                      style={isActive ? { backgroundColor: activeHexColor, color: '#ffffff', borderColor: activeHexColor } : undefined}
+                      className={`w-8 h-8 rounded-xl border text-xs font-bold transition-all flex items-center justify-center ${
+                        isActive
+                          ? 'shadow-md shadow-blue-500/25 ring-2 ring-offset-1 ring-blue-400/40'
+                          : isDarkMode
+                          ? 'bg-[#181a20] border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:border-zinc-700 hover:bg-zinc-800/60'
+                          : 'bg-white border-slate-200/80 text-slate-600 hover:text-slate-900 hover:border-slate-300 hover:bg-slate-50 shadow-2xs'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= safeTotalPages || loading}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                  currentPage >= safeTotalPages || loading
+                    ? 'opacity-40 cursor-not-allowed border-transparent'
+                    : isDarkMode
+                    ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                    : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                }`}
+              >
+                <span>Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
         </div>
       )}
 
@@ -1277,7 +1587,7 @@ export default function Onboarding() {
       )}
 
       {/* --- TAB 3: USCIS E-VERIFY & SCREENING --- */}
-      {activeTab === 'everify' && (
+      {FEATURES.E_VERIFY && activeTab === 'everify' && (
         <div className="space-y-6">
           <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
             <div className="flex items-center justify-between">
@@ -1338,7 +1648,7 @@ export default function Onboarding() {
       )}
 
       {/* --- TAB 4: BENEFIT PLANS CATALOG --- */}
-      {activeTab === 'benefits' && (
+      {FEATURES.BENEFIT_PLANS && activeTab === 'benefits' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -1389,7 +1699,7 @@ export default function Onboarding() {
       )}
 
       {/* --- TAB 5: COMPANY POLICIES & HANDBOOKS --- */}
-      {activeTab === 'policies' && (
+      {FEATURES.COMPANY_POLICIES && activeTab === 'policies' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -1441,7 +1751,7 @@ export default function Onboarding() {
       )}
 
       {/* --- TAB 6: EXPIRATION RADAR --- */}
-      {activeTab === 'expirations' && (
+      {FEATURES.EXPIRATION_RADAR && activeTab === 'expirations' && (
         <div className="space-y-6">
           <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
             <h2 className="text-base font-bold flex items-center gap-2">
@@ -1828,7 +2138,7 @@ export default function Onboarding() {
       )}
 
       {/* PAYROLL CSV EXPORT MODAL */}
-      {isExportModalOpen && (
+      {FEATURES.PAYROLL_EXPORT && isExportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
           <div className={`w-full max-w-md my-auto rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
             isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-100 text-slate-800'
@@ -1900,42 +2210,138 @@ export default function Onboarding() {
       {/* BULK CANDIDATE IMPORT MODAL */}
       {isBulkImportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-          <div className={`w-full max-w-md my-auto rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
+          <div className={`w-full max-w-lg my-auto rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${
             isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-100 text-slate-800'
           }`}>
             <div className={`p-5 border-b shrink-0 flex items-center justify-between ${isDarkMode ? 'border-zinc-800 bg-[#181a20]' : 'border-slate-100 bg-slate-50'}`}>
-              <h3 className="font-bold text-base flex items-center gap-2">
-                <UploadCloud className="w-4 h-4 text-blue-500" />
-                Bulk Import Candidates via CSV
-              </h3>
-              <button onClick={() => setIsBulkImportModalOpen(false)} className="text-zinc-400 hover:text-zinc-200 p-1">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-blue-500/10 text-blue-500">
+                  <UploadCloud className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base">Bulk Import Candidates</h3>
+                  <p className={`text-[11px] ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                    Upload a CSV file to enroll multiple candidates at once
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setIsBulkImportModalOpen(false); setBulkCsvFile(null); }} 
+                className="text-zinc-400 hover:text-zinc-200 p-1 rounded-lg transition-colors"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form id="bulkImportFormId" onSubmit={handleBulkImport} className="p-6 overflow-y-auto flex-1 space-y-4 text-xs">
-              <p className={isDarkMode ? 'text-zinc-300' : 'text-slate-600'}>
-                Upload a CSV containing: <code>first_name, last_name, email, job_title, start_date, salary, state</code>.
-              </p>
-
-              <div className={`p-6 rounded-2xl border-2 border-dashed text-center flex flex-col items-center justify-center ${
-                isDarkMode ? 'border-zinc-700 bg-[#181a20]' : 'border-slate-300 bg-slate-50'
+            <div className="p-6 overflow-y-auto flex-1 space-y-4 text-xs">
+              {/* Sample Template Download Card */}
+              <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 ${
+                isDarkMode ? 'bg-zinc-900/60 border-zinc-800' : 'bg-blue-50/50 border-blue-100'
               }`}>
-                <UploadCloud className="w-8 h-8 text-blue-500 mb-2" />
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={(e) => setBulkCsvFile(e.target.files[0])}
-                  className="text-xs"
-                />
-                {bulkCsvFile && <span className="mt-2 text-emerald-500 font-semibold">{bulkCsvFile.name}</span>}
+                <div>
+                  <div className="font-semibold text-xs flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-blue-500" />
+                    <span>Need the right format?</span>
+                  </div>
+                  <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                    Download a pre-formatted template with example candidate rows.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={downloadSampleCsv}
+                  className={`px-3 py-2 rounded-xl text-xs font-semibold shrink-0 flex items-center gap-1.5 border transition-all ${
+                    isDarkMode 
+                      ? 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-100' 
+                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800 shadow-xs'
+                  }`}
+                >
+                  <Download className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Download Sample CSV</span>
+                </button>
               </div>
-            </form>
+
+              {/* Upload Dropzone */}
+              <form id="bulkImportFormId" onSubmit={handleBulkImport}>
+                {!bulkCsvFile ? (
+                  <label className={`p-8 rounded-2xl border-2 border-dashed text-center flex flex-col items-center justify-center cursor-pointer transition-all group ${
+                    isDarkMode 
+                      ? 'border-zinc-700 hover:border-blue-500 bg-[#181a20]/60 hover:bg-[#181a20]' 
+                      : 'border-slate-300 hover:border-blue-400 bg-slate-50 hover:bg-blue-50/30'
+                  }`}>
+                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <UploadCloud className="w-6 h-6 text-blue-500" />
+                    </div>
+                    <span className="font-semibold text-xs block mb-1">Click to select candidate CSV file</span>
+                    <span className={`text-[11px] ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                      Supports .csv files exported from Excel, Sheets, or ATS
+                    </span>
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setBulkCsvFile(e.target.files[0]);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                ) : (
+                  <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+                    isDarkMode ? 'bg-[#181a20] border-emerald-500/30' : 'bg-emerald-50/40 border-emerald-200'
+                  }`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                        <FileText className="w-5 h-5 text-emerald-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-xs truncate">{bulkCsvFile.name}</div>
+                        <div className={`text-[11px] flex items-center gap-2 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                          <span>{(bulkCsvFile.size / 1024).toFixed(1)} KB</span>
+                          <span>•</span>
+                          <span className="text-emerald-500 font-medium flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> Ready to import
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setBulkCsvFile(null)}
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-all ${
+                        isDarkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Change File
+                    </button>
+                  </div>
+                )}
+              </form>
+
+              {/* Supported Columns Guide */}
+              <div className={`p-3.5 rounded-2xl border text-[11px] space-y-1.5 ${
+                isDarkMode ? 'bg-[#181a20]/40 border-zinc-800 text-zinc-400' : 'bg-slate-50 border-slate-200 text-slate-500'
+              }`}>
+                <div className="font-semibold text-zinc-300 dark:text-zinc-200 flex items-center gap-1.5">
+                  <span>Supported Column Headers:</span>
+                </div>
+                <p>
+                  <strong className="text-zinc-200 dark:text-zinc-100">Required:</strong> <code>first_name</code>, <code>last_name</code>, <code>email</code>
+                </p>
+                <p>
+                  <strong className="text-zinc-200 dark:text-zinc-100">Optional:</strong> <code>phone_no</code>, <code>job_title</code>, <code>state</code>, <code>start_date</code> (YYYY-MM-DD or MM/DD/YYYY)
+                </p>
+                <p className="text-[10px] opacity-80 pt-1">
+                  * Auto-normalizes column names (e.g. "First Name", "Job Title", "Work State" are all recognized). Existing pending candidates with matching email will be updated.
+                </p>
+              </div>
+            </div>
 
             <div className={`p-4 border-t shrink-0 flex items-center justify-end gap-3 ${isDarkMode ? 'border-zinc-800 bg-[#181a20]' : 'border-slate-100 bg-slate-50'}`}>
               <button
                 type="button"
-                onClick={() => setIsBulkImportModalOpen(false)}
+                onClick={() => { setIsBulkImportModalOpen(false); setBulkCsvFile(null); }}
                 className={`px-4 py-2.5 rounded-xl border font-medium ${
                   isDarkMode ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-slate-100 border-slate-200 text-slate-700'
                 }`}
@@ -1945,11 +2351,20 @@ export default function Onboarding() {
               <button
                 type="submit"
                 form="bulkImportFormId"
-                disabled={actionLoading}
-                style={{ backgroundColor: activeHexColor }}
-                className="px-5 py-2.5 rounded-xl font-semibold text-white shadow"
+                disabled={actionLoading || !bulkCsvFile}
+                style={{ backgroundColor: bulkCsvFile ? activeHexColor : undefined }}
+                className={`px-5 py-2.5 rounded-xl font-semibold text-white shadow transition-all ${
+                  !bulkCsvFile ? 'bg-zinc-500 cursor-not-allowed opacity-50' : 'hover:opacity-95'
+                }`}
               >
-                {actionLoading ? 'Uploading...' : 'Process CSV Import'}
+                {actionLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Processing Import...</span>
+                  </span>
+                ) : (
+                  'Start Import'
+                )}
               </button>
             </div>
           </div>
@@ -1957,7 +2372,7 @@ export default function Onboarding() {
       )}
 
       {/* CREATE BENEFIT PLAN MODAL */}
-      {isBenefitModalOpen && (
+      {FEATURES.BENEFIT_PLANS && isBenefitModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
           <div className={`w-full max-w-md my-auto rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
             isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-100 text-slate-800'
@@ -2057,7 +2472,7 @@ export default function Onboarding() {
       )}
 
       {/* CREATE POLICY MODAL */}
-      {isPolicyModalOpen && (
+      {FEATURES.COMPANY_POLICIES && isPolicyModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
           <div className={`w-full max-w-md my-auto rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
             isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-100 text-slate-800'

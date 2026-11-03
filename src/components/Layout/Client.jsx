@@ -192,7 +192,7 @@ const StunningDatePicker = ({
         <div className={`absolute z-[100] left-0 ${dropUp ? 'bottom-full mb-2' : 'mt-1.5'} w-72 p-3.5 rounded-2xl shadow-2xl border backdrop-blur-md animate-in fade-in zoom-in-95 duration-100 ${
           isDarkMode ? 'bg-[#131722] border-zinc-700 text-zinc-100' : 'bg-white border-slate-200 text-slate-800 shadow-xl'
         }`}>
-          <div className="flex items-center justify-between mb-3 pb-2 border-b border-zinc-800/40">
+          <div className={`flex items-center justify-between mb-3 pb-2 border-b ${isDarkMode ? 'border-zinc-800/40' : 'border-slate-100'}`}>
             <button
               type="button"
               onClick={handlePrevMonth}
@@ -249,7 +249,7 @@ const StunningDatePicker = ({
             })}
           </div>
 
-          <div className="flex items-center justify-between pt-3 mt-2 border-t border-zinc-800/40 text-xs">
+          <div className={`flex items-center justify-between pt-3 mt-2 border-t ${isDarkMode ? 'border-zinc-800/40' : 'border-slate-100'} text-xs`}>
             <button
               type="button"
               onClick={handleSetToday}
@@ -946,7 +946,7 @@ export default function Client() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-zinc-800/40 text-xs">
+                  <div className={`flex items-center justify-between pt-2 border-t ${isDarkMode ? 'border-zinc-800/40' : 'border-slate-100'} text-xs`}>
                     <span className="font-mono text-zinc-400">FEIN: {client.fein_ein || 'Registered'}</span>
                     <span className="flex items-center gap-1 font-semibold" style={{ color: activeHexColor }}>
                       View Account <ChevronRight className="w-3.5 h-3.5" />

@@ -25,6 +25,7 @@ import {
 } from '../../store/subcontractorSlice';
 import subcontractorService from '../../services/subcontractorService';
 import PageLoader from '../common/LoadingScreen/LoadingScreen';
+import { FEATURES } from '../../config/features';
 
 // ==========================================
 // STUNNING CUSTOM DATE PICKER
@@ -191,7 +192,7 @@ const StunningDatePicker = ({
         <div className={`absolute z-[100] left-0 ${dropUp ? 'bottom-full mb-2' : 'mt-1.5'} w-72 p-3.5 rounded-2xl shadow-2xl border backdrop-blur-md animate-in fade-in zoom-in-95 duration-100 ${
           isDarkMode ? 'bg-[#131722] border-zinc-700 text-zinc-100' : 'bg-white border-slate-200 text-slate-800 shadow-xl'
         }`}>
-          <div className="flex items-center justify-between mb-3 pb-2 border-b border-zinc-800/40">
+          <div className={`flex items-center justify-between mb-3 pb-2 border-b ${isDarkMode ? 'border-zinc-800/40' : 'border-slate-100'}`}>
             <button
               type="button"
               onClick={handlePrevMonth}
@@ -248,7 +249,7 @@ const StunningDatePicker = ({
             })}
           </div>
 
-          <div className="flex items-center justify-between pt-3 mt-2 border-t border-zinc-800/40 text-xs">
+          <div className={`flex items-center justify-between pt-3 mt-2 border-t ${isDarkMode ? 'border-zinc-800/40' : 'border-slate-100'} text-xs`}>
             <button
               type="button"
               onClick={handleSetToday}
@@ -389,9 +390,9 @@ export default function Subcontractor() {
 
   const loadAllData = () => {
     dispatch(fetchSubcontractors());
-    dispatch(fetchPlacements());
-    dispatch(fetchInvoices());
-    dispatch(fetchW9Forms());
+    if (FEATURES.SUBCONTRACTOR_PLACEMENTS) dispatch(fetchPlacements());
+    if (FEATURES.SUBCONTRACTOR_INVOICES) dispatch(fetchInvoices());
+    if (FEATURES.SUBCONTRACTOR_W9) dispatch(fetchW9Forms());
     dispatch(fetchContacts());
     dispatch(fetchWorkLocations());
   };
@@ -632,52 +633,58 @@ export default function Subcontractor() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-              Subcontractors & 1099 Vendor Hub
+              Subcontractors & Vendor Hub
             </h1>
             <span
               style={{ backgroundColor: `${activeHexColor}15`, color: activeHexColor, borderColor: `${activeHexColor}30` }}
               className="px-2.5 py-0.5 text-xs font-semibold rounded-full border flex items-center gap-1"
             >
               <Award className="w-3.5 h-3.5" />
-              C2C, 1099 & Staffing Suite Live
+              Vendor & C2C Directory Active
             </span>
           </div>
           <p className={`text-sm mt-1 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
-            Master services agreements, COI insurance monitoring, 1099 placement tracking, vendor remittances, and IRS Form W-9 certification.
+            Master services agreements, COI insurance monitoring, vendor contacts, and work locations directory.
           </p>
         </div>
 
         {/* Global Action Suite */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => setIsW9ModalOpen(true)}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border transition-all ${
-              isDarkMode ? 'bg-[#181a20] border-zinc-700/60 hover:border-zinc-500 text-zinc-200' : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 shadow-sm'
-            }`}
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
-            <span>Certify W-9</span>
-          </button>
+          {FEATURES.SUBCONTRACTOR_W9 && (
+            <button
+              onClick={() => setIsW9ModalOpen(true)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border transition-all ${
+                isDarkMode ? 'bg-[#181a20] border-zinc-700/60 hover:border-zinc-500 text-zinc-200' : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 shadow-sm'
+              }`}
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+              <span>Certify W-9</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => setIsInvoiceModalOpen(true)}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border transition-all ${
-              isDarkMode ? 'bg-[#181a20] border-zinc-700/60 hover:border-zinc-500 text-zinc-200' : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 shadow-sm'
-            }`}
-          >
-            <DollarSign className="w-4 h-4 text-pink-500" />
-            <span>Submit Invoice</span>
-          </button>
+          {FEATURES.SUBCONTRACTOR_INVOICES && (
+            <button
+              onClick={() => setIsInvoiceModalOpen(true)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border transition-all ${
+                isDarkMode ? 'bg-[#181a20] border-zinc-700/60 hover:border-zinc-500 text-zinc-200' : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 shadow-sm'
+              }`}
+            >
+              <DollarSign className="w-4 h-4 text-pink-500" />
+              <span>Submit Invoice</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => setIsPlacementModalOpen(true)}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border transition-all ${
-              isDarkMode ? 'bg-[#181a20] border-zinc-700/60 hover:border-zinc-500 text-zinc-200' : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 shadow-sm'
-            }`}
-          >
-            <Users className="w-4 h-4 text-purple-500" />
-            <span>Add 1099 Placement</span>
-          </button>
+          {FEATURES.SUBCONTRACTOR_PLACEMENTS && (
+            <button
+              onClick={() => setIsPlacementModalOpen(true)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border transition-all ${
+                isDarkMode ? 'bg-[#181a20] border-zinc-700/60 hover:border-zinc-500 text-zinc-200' : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 shadow-sm'
+              }`}
+            >
+              <Users className="w-4 h-4 text-purple-500" />
+              <span>Add 1099 Placement</span>
+            </button>
+          )}
 
           <button
             onClick={() => setIsVendorModalOpen(true)}
@@ -691,13 +698,14 @@ export default function Subcontractor() {
       </div>
 
       {/* 2. TOP METRIC KPI CARDS */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      <div className={`grid grid-cols-2 md:grid-cols-4 ${FEATURES.SUBCONTRACTOR_PLACEMENTS || FEATURES.SUBCONTRACTOR_INVOICES || FEATURES.SUBCONTRACTOR_W9 ? 'lg:grid-cols-6' : 'lg:grid-cols-4'} gap-4 mb-8`}>
         {[
           { label: 'Active Vendors', value: metrics.totalVendors, sub: 'STAFFING & C2C', icon: Building2, color: activeHexColor },
-          { label: '1099 Placements', value: metrics.activePlacements, sub: 'PLACED TALENT', icon: Users, color: '#8B5CF6' },
+          ...(FEATURES.SUBCONTRACTOR_PLACEMENTS ? [{ label: '1099 Placements', value: metrics.activePlacements, sub: 'PLACED TALENT', icon: Users, color: '#8B5CF6' }] : []),
           { label: 'Pending Review', value: metrics.pendingCompliance, sub: 'COI & COMPLIANCE', icon: ShieldAlert, color: '#F59E0B' },
-          { label: 'Total Invoiced', value: `$${metrics.totalInvoiced.toLocaleString()}`, sub: 'REMITTANCES', icon: DollarSign, color: '#EC4899' },
-          { label: 'Certified W-9s', value: metrics.certifiedW9, sub: 'IRS TAX LEDGER', icon: FileCheck, color: '#10B981' },
+          ...(FEATURES.SUBCONTRACTOR_INVOICES ? [{ label: 'Total Invoiced', value: `$${metrics.totalInvoiced.toLocaleString()}`, sub: 'REMITTANCES', icon: DollarSign, color: '#EC4899' }] : []),
+          ...(FEATURES.SUBCONTRACTOR_W9 ? [{ label: 'Certified W-9s', value: metrics.certifiedW9, sub: 'IRS TAX LEDGER', icon: FileCheck, color: '#10B981' }] : []),
+          { label: 'Vendor Contacts', value: (contacts || []).length, sub: 'LIAISONS & DIRECTORY', icon: Phone, color: '#10B981' },
           { label: 'Work Locations', value: metrics.totalLocations, sub: 'SATELLITE HUBS', icon: MapPin, color: '#06B6D4' }
         ].map((card, idx) => {
           const Icon = card.icon;
@@ -731,9 +739,9 @@ export default function Subcontractor() {
         <div className={`flex items-center gap-1.5 p-1.5 rounded-2xl border overflow-x-auto ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
           {[
             { id: 'vendors', label: 'Vendor Directory', icon: Building2 },
-            { id: 'placements', label: '1099 Placements', icon: Users },
-            { id: 'invoices', label: 'Invoices & Remittances', icon: DollarSign },
-            { id: 'w9', label: 'Form W-9 Tax Suite', icon: FileSpreadsheet },
+            ...(FEATURES.SUBCONTRACTOR_PLACEMENTS ? [{ id: 'placements', label: '1099 Placements', icon: Users }] : []),
+            ...(FEATURES.SUBCONTRACTOR_INVOICES ? [{ id: 'invoices', label: 'Invoices & Remittances', icon: DollarSign }] : []),
+            ...(FEATURES.SUBCONTRACTOR_W9 ? [{ id: 'w9', label: 'Form W-9 Tax Suite', icon: FileSpreadsheet }] : []),
             { id: 'contacts', label: 'Vendor Contacts', icon: Phone },
             { id: 'locations', label: 'Work Locations', icon: MapPin }
           ].map((tab) => {
@@ -1000,7 +1008,7 @@ export default function Subcontractor() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-zinc-800/40 text-xs">
+                  <div className={`flex items-center justify-between pt-2 border-t ${isDarkMode ? 'border-zinc-800/40' : 'border-slate-100'} text-xs`}>
                     <span className="font-mono text-zinc-400">FEIN: {sub.fein_ein || 'Registered'}</span>
                     <span className="flex items-center gap-1 font-semibold" style={{ color: activeHexColor }}>
                       View Profile <ChevronRight className="w-3.5 h-3.5" />
@@ -1014,7 +1022,7 @@ export default function Subcontractor() {
       )}
 
       {/* --- TAB 2: 1099 PLACEMENTS --- */}
-      {activeTab === 'placements' && (
+      {FEATURES.SUBCONTRACTOR_PLACEMENTS && activeTab === 'placements' && (
         <div className="space-y-6">
           <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1101,7 +1109,7 @@ export default function Subcontractor() {
       )}
 
       {/* --- TAB 3: INVOICES & REMITTANCES --- */}
-      {activeTab === 'invoices' && (
+      {FEATURES.SUBCONTRACTOR_INVOICES && activeTab === 'invoices' && (
         <div className="space-y-6">
           <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1184,7 +1192,7 @@ export default function Subcontractor() {
       )}
 
       {/* --- TAB 4: FORM W-9 TAX CERTIFICATION --- */}
-      {activeTab === 'w9' && (
+      {FEATURES.SUBCONTRACTOR_W9 && activeTab === 'w9' && (
         <div className="space-y-6">
           <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1561,7 +1569,7 @@ export default function Subcontractor() {
       )}
 
       {/* ADD PLACEMENT MODAL */}
-      {isPlacementModalOpen && (
+      {FEATURES.SUBCONTRACTOR_PLACEMENTS && isPlacementModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
           <div className={`w-full max-w-xl my-auto rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
             isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-100 text-slate-800'
@@ -1725,7 +1733,7 @@ export default function Subcontractor() {
       )}
 
       {/* SUBMIT INVOICE MODAL */}
-      {isInvoiceModalOpen && (
+      {FEATURES.SUBCONTRACTOR_INVOICES && isInvoiceModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
           <div className={`w-full max-w-lg my-auto rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
             isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-100 text-slate-800'
@@ -1850,7 +1858,7 @@ export default function Subcontractor() {
       )}
 
       {/* CERTIFY FORM W-9 MODAL */}
-      {isW9ModalOpen && (
+      {FEATURES.SUBCONTRACTOR_W9 && isW9ModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
           <div className={`w-full max-w-2xl my-auto rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
             isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-100 text-slate-800'

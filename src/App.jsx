@@ -1,3 +1,4 @@
+import { FEATURES } from './config/features';
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, BrowserRouter, Navigate } from 'react-router-dom';
 import Navbar from './components/Layout/Navbar';
@@ -126,18 +127,22 @@ function AppContent() {
           <Route element={<ProtectedRoute />}>
               <Route path="/" element={<Home />} /> 
               <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/tasks/*" element={<TaskDashboard />} />
+              {FEATURES.TASKS && <Route path="/tasks/*" element={<TaskDashboard />} />}
               <Route path="/client" element={<Client />} />
               <Route path="/employee" element={<Employee />} />
               <Route path="/subcontractor" element={<Subcontractor />} />
-              <Route path="/attendance" element={<AttendanceDashboard />} />
+              {FEATURES.ATTENDANCE && <Route path="/attendance" element={<AttendanceDashboard />} />}
               <Route path="/reports" element={<Reports />} />
               <Route path="/documents" element={<Documents />} />
               <Route path="/templates" element={<Templates />} />
-              <Route path="/rules" element={<RuleEngine />} />
+              {FEATURES.FORM_RULES && (
+                <>
+                  <Route path="/rules" element={<RuleEngine />} />
+                  <Route path="/rule-engine" element={<RuleEngine />} />
+                </>
+              )}
               <Route path="/jobs" element={<Jobs />} />
               <Route path="/careers" element={<Jobs />} />
-              <Route path="/rule-engine" element={<RuleEngine />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/profile" element={<Profile />} />
           </Route>

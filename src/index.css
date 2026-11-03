@@ -177,6 +177,35 @@ button[disabled] {
 }
 
 /* ========================================================= */
+/* UNIVERSAL FOCUS OUTLINE RESET                             */
+/* Removes browser default black wireframe outlines on click */
+/* ========================================================= */
+button:focus,
+button:focus-visible,
+[role="button"]:focus,
+[role="button"]:focus-visible,
+a:focus,
+a:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ========================================================= */
+/* ZERO-FLICKER THEME SWITCH TRANSITION RESET                */
+/* Prevents fraction-of-a-second ugly black border rendering */
+/* ========================================================= */
+.no-theme-transition,
+.no-theme-transition *,
+.no-theme-transition *::before,
+.no-theme-transition *::after {
+  -webkit-transition: none !important;
+  -moz-transition: none !important;
+  -o-transition: none !important;
+  -ms-transition: none !important;
+  transition: none !important;
+}
+
+/* ========================================================= */
 /* HIGH-DENSITY & THEMED STATE W-4 FORMS SCOPE               */
 /* ========================================================= */
 .state-forms-theme-scope {
@@ -465,4 +494,28 @@ button[disabled] {
 .dark .state-forms-theme-scope .text-blue-700,
 .dark .state-forms-theme-scope .text-blue-600 {
   color: #60a5fa !important;
+}
+
+/* Color Input Reset - Strips all browser default borders, paddings, and square-in-circle artifacts */
+input[type="color"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0 !important;
+  border: none !important;
+  border-radius: inherit !important;
+}
+input[type="color"]::-webkit-color-swatch {
+  border: none !important;
+  border-radius: inherit !important;
+}
+input[type="color"]::-moz-color-swatch {
+  border: none !important;
+  border-radius: inherit !important;
 }

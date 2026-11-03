@@ -11,11 +11,6 @@ export default defineConfig({
   server: {
     host: true, 
     port: 5173,
-    // --- ADD THIS BLOCK ---
-    allowedHosts: [
-      'netflix-6543.lvh.me', // Allow your specific tenant
-      '.lvh.me',             // OR allow ALL lvh.me subdomains (Recommended)
-      'localhost'
-    ]
+    allowedHosts: true // Allows localhost, lvh.me, nip.io, and local Wi-Fi IPs
   }
 })

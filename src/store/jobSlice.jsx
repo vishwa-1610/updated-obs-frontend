@@ -15,10 +15,10 @@ export const fetchJobStats = createAsyncThunk(
 
 export const fetchJobs = createAsyncThunk(
   'jobs/fetchJobs',
-  async (params, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
       const data = await jobService.getJobs(params);
-      return data.results ? data.results : data;
+      return data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
@@ -80,10 +80,10 @@ export const deleteJob = createAsyncThunk(
 
 export const fetchApplications = createAsyncThunk(
   'jobs/fetchApplications',
-  async (params, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
       const data = await jobService.getApplications(params);
-      return data.results ? data.results : data;
+      return data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
@@ -202,8 +202,16 @@ const jobSlice = createSlice({
   initialState: {
     stats: null,
     jobs: [],
+    totalJobsCount: 0,
+    jobsTotalPages: 1,
+    jobsPageSize: 9,
+    jobsCurrentPage: 1,
     selectedJob: null,
     applications: [],
+    totalApplicationsCount: 0,
+    applicationsTotalPages: 1,
+    applicationsPageSize: 10,
+    applicationsCurrentPage: 1,
     selectedApplication: null,
     interviews: [],
     loading: false,
@@ -234,10 +242,25 @@ const jobSlice = createSlice({
       // fetchJobs
       .addCase(fetchJobs.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchJobs.fulfilled, (state, action) => {
         state.loading = false;
-        state.jobs = action.payload || [];
+        const payload = action.payload;
+        const argPageSize = action.meta?.arg?.page_size;
+        const argPage = action.meta?.arg?.page;
+        if (payload && typeof payload === 'object' && Array.isArray(payload.results)) {
+          state.jobs = payload.results;
+          state.totalJobsCount = payload.count !== undefined ? payload.count : payload.results.length;
+          const limit = argPageSize || payload.page_size || state.jobsPageSize || 9;
+          state.jobsPageSize = limit;
+          if (argPage) state.jobsCurrentPage = argPage;
+          state.jobsTotalPages = Math.max(1, Math.ceil(state.totalJobsCount / limit));
+        } else if (Array.isArray(payload)) {
+          state.jobs = payload;
+          state.totalJobsCount = payload.length;
+          state.jobsTotalPages = 1;
+        }
       })
       .addCase(fetchJobs.rejected, (state, action) => {
         state.loading = false;
@@ -248,8 +271,31 @@ const jobSlice = createSlice({
         state.selectedJob = action.payload;
       })
       // fetchApplications
+      .addCase(fetchApplications.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchApplications.fulfilled, (state, action) => {
-        state.applications = action.payload || [];
+        state.loading = false;
+        const payload = action.payload;
+        const argPageSize = action.meta?.arg?.page_size;
+        const argPage = action.meta?.arg?.page;
+        if (payload && typeof payload === 'object' && Array.isArray(payload.results)) {
+          state.applications = payload.results;
+          state.totalApplicationsCount = payload.count !== undefined ? payload.count : payload.results.length;
+          const limit = argPageSize || payload.page_size || state.applicationsPageSize || 10;
+          state.applicationsPageSize = limit;
+          if (argPage) state.applicationsCurrentPage = argPage;
+          state.applicationsTotalPages = Math.max(1, Math.ceil(state.totalApplicationsCount / limit));
+        } else if (Array.isArray(payload)) {
+          state.applications = payload;
+          state.totalApplicationsCount = payload.length;
+          state.applicationsTotalPages = 1;
+        }
+      })
+      .addCase(fetchApplications.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
       // fetchInterviews
       .addCase(fetchInterviews.fulfilled, (state, action) => {

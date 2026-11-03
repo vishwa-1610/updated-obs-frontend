@@ -60,6 +60,7 @@ export const companyIntakeService = {
   updateDigitalSignature: (id, formData) => api.patch(`digital-signatures/${id}/`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
+  deleteDigitalSignature: (id) => api.delete(`digital-signatures/${id}/`),
   saveDigitalSignature: (data) => api.patch('digital-signature/', data),
 
   // --- PAYMENT & HOSTING ---

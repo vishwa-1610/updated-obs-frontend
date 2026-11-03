@@ -117,8 +117,11 @@ const OnboardingLayout = () => {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={toggleTheme}
-            className={`p-1.5 rounded-lg border text-xs ${
+            onClick={(e) => {
+              e.currentTarget.blur();
+              toggleTheme();
+            }}
+            className={`p-1.5 rounded-lg border text-xs outline-none focus:outline-none focus-visible:outline-none ring-0 ${
               isDarkMode ? 'bg-zinc-800 border-zinc-700 text-amber-400' : 'bg-slate-100 border-slate-200 text-slate-700'
             }`}
           >
@@ -309,8 +312,11 @@ const OnboardingLayout = () => {
               Theme Mode
             </span>
             <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-all ${
+              onClick={(e) => {
+                e.currentTarget.blur();
+                toggleTheme();
+              }}
+              className={`p-2 rounded-xl border flex items-center gap-1.5 text-xs font-semibold outline-none focus:outline-none focus-visible:outline-none ring-0 transition-colors ${
                 isDarkMode 
                   ? 'bg-zinc-800/80 border-zinc-700 text-amber-400 hover:bg-zinc-700' 
                   : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'

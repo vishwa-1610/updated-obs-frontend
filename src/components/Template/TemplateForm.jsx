@@ -149,14 +149,42 @@ const TemplateForm = ({ initialData, clients = [], onSubmit, onCancel, isLoading
             <div>
                 <label className={labelClass}><Palette size={16} className="inline mr-2"/> Accent Color</label>
                 <div className="flex items-center gap-3">
-                    <input type="color" name="accent_color" value={formData.accent_color} onChange={handleChange} className="h-10 w-20 rounded cursor-pointer bg-transparent border-0 p-0" />
+                    <div className="relative w-10 h-10 shrink-0">
+                      <div 
+                        className={`w-10 h-10 rounded-xl border shadow-sm transition-transform active:scale-95 ${
+                          isDarkMode ? 'border-zinc-700/80' : 'border-slate-200'
+                        }`}
+                        style={{ backgroundColor: formData.accent_color || '#2563eb' }}
+                      />
+                      <input 
+                        type="color" 
+                        name="accent_color" 
+                        value={formData.accent_color} 
+                        onChange={handleChange} 
+                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10" 
+                      />
+                    </div>
                     <input type="text" name="accent_color" value={formData.accent_color} onChange={handleChange} className={`${inputBaseClass} ${themeClass}`} />
                 </div>
             </div>
             <div>
                 <label className={labelClass}><Palette size={16} className="inline mr-2"/> Background Color</label>
                 <div className="flex items-center gap-3">
-                    <input type="color" name="background_color" value={formData.background_color} onChange={handleChange} className="h-10 w-20 rounded cursor-pointer bg-transparent border-0 p-0" />
+                    <div className="relative w-10 h-10 shrink-0">
+                      <div 
+                        className={`w-10 h-10 rounded-xl border shadow-sm transition-transform active:scale-95 ${
+                          isDarkMode ? 'border-zinc-700/80' : 'border-slate-200'
+                        }`}
+                        style={{ backgroundColor: formData.background_color || '#ffffff' }}
+                      />
+                      <input 
+                        type="color" 
+                        name="background_color" 
+                        value={formData.background_color} 
+                        onChange={handleChange} 
+                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10" 
+                      />
+                    </div>
                     <input type="text" name="background_color" value={formData.background_color} onChange={handleChange} className={`${inputBaseClass} ${themeClass}`} />
                 </div>
             </div>

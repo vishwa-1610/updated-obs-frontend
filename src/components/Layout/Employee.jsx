@@ -13,6 +13,7 @@ import {
 import { useTheme } from '../Theme/ThemeProvider';
 import { StunningSelect, StunningDatePicker } from '../tasks/StunningSelect';
 import PageLoader from '../common/LoadingScreen/LoadingScreen';
+import EmployeeDetailsModal from '../Employee/EmployeeDetailsModal';
 import { 
   fetchEmployeeStats,
   fetchEmployees,
@@ -1923,125 +1924,16 @@ export default function Employee() {
 
       {/* 5. MODALS & POPUPS */}
 
-      {/* 5.1 EMPLOYEE DOSSIER MODAL POPUP (Triggered by clicking row) */}
-      {showDossierModal && dossierEmployee && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-150">
-          <div className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border shadow-2xl p-6 space-y-6 ${
-            isDarkMode ? 'bg-[#121217] border-zinc-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
-            <div className={`flex items-center justify-between border-b pb-4 ${isDarkMode ? "border-zinc-800" : "border-slate-100"}`}>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-400">
-                  Employee Dossier & Workforce Profile
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                  ID: #{dossierEmployee.id}
-                </span>
-              </div>
-              <button
-                onClick={() => setShowDossierModal(false)}
-                className="p-1 rounded-xl text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Profile Banner */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center font-black text-xl theme-bg-primary text-white shadow-md">
-                  {`${dossierEmployee.first_name?.[0] || ''}${dossierEmployee.last_name?.[0] || ''}`.toUpperCase()}
-                </div>
-                <div>
-                  <h2 className="text-xl font-black tracking-tight">
-                    {dossierEmployee.full_name || `${dossierEmployee.first_name} ${dossierEmployee.last_name}`}
-                  </h2>
-                  <p className="text-xs text-slate-400 dark:text-zinc-400 font-semibold mt-0.5">
-                    {dossierEmployee.designation || dossierEmployee.job_title || 'Team Member'} • {dossierEmployee.department || 'General'}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-400 dark:text-zinc-400">
-                    <Mail size={12} />
-                    <span>{dossierEmployee.work_email || dossierEmployee.email}</span>
-                  </div>
-                </div>
-              </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusBadge(dossierEmployee.status || dossierEmployee.employment_status).bg}`}>
-                {getStatusBadge(dossierEmployee.status || dossierEmployee.employment_status).label}
-              </span>
-            </div>
-
-            {/* Comprehensive Dossier Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div className={`p-4 rounded-2xl border space-y-2.5 ${
-                isDarkMode ? 'bg-zinc-900/60 border-zinc-800' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <h4 className="font-bold text-slate-400 dark:text-zinc-400 uppercase text-[10px]">Employment & Placement</h4>
-                <div className="flex justify-between">
-                  <span className="text-slate-400 dark:text-zinc-500">Work Model:</span>
-                  <span className="font-bold">{dossierEmployee.work_model || 'Hybrid'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400 dark:text-zinc-500">Location:</span>
-                  <span className="font-medium">{dossierEmployee.city ? `${dossierEmployee.city}, ${dossierEmployee.state}` : (dossierEmployee.state || dossierEmployee.work_location || 'United States')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400 dark:text-zinc-500">Placement:</span>
-                  <span className="font-bold text-purple-400">
-                    {(dossierEmployee.placement_status === 'PLACED' || dossierEmployee.current_client || dossierEmployee.client_name)
-                      ? `Placed @ ${dossierEmployee.client_name || dossierEmployee.client_details?.client_name || 'Assigned Client'}`
-                      : 'Direct In-House Core'}
-                  </span>
-                </div>
-              </div>
-
-              <div className={`p-4 rounded-2xl border space-y-2.5 ${
-                isDarkMode ? 'bg-zinc-900/60 border-zinc-800' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <h4 className="font-bold text-slate-400 dark:text-zinc-400 uppercase text-[10px]">Compensation & Dates</h4>
-                <div className="flex justify-between">
-                  <span className="text-slate-400 dark:text-zinc-500">Compensation:</span>
-                  <span className="font-mono font-bold text-emerald-400">
-                    {(dossierEmployee.compensation_rate || dossierEmployee.hourly_rate || dossierEmployee.salary)
-                      ? `$${parseFloat(dossierEmployee.compensation_rate || dossierEmployee.hourly_rate || dossierEmployee.salary).toLocaleString()} / ${dossierEmployee.compensation_frequency?.toLowerCase() || (dossierEmployee.hourly_rate ? 'hr' : 'yr')}`
-                      : '—'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400 dark:text-zinc-500">Joined Date:</span>
-                  <span className="font-medium">
-                    {(dossierEmployee.date_of_joining || dossierEmployee.joined_at)
-                      ? new Date(dossierEmployee.date_of_joining || dossierEmployee.joined_at).toLocaleDateString()
-                      : '—'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400 dark:text-zinc-500">Phone:</span>
-                  <span className="font-medium">{dossierEmployee.phone_number || '—'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className={`flex items-center justify-end gap-2.5 pt-4 border-t ${isDarkMode ? "border-zinc-800" : "border-slate-100"}`}>
-              <button
-                onClick={() => setShowDossierModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  setShowDossierModal(false);
-                  handleOpenEditEmployee(dossierEmployee);
-                }}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white theme-bg-primary shadow-sm"
-              >
-                Edit Complete Profile
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 5.1 EMPLOYEE DOSSIER MODAL POPUP (Matching Onboarding Details Modal) */}
+      <EmployeeDetailsModal
+        isOpen={showDossierModal}
+        onClose={() => setShowDossierModal(false)}
+        employee={dossierEmployee}
+        onEdit={(emp) => {
+          setShowDossierModal(false);
+          handleOpenEditEmployee(emp);
+        }}
+      />
 
       {/* 5.2 HARDWARE ASSET DETAIL POPUP (Triggered by clicking row) */}
       {showAssetDetailModal && selectedAsset && (

@@ -98,8 +98,8 @@ export const StunningSelect = ({
       {/* Dropdown Menu */}
       {isOpen && (
         <div 
-          className={`absolute left-0 right-0 ${dropUp ? 'bottom-full mb-2' : 'top-full mt-2'} z-[100] rounded-2xl border p-1.5 shadow-2xl animate-in fade-in zoom-in-95 origin-top max-h-60 overflow-hidden flex flex-col ${
-            isDarkMode ? 'bg-[#131722] border-zinc-700 text-zinc-100 shadow-black/80' : 'bg-white border-slate-200 text-slate-800 shadow-xl ring-1 ring-black/5'
+          className={`absolute left-0 right-0 ${dropUp ? 'bottom-full mb-2 origin-bottom' : 'top-full mt-2 origin-top'} z-[100] rounded-2xl border p-1.5 shadow-2xl animate-in fade-in zoom-in-95 max-h-60 overflow-hidden flex flex-col ${
+            isDarkMode ? 'bg-[#131722]/95 border-zinc-700/80 text-zinc-100 shadow-black/80 backdrop-blur-md' : 'bg-white/95 border-slate-200/90 text-slate-800 shadow-xl backdrop-blur-md ring-1 ring-black/5'
           }`}
         >
           {searchable && (

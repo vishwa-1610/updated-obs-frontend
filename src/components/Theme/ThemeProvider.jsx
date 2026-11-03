@@ -44,7 +44,36 @@ export const ThemeProvider = ({ children }) => {
   }, [isDarkMode, accentColor]);
 
   const toggleTheme = () => {
-    setIsDarkMode(prev => !prev);
+    // 1. Temporarily disable CSS transitions to prevent fraction-of-a-second ugly black border interpolation
+    const root = document.documentElement;
+    const body = document.body;
+    root.classList.add('no-theme-transition');
+
+    setIsDarkMode(prev => {
+      const next = !prev;
+      if (next) {
+        root.classList.add('dark');
+        body.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        root.classList.remove('dark');
+        body.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      }
+      return next;
+    });
+
+    // 2. Force DOM reflow so color updates apply synchronously with 0 lag
+    try {
+      void root.offsetHeight;
+    } catch (e) {}
+
+    // 3. Re-enable normal smooth transitions after paint
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        root.classList.remove('no-theme-transition');
+      });
+    });
   };
 
   const changeAccentColor = (colorId) => {

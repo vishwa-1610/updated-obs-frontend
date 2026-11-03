@@ -1,3 +1,4 @@
+import { FEATURES } from '../../config/features';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
@@ -131,7 +132,8 @@ const Navbar = ({ isSidebarOpen, toggleSidebar }) => {
 
   // Derive Tenant Information
   const rawHost = window.location.hostname;
-  const isSubdomain = rawHost.includes('.') && !rawHost.startsWith('www') && !rawHost.startsWith('127');
+  const isApexIpOrNip = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?:\.nip\.io)?$/.test(rawHost);
+  const isSubdomain = rawHost.includes('.') && !rawHost.startsWith('www') && !rawHost.startsWith('127') && !isApexIpOrNip;
   const tenantSlug = isSubdomain ? rawHost.split('.')[0] : 'techinnovatorsinc-6789';
   
   // Real company name priority: 1) companyProfile.company_name, 2) parsed hostname
@@ -273,7 +275,7 @@ const Navbar = ({ isSidebarOpen, toggleSidebar }) => {
 
                     {/* Entities / Subsidiaries List if any */}
                     {entities.length > 0 && (
-                      <div className="p-2 space-y-1 border-b border-zinc-800/40">
+                      <div className={`p-2 space-y-1 border-b ${isDarkMode ? 'border-zinc-800/40' : 'border-slate-100'}`}>
                         <div className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
                           Subsidiaries & Legal Entities ({entities.length})
                         </div>
@@ -398,14 +400,16 @@ const Navbar = ({ isSidebarOpen, toggleSidebar }) => {
                     >
                       <CreditCard className="w-4 h-4 text-pink-500" /> Register Client Account
                     </button>
-                    <button 
-                      onClick={() => { setShowQuickActionDropdown(false); navigate('/tasks'); }}
-                      className={`w-full flex items-center px-3 py-2 rounded-xl text-xs font-semibold gap-2.5 transition-colors ${
-                        isDarkMode ? 'hover:bg-zinc-800' : 'hover:bg-slate-100'
-                      }`}
-                    >
-                      <Layers className="w-4 h-4 text-cyan-500" /> Create Project Task
-                    </button>
+                    {FEATURES.TASKS && (
+                      <button 
+                        onClick={() => { setShowQuickActionDropdown(false); navigate('/tasks'); }}
+                        className={`w-full flex items-center px-3 py-2 rounded-xl text-xs font-semibold gap-2.5 transition-colors ${
+                          isDarkMode ? 'hover:bg-zinc-800' : 'hover:bg-slate-100'
+                        }`}
+                      >
+                        <Layers className="w-4 h-4 text-cyan-500" /> Create Project Task
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -478,11 +482,14 @@ const Navbar = ({ isSidebarOpen, toggleSidebar }) => {
 
               {/* Dark / Light Mode Toggle Button */}
               <button
-                onClick={toggleTheme}
-                className={`p-1.5 sm:p-2 rounded-xl border transition-all duration-150 ${
+                onClick={(e) => {
+                  e.currentTarget.blur();
+                  toggleTheme();
+                }}
+                className={`p-1.5 sm:p-2 rounded-xl border outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 transition-colors duration-150 ${
                   isDarkMode 
-                    ? 'border-zinc-800 bg-[#181a20] text-amber-400 hover:border-zinc-700' 
-                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 shadow-2xs'
+                    ? 'border-zinc-800/80 bg-[#181a20] text-amber-400 hover:border-zinc-700' 
+                    : 'border-slate-200/80 bg-slate-50 text-slate-700 hover:border-slate-300 shadow-2xs'
                 }`}
                 title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
                 aria-label="Toggle Theme"

@@ -5,7 +5,6 @@ export const getBackendUrl = () => {
   const protocol = window.location.protocol; // "http:" or "https:"
   
   // 1. DEFINE YOUR PUBLIC ROOTS
-  // These are the domains that should hit the "Public" backend
   const publicDomains = [
     'localhost',
     '127.0.0.1',
@@ -13,24 +12,16 @@ export const getBackendUrl = () => {
     'www.secureobs.tiswatech.com'
   ];
 
-  // 2. CHECK IF WE ARE PUBLIC
-  if (publicDomains.includes(hostname)) {
-    // Return the Public URL from your .env (as a fallback) or hardcoded
-    return import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  // 2. CHECK IF WE ARE PUBLIC (or apex IP/nip.io without tenant subdomain)
+  const isApexIpOrNip = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?:\.nip\.io)?$/.test(hostname);
+  if (publicDomains.includes(hostname) || isApexIpOrNip) {
+    return `${protocol}//${hostname}:8000`;
   }
 
-  // 3. WE ARE A TENANT (e.g. netflix-6543.lvh.me)
-  // We need to construct the URL dynamically to match the browser's subdomain
-  
-  if (import.meta.env.DEV) {
-    // DEVELOPMENT MODE (Localhost)
-    // Browser is on port 3000, Backend is on port 8000
-    // We keep the subdomain (netflix-6543.lvh.me) but force port 8000
+  // 3. WE ARE A TENANT (e.g. netflix-6543.lvh.me or techinnovatorsinc-6789.192.168.31.160.nip.io)
+  if (import.meta.env.DEV || hostname.includes('nip.io') || hostname.includes('lvh.me')) {
     return `${protocol}//${hostname}:8000`;
   } else {
-    // PRODUCTION MODE
-    // Browser and Backend are on the same domain (https://netflix...)
-    // So we just return the origin
     return `${protocol}//${hostname}`;
   }
 };

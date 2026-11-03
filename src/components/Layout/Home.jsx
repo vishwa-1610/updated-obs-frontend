@@ -1,3 +1,4 @@
+import { FEATURES } from '../../config/features';
 import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -229,13 +230,15 @@ const Home = () => {
           dispatch(fetchOnboardings({})),
           dispatch(fetchTemplates({})),
           dispatch(fetchJobs({})),
-          dispatch(fetchTasks({})),
+          ...(FEATURES.TASKS ? [dispatch(fetchTasks({}))] : []),
           
           onboardingService.getBenefitPlans().then(res => setBenefitPlans(res.data?.results || res.data || [])).catch(() => {}),
           onboardingService.getCompanyPolicies().then(res => setCompanyPolicies(res.data?.results || res.data || [])).catch(() => {}),
           onboardingService.getDocumentExpirations().then(res => setComplianceExpirations(res.data?.results || res.data || [])).catch(() => {}),
-          attendanceService.getLiveDashboard().then(res => setAttendanceLive(res.data || {})).catch(() => {}),
-          attendanceService.getHolidays().then(res => setUpcomingHolidays(res.data?.results || res.data || [])).catch(() => {})
+          ...(FEATURES.ATTENDANCE ? [
+            attendanceService.getLiveDashboard().then(res => setAttendanceLive(res.data || {})).catch(() => {}),
+            attendanceService.getHolidays().then(res => setUpcomingHolidays(res.data?.results || res.data || [])).catch(() => {})
+          ] : [])
         ]);
       } catch (err) {
         console.error("Error loading comprehensive dashboard:", err);
@@ -457,16 +460,18 @@ const Home = () => {
               </span>
             </div>
 
-            <button
-              onClick={handleExportPayroll}
-              disabled={downloadingPayroll}
-              className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
-                isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs'
-              }`}
-            >
-              {downloadingPayroll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5 text-emerald-500" />}
-              <span>Payroll CSV</span>
-            </button>
+            {FEATURES.PAYROLL_EXPORT && (
+              <button
+                onClick={handleExportPayroll}
+                disabled={downloadingPayroll}
+                className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
+                  isDarkMode ? 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs'
+                }`}
+              >
+                {downloadingPayroll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5 text-emerald-500" />}
+                <span>Payroll CSV</span>
+              </button>
+            )}
 
             <button
               onClick={() => navigate('/onboarding')}
@@ -522,24 +527,45 @@ const Home = () => {
             activeHexColor={activeHexColor}
           />
 
-          <MetricCard
-            title="Attendance Today"
-            value={`${analytics.presentToday}/${analytics.totalStaff}`}
-            subtitle="Staff Clocked In"
-            icon={Clock}
-            badge="Live"
-            color={{
-              bg: 'bg-emerald-500/10',
-              text: 'text-emerald-500',
-              border: 'border-emerald-500/20',
-              badgeBg: 'bg-emerald-500/10',
-              badgeText: 'text-emerald-500',
-              badgeBorder: 'border-emerald-500/20'
-            }}
-            isDarkMode={isDarkMode}
-            onClick={() => setActiveModuleFilter('ATTENDANCE')}
-            activeHexColor={activeHexColor}
-          />
+          {FEATURES.ATTENDANCE ? (
+            <MetricCard
+              title="Attendance Today"
+              value={`${analytics.presentToday}/${analytics.totalStaff}`}
+              subtitle="Staff Clocked In"
+              icon={Clock}
+              badge="Live"
+              color={{
+                bg: 'bg-emerald-500/10',
+                text: 'text-emerald-500',
+                border: 'border-emerald-500/20',
+                badgeBg: 'bg-emerald-500/10',
+                badgeText: 'text-emerald-500',
+                badgeBorder: 'border-emerald-500/20'
+              }}
+              isDarkMode={isDarkMode}
+              onClick={() => setActiveModuleFilter('ATTENDANCE')}
+              activeHexColor={activeHexColor}
+            />
+          ) : (
+            <MetricCard
+              title="Completed Hires"
+              value={onboardings.filter(o => ['COMPLETED', 'Confirmed', 'CONFIRMED'].includes(o.status)).length}
+              subtitle="Fully Verified & Onboarded"
+              icon={UserCheck}
+              badge="Hired"
+              color={{
+                bg: 'bg-emerald-500/10',
+                text: 'text-emerald-500',
+                border: 'border-emerald-500/20',
+                badgeBg: 'bg-emerald-500/10',
+                badgeText: 'text-emerald-500',
+                badgeBorder: 'border-emerald-500/20'
+              }}
+              isDarkMode={isDarkMode}
+              onClick={() => setActiveModuleFilter('ONBOARDING')}
+              activeHexColor={activeHexColor}
+            />
+          )}
 
           <MetricCard
             title="Open Jobs"
@@ -610,7 +636,7 @@ const Home = () => {
             {[
               { id: 'ALL', label: 'All Operations', icon: Compass, count: null },
               { id: 'ONBOARDING', label: 'Candidate Pipeline', icon: UserPlus, count: onboardings.length },
-              { id: 'ATTENDANCE', label: 'Live Attendance', icon: Clock, count: `${analytics.presentToday}/${analytics.totalStaff}` },
+              ...(FEATURES.ATTENDANCE ? [{ id: 'ATTENDANCE', label: 'Live Attendance', icon: Clock, count: `${analytics.presentToday}/${analytics.totalStaff}` }] : []),
               { id: 'RECRUITMENT', label: 'Jobs & Requisitions', icon: Briefcase, count: analytics.activeJobsCount },
               { id: 'BENEFITS', label: 'Benefits & Handbooks', icon: HeartHandshake, count: benefitPlans.length || 4 },
             ].map(tab => {
@@ -1098,7 +1124,7 @@ const Home = () => {
         )}
 
         {/* --- TAB 3: LIVE ATTENDANCE & TIME TRACKING --- */}
-        {activeModuleFilter === 'ATTENDANCE' && (
+        {FEATURES.ATTENDANCE && activeModuleFilter === 'ATTENDANCE' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             
             {/* Live Status Cards */}

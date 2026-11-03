@@ -23,7 +23,7 @@ const formatPdfUrl = (url) => {
     backendOrigin = `https://${hostname.replace('obs.tiswatech.com', 'secureobs.tiswatech.com')}`;
   }
   if (url.startsWith('http://') || url.startsWith('https://')) {
-    if (hostname.endsWith('.lvh.me')) {
+    if (hostname.endsWith('.lvh.me') || hostname.includes('.nip.io')) {
       try {
         const parsed = new URL(url);
         if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
@@ -130,16 +130,25 @@ const OnboardingDetailsModal = ({
     setPreviewLoading(true);
 
     try {
-      const res = await fetch(fullUrl);
-      if (!res.ok) {
-        throw new Error(`Failed to load PDF (${res.status})`);
-      }
-      const blob = await res.blob();
-      const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+      // 1. Fetch through Axios client first (handles CORS, auth tokens, multi-tenant subdomains)
+      const res = await api.get(fullUrl, { responseType: 'blob' });
+      const pdfBlob = new Blob([res.data], { type: 'application/pdf' });
       const objectUrl = URL.createObjectURL(pdfBlob);
       setPreviewBlobUrl(objectUrl);
     } catch (err) {
-      console.warn('PDF blob loading fallback to direct link:', err);
+      console.warn('Axios PDF fetch error, attempting native fetch fallback:', err);
+      try {
+        const token = localStorage.getItem('access');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const fetchRes = await fetch(fullUrl, { headers });
+        if (fetchRes.ok) {
+          const blob = await fetchRes.blob();
+          const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+          const objectUrl = URL.createObjectURL(pdfBlob);
+          setPreviewBlobUrl(objectUrl);
+          return;
+        }
+      } catch (e) {}
       setPreviewBlobUrl(fullUrl);
     } finally {
       setPreviewLoading(false);
@@ -186,50 +195,43 @@ const OnboardingDetailsModal = ({
         return;
       }
 
-      // 2. Fetch binary stream directly to create a local same-origin Blob
-      const token = localStorage.getItem('access');
-      const headers = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch(fullUrl, { headers });
-      if (!res.ok) {
-        throw new Error(`Download HTTP error ${res.status}`);
-      }
-      const blob = await res.blob();
-      const pdfBlob = new Blob([blob], { type: 'application/pdf' });
-      const localBlobUrl = window.URL.createObjectURL(pdfBlob);
-
+      // 2. Fetch binary stream via Axios client first (handles auth token & CORS)
+      const response = await api.get(fullUrl, { responseType: 'blob' });
+      const localBlobUrl = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = localBlobUrl;
       link.download = finalFilename;
       document.body.appendChild(link);
       link.click();
       link.remove();
-
-      setTimeout(() => {
-        window.URL.revokeObjectURL(localBlobUrl);
-      }, 5000);
+      setTimeout(() => window.URL.revokeObjectURL(localBlobUrl), 10000);
     } catch (err) {
-      console.warn('Direct blob fetch download failed, attempting Axios fallback:', err);
+      console.warn('Axios PDF download failed, attempting native fetch fallback:', err);
       try {
-        const response = await api.get(fullUrl, { responseType: 'blob' });
-        const localBlobUrl = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-        const link = document.createElement('a');
-        link.href = localBlobUrl;
-        link.download = finalFilename;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        setTimeout(() => window.URL.revokeObjectURL(localBlobUrl), 5000);
-      } catch (fallbackErr) {
-        console.error('All download mechanisms failed, direct anchor fallback:', fallbackErr);
-        const link = document.createElement('a');
-        link.href = fullUrl;
-        link.download = finalFilename;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-      }
+        const token = localStorage.getItem('access');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const fetchRes = await fetch(fullUrl, { headers });
+        if (fetchRes.ok) {
+          const blob = await fetchRes.blob();
+          const localBlobUrl = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+          const link = document.createElement('a');
+          link.href = localBlobUrl;
+          link.download = finalFilename;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => window.URL.revokeObjectURL(localBlobUrl), 10000);
+          return;
+        }
+      } catch (e) {}
+      // Last resort fallback
+      const link = document.createElement('a');
+      link.href = fullUrl;
+      link.download = finalFilename;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
     } finally {
       if (docId) setDownloadingDocId(null);
     }
@@ -1073,7 +1075,7 @@ const OnboardingDetailsModal = ({
               >
                 <Edit3 size={13} /> Edit Federal W-4
               </button>
-              {data.federal_w4_pdf && (
+              {data.federal_w4_pdf ? (
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
@@ -1094,6 +1096,17 @@ const OnboardingDetailsModal = ({
                     Download
                   </button>
                 </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => handleSaveAndRegenerate(e)}
+                  disabled={isSavingForms}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Generate Federal Form W-4 PDF"
+                >
+                  {isSavingForms ? <Loader2 size={13} className="animate-spin" /> : <FileCheck2 size={13} />}
+                  Generate Federal W-4
+                </button>
               )}
             </div>
           </div>
@@ -1170,7 +1183,7 @@ const OnboardingDetailsModal = ({
               >
                 <Edit3 size={13} /> Edit State Tax Form
               </button>
-              {data.w4_pdf && (
+              {data.w4_pdf ? (
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
@@ -1191,6 +1204,17 @@ const OnboardingDetailsModal = ({
                     Download
                   </button>
                 </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => handleSaveAndRegenerate(e)}
+                  disabled={isSavingForms}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title={`Generate ${stateCode} State Tax PDF`}
+                >
+                  {isSavingForms ? <Loader2 size={13} className="animate-spin" /> : <MapPin size={13} />}
+                  Generate State Tax PDF
+                </button>
               )}
             </div>
           </div>
@@ -1615,39 +1639,58 @@ const OnboardingDetailsModal = ({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {documentsList.map((doc) => (
-              <div key={doc.id} className={`p-4 rounded-2xl border flex items-center justify-between gap-3 transition-all ${
-                isDarkMode ? 'bg-[#12141a] border-zinc-800 hover:border-zinc-700' : 'bg-slate-50 border-slate-200/80 hover:border-slate-300'
+              <div key={doc.id} className={`group p-4 sm:p-4.5 rounded-2xl border flex items-center justify-between gap-3 transition-all duration-200 ${
+                isDarkMode 
+                  ? 'bg-[#161822]/90 hover:bg-[#1a1d2b] border-zinc-800/70 hover:border-zinc-700/80 shadow-sm hover:shadow-md' 
+                  : 'bg-white hover:bg-slate-50/70 border-slate-100/90 hover:border-slate-200/90 shadow-[0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_20px_rgba(37,99,235,0.06)]'
               }`}>
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <FileText size={18} />
                   </div>
                   <div className="overflow-hidden">
-                    <h4 className="font-bold text-xs truncate">{doc.name}</h4>
-                    <span className="text-[10px] text-zinc-400 block mt-0.5">{doc.type} • {doc.status}</span>
+                    <h4 className={`font-semibold text-xs sm:text-[13px] truncate transition-colors ${
+                      isDarkMode ? 'text-zinc-100 group-hover:text-white' : 'text-slate-800 group-hover:text-blue-950'
+                    }`}>
+                      {doc.name}
+                    </h4>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                        isDarkMode ? 'text-zinc-500' : 'text-slate-400'
+                      }`}>
+                        {doc.type} • {doc.status}
+                      </span>
+                      <span className="text-[10px] font-semibold text-emerald-500">
+                        • Verified
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={() => handleOpenPdfPreview(doc.url, doc.name)}
-                    className="p-2 rounded-xl text-blue-500 hover:bg-blue-500/10 transition-colors"
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                      isDarkMode
+                        ? 'bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700/50'
+                        : 'bg-slate-100/90 hover:bg-blue-50 text-slate-500 hover:text-blue-600 border border-slate-200/60 hover:border-blue-200/80 shadow-2xs'
+                    }`}
                     title="View PDF"
                   >
-                    <Eye size={15} />
+                    <Eye size={14} />
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDownloadFile(doc.url, `${data.first_name || 'Candidate'}_${data.last_name || ''}_${(doc.name || 'document').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`, doc.id)}
                     disabled={downloadingDocId === doc.id}
-                    className="p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-700/30 transition-colors cursor-pointer disabled:opacity-50"
+                    className="w-8 h-8 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition-all cursor-pointer shadow-xs hover:shadow disabled:opacity-50"
                     title="Download PDF directly to computer"
                   >
                     {downloadingDocId === doc.id ? (
-                      <Loader2 size={15} className="animate-spin text-blue-500" />
+                      <Loader2 size={14} className="animate-spin text-white" />
                     ) : (
-                      <Download size={15} />
+                      <Download size={14} />
                     )}
                   </button>
                 </div>
@@ -1665,12 +1708,12 @@ const OnboardingDetailsModal = ({
       {/* MAIN ONBOARDING DETAILS MODAL CONTAINER WITH DEDICATED OVERLAY */}
       {/* ========================================================================= */}
       <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-sm animate-in fade-in">
-        <div className={`w-full max-w-5xl h-[88vh] max-h-[850px] rounded-3xl border shadow-2xl flex flex-col overflow-hidden ${
-          isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100 shadow-black/80' : 'bg-white border-slate-200 text-slate-900 shadow-2xl'
+        <div className={`w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1520px] h-[92vh] max-h-[960px] rounded-3xl border shadow-2xl flex flex-col overflow-hidden ${
+          isDarkMode ? 'bg-[#131722] border-zinc-800/80 text-zinc-100 shadow-2xl shadow-black/80' : 'bg-white border-slate-100/90 text-slate-900 shadow-2xl'
         }`}>
           {/* Top Main Header */}
           <div className={`px-5 py-4 border-b shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-            isDarkMode ? 'bg-[#181a20] border-zinc-800' : 'bg-slate-50 border-slate-200'
+            isDarkMode ? 'bg-[#181a20] border-zinc-800/80' : 'bg-white/70 backdrop-blur-sm border-slate-100'
           }`}>
             <div className="flex items-center gap-3.5">
               <div 
@@ -1750,8 +1793,8 @@ const OnboardingDetailsModal = ({
               <button
                 type="button"
                 onClick={onClose}
-                className={`p-2 rounded-xl border transition-all ml-1 cursor-pointer ${
-                  isDarkMode ? 'bg-zinc-800/80 border-zinc-700 hover:bg-zinc-700 text-zinc-300' : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-600 shadow-xs'
+                className={`p-2 rounded-xl transition-all ml-1 cursor-pointer ${
+                  isDarkMode ? 'text-zinc-400 hover:text-white hover:bg-zinc-800' : 'text-slate-400 hover:text-slate-800 hover:bg-slate-100'
                 }`}
                 title="Close"
               >
@@ -1761,7 +1804,7 @@ const OnboardingDetailsModal = ({
           </div>
 
           {/* Navigation Tabs */}
-          <div className={`shrink-0 z-10 ${isDarkMode ? 'bg-[#151924]' : 'bg-slate-50'} border-b ${isDarkMode ? 'border-zinc-800' : 'border-slate-200'} px-5 pt-2.5 pb-2`}>
+          <div className={`shrink-0 z-10 ${isDarkMode ? 'bg-[#151924] border-zinc-800/80' : 'bg-slate-50/50 border-slate-100'} border-b px-5 pt-2.5 pb-2`}>
             <nav className="flex space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
@@ -1837,7 +1880,7 @@ const OnboardingDetailsModal = ({
       {/* ========================================================================= */}
       {isEditingForms && (
         <div className="fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className={`w-full max-w-4xl max-h-[92vh] rounded-3xl border shadow-2xl flex flex-col overflow-hidden ${
+          <div className={`w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1520px] max-h-[94vh] rounded-3xl border shadow-2xl flex flex-col overflow-hidden ${
             isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100' : 'bg-white border-slate-200 text-slate-900 shadow-2xl'
           }`}>
             {/* Modal Header */}
@@ -3616,7 +3659,7 @@ const OnboardingDetailsModal = ({
       {/* ========================================================================= */}
       {previewPdfUrl && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className={`w-full max-w-5xl h-[90vh] rounded-3xl border shadow-2xl flex flex-col overflow-hidden ${
+          <div className={`w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1520px] h-[94vh] rounded-3xl border shadow-2xl flex flex-col overflow-hidden ${
             isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-100 shadow-black/80' : 'bg-white border-slate-200 text-slate-900 shadow-2xl'
           }`}>
             <div className={`flex items-center justify-between px-5 py-3.5 border-b ${

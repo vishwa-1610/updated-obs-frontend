@@ -2,7 +2,7 @@ import api from './api';
 
 const onboardingService = {
   // Candidate Lifecycle
-  getAllOnboardings: () => api.get('/all-onboardings/'),
+  getAllOnboardings: (params) => api.get('/all-onboardings/', { params, preservePagination: true }),
   getPendingOnboardings: () => api.get('/pending-onboarding/'),
   getInProgressOnboardings: () => api.get('/inprogress-onboarding/'),
   getConfirmedOnboardings: () => api.get('/confirmed-onboarding/'),

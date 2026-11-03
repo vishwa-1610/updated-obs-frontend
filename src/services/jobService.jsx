@@ -9,7 +9,7 @@ export const jobService = {
 
   // --- 2. Job Openings ---
   getJobs: async (params = {}) => {
-    const response = await api.get('/jobs/', { params });
+    const response = await api.get('/jobs/', { params, preservePagination: true });
     return response.data;
   },
 
@@ -35,7 +35,7 @@ export const jobService = {
 
   // --- 3. Candidate Applications ---
   getApplications: async (params = {}) => {
-    const response = await api.get('/job-applications/', { params });
+    const response = await api.get('/job-applications/', { params, preservePagination: true });
     return response.data;
   },
 

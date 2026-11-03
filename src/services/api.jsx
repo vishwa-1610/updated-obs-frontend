@@ -5,7 +5,13 @@ const getBaseUrl = () => {
   const { hostname, protocol } = window.location;
 
   // ✅ CASE 1: Local Development
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.lvh.me')) {
+  if (
+    hostname === 'localhost' || 
+    hostname === '127.0.0.1' || 
+    hostname.endsWith('.lvh.me') ||
+    hostname.includes('.nip.io') ||
+    /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(hostname)
+  ) {
     return `${protocol}//${hostname}:8000/api/`; 
   }
 
@@ -43,9 +49,21 @@ api.interceptors.request.use(
 // 3. RESPONSE INTERCEPTOR
 api.interceptors.response.use(
   (response) => {
+    // Preserve full pagination response if explicitly requested or if pagination params exist
+    if (response.config?.preservePagination || response.config?.params?.page || response.config?.params?.page_size) {
+      return response;
+    }
     if (response.data && Array.isArray(response.data.results)) {
-        console.log(`[API Fix] Unwrapping pagination for: ${response.config.url}`);
-        response.data = response.data.results; 
+      console.log(`[API Fix] Unwrapping pagination for: ${response.config.url}`);
+      const results = response.data.results;
+      // Copy pagination metadata onto the array so callers can still access count and metrics
+      results.count = response.data.count;
+      results.next = response.data.next;
+      results.previous = response.data.previous;
+      results.metrics = response.data.metrics;
+      results.totalCount = response.data.count;
+      results.page_size = response.data.page_size;
+      response.data = results; 
     }
     return response;
   },

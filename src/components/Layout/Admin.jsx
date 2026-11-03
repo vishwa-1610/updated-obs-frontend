@@ -14,6 +14,7 @@ import { useTheme, THEME_COLORS } from '../Theme/ThemeProvider';
 import api from '../../services/api';
 import companyIntakeService from '../../services/companyIntakeService';
 import PageLoader from '../common/LoadingScreen/LoadingScreen';
+import { FEATURES } from '../../config/features';
 
 // ==========================================
 // 1. REUSABLE ATOMIC UI COMPONENTS
@@ -222,9 +223,14 @@ const Admin = () => {
 
       // 7. Signatures
       try {
-        const sigRes = await api.get('/company/digital-signatures/');
+        const sigRes = await companyIntakeService.getDigitalSignature();
         setSignatures(Array.isArray(sigRes.data) ? sigRes.data : (sigRes.data?.results || []));
-      } catch (e) {}
+      } catch (e) {
+        try {
+          const sigRes = await api.get('/company/digital-signatures/');
+          setSignatures(Array.isArray(sigRes.data) ? sigRes.data : (sigRes.data?.results || []));
+        } catch (err) {}
+      }
 
       // 8. Health Audit & Cloud
       try {
@@ -273,8 +279,13 @@ const Admin = () => {
         const docRes = await companyIntakeService.getCompanyDocuments();
         setCompanyDocs(Array.isArray(docRes.data) ? docRes.data : []);
       } else if (tab === 'signature') {
-        const sigRes = await api.get('/company/digital-signatures/');
-        setSignatures(Array.isArray(sigRes.data) ? sigRes.data : (sigRes.data?.results || []));
+        try {
+          const sigRes = await companyIntakeService.getDigitalSignature();
+          setSignatures(Array.isArray(sigRes.data) ? sigRes.data : (sigRes.data?.results || []));
+        } catch (e) {
+          const sigRes = await api.get('/company/digital-signatures/');
+          setSignatures(Array.isArray(sigRes.data) ? sigRes.data : (sigRes.data?.results || []));
+        }
       } else if (tab === 'contacts') {
         const cRes = await companyIntakeService.getCompanyContacts();
         setContactsData(cRes.data || {});
@@ -745,12 +756,20 @@ const Admin = () => {
                       Primary Brand Color (Hex)
                     </label>
                     <div className="flex items-center gap-2">
-                      <input 
-                        type="color" 
-                        value={brandingData.primary_color || '#2563eb'}
-                        onChange={(e) => setBrandingData({ ...brandingData, primary_color: e.target.value })}
-                        className="w-10 h-10 rounded-xl cursor-pointer border border-zinc-700 bg-transparent"
-                      />
+                      <div className="relative w-10 h-10 shrink-0">
+                        <div 
+                          className={`w-10 h-10 rounded-xl border shadow-sm transition-transform active:scale-95 ${
+                            isDarkMode ? 'border-zinc-700/80' : 'border-slate-200'
+                          }`}
+                          style={{ backgroundColor: brandingData.primary_color || '#2563eb' }}
+                        />
+                        <input 
+                          type="color" 
+                          value={brandingData.primary_color || '#2563eb'}
+                          onChange={(e) => setBrandingData({ ...brandingData, primary_color: e.target.value })}
+                          className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                        />
+                      </div>
                       <input 
                         type="text" 
                         value={brandingData.primary_color || ''}
@@ -767,12 +786,20 @@ const Admin = () => {
                       Secondary Accent Color (Hex)
                     </label>
                     <div className="flex items-center gap-2">
-                      <input 
-                        type="color" 
-                        value={brandingData.secondary_color || '#3b82f6'}
-                        onChange={(e) => setBrandingData({ ...brandingData, secondary_color: e.target.value })}
-                        className="w-10 h-10 rounded-xl cursor-pointer border border-zinc-700 bg-transparent"
-                      />
+                      <div className="relative w-10 h-10 shrink-0">
+                        <div 
+                          className={`w-10 h-10 rounded-xl border shadow-sm transition-transform active:scale-95 ${
+                            isDarkMode ? 'border-zinc-700/80' : 'border-slate-200'
+                          }`}
+                          style={{ backgroundColor: brandingData.secondary_color || '#3b82f6' }}
+                        />
+                        <input 
+                          type="color" 
+                          value={brandingData.secondary_color || '#3b82f6'}
+                          onChange={(e) => setBrandingData({ ...brandingData, secondary_color: e.target.value })}
+                          className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                        />
+                      </div>
                       <input 
                         type="text" 
                         value={brandingData.secondary_color || ''}
@@ -830,14 +857,14 @@ const Admin = () => {
                     <div className="h-2 w-full rounded bg-zinc-400/20"></div>
                     <div className="h-2 w-1/2 rounded bg-zinc-400/20"></div>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-zinc-700/40 flex justify-between items-center text-[10px] font-mono text-zinc-400">
+                  <div className={`mt-4 pt-3 border-t ${isDarkMode ? 'border-zinc-700/40' : 'border-slate-200'} flex justify-between items-center text-[10px] font-mono text-zinc-400`}>
                     <span>CONFIDENTIAL & PROPRIETARY</span>
                     <span className="font-bold text-emerald-500">VERIFIED</span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-zinc-800/40 text-center">
+              <div className={`mt-6 pt-4 border-t ${isDarkMode ? 'border-zinc-800/40' : 'border-slate-200'} text-center`}>
                 <span className={`text-[11px] font-medium ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
                   Domain: <span className="font-mono font-bold text-blue-500">{window.location.hostname}</span>
                 </span>
@@ -874,7 +901,7 @@ const Admin = () => {
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-2xl border border-zinc-800/50">
+            <div className={`overflow-x-auto rounded-2xl border ${isDarkMode ? 'border-zinc-800/50' : 'border-slate-200 shadow-2xs'}`}>
               <table className="w-full text-left text-xs">
                 <thead className={`font-bold uppercase tracking-wider text-[10px] ${
                   isDarkMode ? 'bg-[#181a20] text-zinc-400' : 'bg-slate-100 text-slate-600'
@@ -1058,7 +1085,7 @@ const Admin = () => {
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-2xl border border-zinc-800/50">
+            <div className={`overflow-x-auto rounded-2xl border ${isDarkMode ? 'border-zinc-800/50' : 'border-slate-200 shadow-2xs'}`}>
               <table className="w-full text-left text-xs">
                 <thead className={`font-bold uppercase tracking-wider text-[10px] ${
                   isDarkMode ? 'bg-[#181a20] text-zinc-400' : 'bg-slate-100 text-slate-600'
@@ -1254,7 +1281,7 @@ const Admin = () => {
                       </p>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-zinc-700/30 flex items-center justify-between">
+                    <div className={`mt-4 pt-3 border-t ${isDarkMode ? 'border-zinc-700/30' : 'border-slate-200'} flex items-center justify-between`}>
                       <span className="text-[10px] font-mono text-zinc-400">PDF Document</span>
                       {doc.file && (
                         <a 
@@ -1317,8 +1344,12 @@ const Admin = () => {
                       <div className={`mt-3 p-3 rounded-xl border min-h-[60px] flex items-center justify-center ${
                         isDarkMode ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-slate-200'
                       }`}>
-                        {sig.signature_image ? (
-                          <img src={sig.signature_image} alt="Signature" className="max-h-12 object-contain" />
+                        {sig.generated_signature_image || sig.signature_image ? (
+                          <img 
+                            src={sig.generated_signature_image || sig.signature_image} 
+                            alt="Signature" 
+                            className="max-h-12 object-contain" 
+                          />
                         ) : (
                           <span className="font-serif italic text-base font-bold text-blue-500">
                             {sig.first_name} {sig.last_name}
@@ -1327,7 +1358,23 @@ const Admin = () => {
                       </div>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-zinc-700/30 flex justify-end">
+                    <div className={`mt-4 pt-3 border-t ${isDarkMode ? 'border-zinc-700/30' : 'border-slate-200'} flex items-center justify-between`}>
+                      <button
+                        onClick={async () => {
+                          if (window.confirm(`Delete signature for ${sig.first_name} ${sig.last_name}?`)) {
+                            try {
+                              await companyIntakeService.deleteDigitalSignature(sig.id);
+                              showFeedback('Signature Deleted', 'Authorized signatory removed.');
+                              loadTabData('signature');
+                            } catch (err) {
+                              showFeedback('Error', 'Could not delete signature.', 'error');
+                            }
+                          }
+                        }}
+                        className="text-xs font-semibold text-rose-500 hover:underline flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" /> Delete
+                      </button>
                       <button
                         onClick={() => { setModalType('signature'); setModalData(sig); setShowModal(true); }}
                         className="text-xs font-bold text-blue-500 hover:underline flex items-center gap-1"
@@ -1425,14 +1472,21 @@ const Admin = () => {
                     <span className="font-semibold">GDPR Data Portability</span>
                     <span className="font-bold text-emerald-500">Enabled</span>
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold">USCIS E-Verify Integration</span>
-                    <span className="font-bold text-blue-500">Active API</span>
-                  </div>
+                  {FEATURES.E_VERIFY ? (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold">USCIS E-Verify Integration</span>
+                      <span className="font-bold text-blue-500">Active API</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold">Form I-9 Verification</span>
+                      <span className="font-bold text-emerald-500">100% Compliant</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-zinc-800/40 text-center">
+              <div className={`mt-6 pt-4 border-t ${isDarkMode ? 'border-zinc-800/40' : 'border-slate-200'} text-center`}>
                 <span className="text-[11px] font-bold text-emerald-500 flex items-center justify-center gap-1.5">
                   <ShieldCheck className="w-4 h-4" /> Enterprise Security Verified
                 </span>
@@ -1518,7 +1572,7 @@ const Admin = () => {
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-zinc-800/40 text-center">
+              <div className={`mt-6 pt-4 border-t ${isDarkMode ? 'border-zinc-800/40' : 'border-slate-200'} text-center`}>
                 <span className="text-[10px] font-mono text-zinc-400">Next Billing Cycle: Oct 01, 2027</span>
               </div>
             </div>
@@ -1947,7 +2001,7 @@ const Admin = () => {
                         Clear Canvas
                       </button>
                     </div>
-                    <div className="rounded-2xl border border-zinc-700 bg-white overflow-hidden p-2">
+                    <div className={`rounded-2xl border ${isDarkMode ? 'border-zinc-700 bg-white' : 'border-slate-200 bg-white'} overflow-hidden p-2`}>
                       <SignatureCanvas 
                         ref={signaturePad}
                         penColor="black"
@@ -1959,7 +2013,7 @@ const Admin = () => {
               )}
 
               {/* Modal Footer Buttons */}
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-zinc-800/40">
+              <div className={`pt-4 flex items-center justify-end gap-3 border-t ${isDarkMode ? 'border-zinc-800/40' : 'border-slate-200'}`}>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
