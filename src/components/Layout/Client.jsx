@@ -722,7 +722,7 @@ export default function Client() {
 
   if (loading && (!clients || clients.length === 0)) {
     return (
-      <div className={`min-h-screen p-6 md:p-8 transition-colors duration-200 ${isDarkMode ? 'bg-[#0f1117] text-zinc-100' : 'bg-[#f8fafc] text-slate-800'}`}>
+      <div className={`min-h-screen p-3.5 sm:p-6 md:p-8 transition-colors duration-200 ${isDarkMode ? 'bg-[#0f1117] text-zinc-100' : 'bg-[#f8fafc] text-slate-800'}`}>
         <PageLoader 
           message="Loading Client Directory & Contracts..."
           subMessage="Fetching active corporate accounts, MSA agreements, and rate cards"
@@ -734,7 +734,7 @@ export default function Client() {
   }
 
   return (
-    <div className={`min-h-screen p-6 md:p-8 transition-colors duration-200 ${isDarkMode ? 'bg-[#0f1117] text-zinc-100' : 'bg-[#f8fafc] text-slate-800'}`}>
+    <div className={`min-h-screen p-3.5 sm:p-6 md:p-8 transition-colors duration-200 ${isDarkMode ? 'bg-[#0f1117] text-zinc-100' : 'bg-[#f8fafc] text-slate-800'}`}>
       
       {/* 1. MASTER HEADER */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
@@ -790,7 +790,7 @@ export default function Client() {
       </div>
 
       {/* 2. TOP METRIC KPI CARDS */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4 mb-6 sm:mb-8">
         {[
           { label: 'Client Accounts', value: metrics.totalClients, sub: 'ENTERPRISE ACCOUNTS', icon: Building2, color: activeHexColor },
           { label: 'Active MSAs & SOWs', value: metrics.totalContracts, sub: 'CONTRACT DOCUMENTS', icon: FileText, color: '#8B5CF6' },
@@ -827,7 +827,7 @@ export default function Client() {
 
       {/* 3. PRIMARY SEGMENTED TABS */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-        <div className={`flex items-center gap-1.5 p-1.5 rounded-2xl border overflow-x-auto ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
+        <div className={`flex items-center gap-1.5 p-1.5 rounded-2xl border overflow-x-auto no-scrollbar scrollbar-none max-w-full ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
           {[
             { id: 'accounts', label: 'Client Accounts', icon: Building2 },
             { id: 'contracts', label: 'Contracts & SOWs', icon: FileText },
@@ -1132,7 +1132,7 @@ export default function Client() {
             </div>
 
             {/* Page buttons */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 w-full sm:w-auto">
               <button
                 onClick={() => handleClientPageChange(clientCurrentPage - 1)}
                 disabled={clientCurrentPage <= 1 || loading}
@@ -1364,7 +1364,7 @@ export default function Client() {
             </div>
 
             {/* Page buttons */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 w-full sm:w-auto">
               <button
                 onClick={() => handleContractPageChange(contractCurrentPage - 1)}
                 disabled={contractCurrentPage <= 1 || loading}

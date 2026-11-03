@@ -672,7 +672,7 @@ export default function Employee() {
 
   if (loading && (!employees || employees.length === 0)) {
     return (
-      <div className={`min-h-screen p-4 md:p-8 space-y-6 transition-colors duration-300 font-sans ${
+      <div className={`min-h-screen p-3.5 sm:p-6 md:p-8 space-y-6 transition-colors duration-300 font-sans ${
         isDarkMode ? 'bg-[#09090b] text-zinc-100' : 'bg-[#f8fafc] text-slate-800'
       }`}>
         <PageLoader 
@@ -686,7 +686,7 @@ export default function Employee() {
   }
 
   return (
-    <div className={`min-h-screen p-4 md:p-8 space-y-6 transition-colors duration-300 font-sans ${
+    <div className={`min-h-screen p-3.5 sm:p-6 md:p-8 space-y-6 transition-colors duration-300 font-sans ${
       isDarkMode ? 'bg-[#09090b] text-zinc-100' : 'bg-[#f8fafc] text-slate-800'
     }`}>
       
@@ -772,7 +772,7 @@ export default function Employee() {
       </div>
 
       {/* 3. Segmented Navigation Tabs */}
-      <div className={`p-1.5 rounded-2xl border flex items-center gap-1.5 overflow-x-auto ${
+      <div className={`p-1.5 rounded-2xl border flex items-center gap-1.5 overflow-x-auto no-scrollbar scrollbar-none max-w-full ${
         isDarkMode ? 'bg-[#121217] border-[#27272a]' : 'bg-white border-slate-200 shadow-xs'
       }`}>
         {[

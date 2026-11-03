@@ -894,7 +894,7 @@ export default function Onboarding() {
 
   if (loading && (!allOnboardings || allOnboardings.length === 0) && !debouncedSearch && statusFilter === 'ALL' && stateFilter === 'ALL') {
     return (
-      <div className={`min-h-screen p-6 md:p-8 transition-colors duration-200 ${isDarkMode ? 'bg-[#0f1117] text-zinc-100' : 'bg-[#f8fafc] text-slate-800'}`}>
+      <div className={`min-h-screen p-3.5 sm:p-6 md:p-8 transition-colors duration-200 ${isDarkMode ? 'bg-[#0f1117] text-zinc-100' : 'bg-[#f8fafc] text-slate-800'}`}>
         <PageLoader 
           message="Loading Onboarding Pipeline & I-9 Roster..."
           subMessage="Synchronizing Form I-9 verification, 50-state tax forms, and direct deposit packets"
@@ -906,7 +906,7 @@ export default function Onboarding() {
   }
 
   return (
-    <div className={`min-h-screen p-6 md:p-8 transition-colors duration-200 ${isDarkMode ? 'bg-[#0f1117] text-zinc-100' : 'bg-[#f8fafc] text-slate-800'}`}>
+    <div className={`min-h-screen p-3.5 sm:p-6 md:p-8 transition-colors duration-200 ${isDarkMode ? 'bg-[#0f1117] text-zinc-100' : 'bg-[#f8fafc] text-slate-800'}`}>
       
       {/* 1. TOP MASTER HEADER */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
@@ -964,7 +964,7 @@ export default function Onboarding() {
       </div>
 
       {/* 2. TOP METRIC KPI CARDS */}
-      <div className={`grid grid-cols-2 md:grid-cols-4 ${FEATURES.BENEFIT_PLANS || FEATURES.EXPIRATION_RADAR ? 'lg:grid-cols-6' : 'lg:grid-cols-4'} gap-4 mb-8`}>
+      <div className={`grid grid-cols-2 md:grid-cols-4 ${FEATURES.BENEFIT_PLANS || FEATURES.EXPIRATION_RADAR ? 'lg:grid-cols-6' : 'lg:grid-cols-4'} gap-2.5 sm:gap-4 mb-6 sm:mb-8`}>
         {[
           { label: 'Total Pipeline', value: metrics.total, sub: 'ALL CANDIDATES', icon: Users, color: activeHexColor },
           { label: 'Pending Invites', value: metrics.pending, sub: 'AWAITING RESPONSE', icon: Clock, color: '#F59E0B' },
@@ -1001,7 +1001,7 @@ export default function Onboarding() {
 
       {/* 3. PRIMARY SEGMENTED TABS */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 mb-6 w-full">
-        <div className={`flex-1 w-full flex items-center gap-1.5 p-1.5 rounded-2xl border overflow-x-auto ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
+        <div className={`flex-1 w-full flex items-center gap-1.5 p-1.5 rounded-2xl border overflow-x-auto no-scrollbar scrollbar-none max-w-full ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
           {[
             { id: 'pipeline', label: 'Candidate Pipeline', icon: Users },
             { id: 'i9', label: 'Form I-9 & Section 2', icon: FileText },

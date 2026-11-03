@@ -1,5 +1,5 @@
 import { FEATURES } from '../../config/features';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { 
@@ -11,24 +11,32 @@ import {
   Briefcase, 
   Clock, 
   FileText,
-  FileCheck,
   Sliders, 
   BarChart3, 
   ShieldCheck, 
   ChevronLeft, 
   ChevronRight, 
-  Building,
-  X
+  X,
+  Menu,
+  User,
+  Layers,
+  Sparkles
 } from 'lucide-react';
-import { useTheme } from '../Theme/ThemeProvider';
+import { useTheme, THEME_COLORS } from '../Theme/ThemeProvider';
 
 const Sidebar = ({ isOpen, onToggle, isExpanded = true, onToggleExpand }) => {
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, accentColor, themeColors = THEME_COLORS } = useTheme();
   const location = useLocation();
 
   const { notifications = [] } = useSelector((state) => state.onboarding || {});
 
-  // High-Contrast Structure
+  // Dynamic Theme Color Calculation
+  const activeColorObj = useMemo(() => {
+    return (themeColors || []).find(c => c.id === accentColor) || themeColors?.[0] || { color: '#2563eb', bgClass: 'bg-blue-600' };
+  }, [accentColor, themeColors]);
+  const activeHexColor = activeColorObj?.color || '#2563eb';
+
+  // Navigation Structure
   const navSections = [
     {
       group: 'MAIN WORKSPACE',
@@ -102,7 +110,6 @@ const Sidebar = ({ isOpen, onToggle, isExpanded = true, onToggleExpand }) => {
           id: 'templates', 
           label: 'Document Templates', 
           icon: FileText,
-  FileCheck, 
           path: '/templates' 
         },
         ...(FEATURES.FORM_RULES ? [{ 
@@ -130,6 +137,12 @@ const Sidebar = ({ isOpen, onToggle, isExpanded = true, onToggleExpand }) => {
           icon: ShieldCheck, 
           path: '/admin' 
         },
+        { 
+          id: 'profile', 
+          label: 'My Profile & Tenant', 
+          icon: User, 
+          path: '/profile' 
+        },
       ]
     }
   ];
@@ -137,7 +150,7 @@ const Sidebar = ({ isOpen, onToggle, isExpanded = true, onToggleExpand }) => {
   return (
     <>
       {/* ======================================================== */}
-      {/* DESKTOP VERTICAL SIDEBAR                                 */}
+      {/* 1. DESKTOP VERTICAL SIDEBAR (MD & ABOVE)                 */}
       {/* ======================================================== */}
       <aside 
         className={`hidden md:flex flex-col fixed top-14 sm:top-16 left-0 bottom-0 z-30 transition-all duration-200 select-none border-r ${
@@ -184,17 +197,26 @@ const Sidebar = ({ isOpen, onToggle, isExpanded = true, onToggleExpand }) => {
                   >
                     {/* Dynamic Theme Color Active Bar */}
                     {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 rounded-r theme-bg-primary shadow-sm" />
+                      <span 
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 rounded-r shadow-sm"
+                        style={{ backgroundColor: activeHexColor }}
+                      />
                     )}
 
-                    <Icon className={`shrink-0 transition-colors ${
-                      isActive 
-                        ? 'theme-text-primary' 
-                        : isDarkMode ? 'text-[#a1a1aa] group-hover:text-[#ffffff]' : 'text-[#64748b] group-hover:text-[#0f172a]'
-                    } ${isExpanded ? 'w-4 h-4 mr-2.5' : 'w-4 h-4'}`} />
+                    <Icon 
+                      className={`shrink-0 transition-colors ${
+                        isActive 
+                          ? '' 
+                          : isDarkMode ? 'text-[#a1a1aa] group-hover:text-[#ffffff]' : 'text-[#64748b] group-hover:text-[#0f172a]'
+                      } ${isExpanded ? 'w-4 h-4 mr-2.5' : 'w-4 h-4'}`}
+                      style={isActive ? { color: activeHexColor } : {}}
+                    />
 
                     {isExpanded && (
-                      <span className={`truncate flex-1 tracking-tight ${isActive ? 'theme-text-primary' : ''}`}>
+                      <span 
+                        className="truncate flex-1 tracking-tight"
+                        style={isActive ? { color: activeHexColor } : {}}
+                      >
                         {item.label}
                       </span>
                     )}
@@ -248,21 +270,211 @@ const Sidebar = ({ isOpen, onToggle, isExpanded = true, onToggleExpand }) => {
         </div>
       </aside>
 
-      {/* Mobile Drawer */}
+      {/* ======================================================== */}
+      {/* 2. MOBILE BOTTOM NAVIGATION BAR (FIXED BOTTOM DOCK)       */}
+      {/* ======================================================== */}
+      <nav 
+        aria-label="Mobile Navigation Bar"
+        className={`md:hidden fixed bottom-0 left-0 right-0 z-40 h-16 border-t select-none transition-colors duration-200 ${
+          isDarkMode 
+            ? 'bg-[#09090b]/95 border-[#27272a] text-[#a1a1aa] backdrop-blur-lg' 
+            : 'bg-[#ffffff]/95 border-[#e2e8f0] text-[#64748b] backdrop-blur-lg shadow-lg'
+        }`}
+      >
+        <div className="h-full max-w-lg mx-auto grid grid-cols-5 px-1 items-center">
+          {/* Item 1: Home / Dashboard */}
+          {(() => {
+            const isActive = location.pathname === '/';
+            return (
+              <NavLink
+                to="/"
+                end
+                className="relative flex flex-col items-center justify-center h-full py-1 group transition-transform active:scale-95"
+              >
+                {isActive && (
+                  <span 
+                    className="absolute top-0 w-8 h-1 rounded-full shadow-sm"
+                    style={{ backgroundColor: activeHexColor, boxShadow: `0 0 8px ${activeHexColor}80` }}
+                  />
+                )}
+                <LayoutDashboard 
+                  className={`w-5 h-5 transition-transform duration-150 ${isActive ? 'scale-110' : 'group-hover:scale-105 opacity-70 group-hover:opacity-100'}`} 
+                  style={isActive ? { color: activeHexColor } : {}}
+                />
+                <span 
+                  className={`text-[10px] tracking-tight mt-1 transition-colors duration-150 ${isActive ? 'font-bold' : 'font-medium opacity-70'}`}
+                  style={isActive ? { color: activeHexColor } : {}}
+                >
+                  Home
+                </span>
+              </NavLink>
+            );
+          })()}
+
+          {/* Item 2: Onboarding & I-9 */}
+          {(() => {
+            const isActive = location.pathname.startsWith('/onboarding');
+            const badgeCount = notifications.length;
+            return (
+              <NavLink
+                to="/onboarding"
+                className="relative flex flex-col items-center justify-center h-full py-1 group transition-transform active:scale-95"
+              >
+                {isActive && (
+                  <span 
+                    className="absolute top-0 w-8 h-1 rounded-full shadow-sm"
+                    style={{ backgroundColor: activeHexColor, boxShadow: `0 0 8px ${activeHexColor}80` }}
+                  />
+                )}
+                <div className="relative">
+                  <UserPlus 
+                    className={`w-5 h-5 transition-transform duration-150 ${isActive ? 'scale-110' : 'group-hover:scale-105 opacity-70 group-hover:opacity-100'}`} 
+                    style={isActive ? { color: activeHexColor } : {}}
+                  />
+                  {badgeCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2 px-1 min-w-[15px] h-3.5 rounded-full text-[9px] font-black bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                      {badgeCount}
+                    </span>
+                  )}
+                </div>
+                <span 
+                  className={`text-[10px] tracking-tight mt-1 transition-colors duration-150 ${isActive ? 'font-bold' : 'font-medium opacity-70'}`}
+                  style={isActive ? { color: activeHexColor } : {}}
+                >
+                  Onboard
+                </span>
+              </NavLink>
+            );
+          })()}
+
+          {/* Item 3: Employees */}
+          {(() => {
+            const isActive = location.pathname.startsWith('/employee');
+            return (
+              <NavLink
+                to="/employee"
+                className="relative flex flex-col items-center justify-center h-full py-1 group transition-transform active:scale-95"
+              >
+                {isActive && (
+                  <span 
+                    className="absolute top-0 w-8 h-1 rounded-full shadow-sm"
+                    style={{ backgroundColor: activeHexColor, boxShadow: `0 0 8px ${activeHexColor}80` }}
+                  />
+                )}
+                <Users 
+                  className={`w-5 h-5 transition-transform duration-150 ${isActive ? 'scale-110' : 'group-hover:scale-105 opacity-70 group-hover:opacity-100'}`} 
+                  style={isActive ? { color: activeHexColor } : {}}
+                />
+                <span 
+                  className={`text-[10px] tracking-tight mt-1 transition-colors duration-150 ${isActive ? 'font-bold' : 'font-medium opacity-70'}`}
+                  style={isActive ? { color: activeHexColor } : {}}
+                >
+                  Staff
+                </span>
+              </NavLink>
+            );
+          })()}
+
+          {/* Item 4: Clients */}
+          {(() => {
+            const isActive = location.pathname.startsWith('/client');
+            return (
+              <NavLink
+                to="/client"
+                className="relative flex flex-col items-center justify-center h-full py-1 group transition-transform active:scale-95"
+              >
+                {isActive && (
+                  <span 
+                    className="absolute top-0 w-8 h-1 rounded-full shadow-sm"
+                    style={{ backgroundColor: activeHexColor, boxShadow: `0 0 8px ${activeHexColor}80` }}
+                  />
+                )}
+                <Building2 
+                  className={`w-5 h-5 transition-transform duration-150 ${isActive ? 'scale-110' : 'group-hover:scale-105 opacity-70 group-hover:opacity-100'}`} 
+                  style={isActive ? { color: activeHexColor } : {}}
+                />
+                <span 
+                  className={`text-[10px] tracking-tight mt-1 transition-colors duration-150 ${isActive ? 'font-bold' : 'font-medium opacity-70'}`}
+                  style={isActive ? { color: activeHexColor } : {}}
+                >
+                  Clients
+                </span>
+              </NavLink>
+            );
+          })()}
+
+          {/* Item 5: More / Menu Drawer */}
+          {(() => {
+            const isPrimary = ['/', '/onboarding', '/employee', '/client'].some(p => 
+              p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)
+            );
+            const isMoreActive = isOpen || !isPrimary;
+            return (
+              <button
+                type="button"
+                onClick={onToggle}
+                className="relative flex flex-col items-center justify-center h-full py-1 group transition-transform active:scale-95 cursor-pointer"
+                aria-label="Open Full Navigation Drawer"
+              >
+                {isMoreActive && (
+                  <span 
+                    className="absolute top-0 w-8 h-1 rounded-full shadow-sm"
+                    style={{ backgroundColor: activeHexColor, boxShadow: `0 0 8px ${activeHexColor}80` }}
+                  />
+                )}
+                <div className="relative">
+                  <Menu 
+                    className={`w-5 h-5 transition-transform duration-150 ${isMoreActive ? 'scale-110' : 'group-hover:scale-105 opacity-70 group-hover:opacity-100'}`} 
+                    style={isMoreActive ? { color: activeHexColor } : {}}
+                  />
+                  {!isPrimary && (
+                    <span 
+                      className="absolute -top-1 -right-1 w-2 h-2 rounded-full ring-2 ring-white dark:ring-[#09090b]"
+                      style={{ backgroundColor: activeHexColor }}
+                    />
+                  )}
+                </div>
+                <span 
+                  className={`text-[10px] tracking-tight mt-1 transition-colors duration-150 ${isMoreActive ? 'font-bold' : 'font-medium opacity-70'}`}
+                  style={isMoreActive ? { color: activeHexColor } : {}}
+                >
+                  More
+                </span>
+              </button>
+            );
+          })()}
+        </div>
+      </nav>
+
+      {/* ======================================================== */}
+      {/* 3. MOBILE FULL DRAWER SHEET                               */}
+      {/* ======================================================== */}
       <div className={`md:hidden fixed inset-0 z-[60] transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-xs" onClick={onToggle} />
-        <div className={`absolute top-0 left-0 bottom-0 w-[270px] shadow-2xl transition-transform duration-200 ease-in-out flex flex-col ${
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-xs" onClick={onToggle} />
+        <div className={`absolute top-0 left-0 bottom-0 w-[82vw] max-w-[300px] shadow-2xl transition-transform duration-300 ease-out flex flex-col ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } ${isDarkMode ? 'bg-[#09090b] text-[#f4f4f5] border-r border-[#27272a]' : 'bg-[#ffffff] text-[#0f172a] border-r border-[#e2e8f0]'}`}>
           
           <div className={`flex items-center justify-between p-4 border-b ${isDarkMode ? 'border-[#27272a]' : 'border-[#e2e8f0]'}`}>
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded theme-bg-primary text-white flex items-center justify-center font-bold text-xs">
-                <Briefcase className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-2.5">
+              <div 
+                className="w-8 h-8 rounded-xl text-white flex items-center justify-center font-bold text-xs shadow-sm"
+                style={{ backgroundColor: activeHexColor }}
+              >
+                <Layers className="w-4 h-4" />
               </div>
-              <span className="font-bold text-sm tracking-tight">Navigation</span>
+              <div className="flex flex-col">
+                <span className="font-bold text-sm tracking-tight">Suite Navigation</span>
+                <span className={`text-[10px] ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>Workspace & Modules</span>
+              </div>
             </div>
-            <button onClick={onToggle} className="p-1.5 rounded-lg text-[#64748b] hover:bg-slate-100 dark:hover:bg-slate-800">
+            <button 
+              onClick={onToggle} 
+              className={`p-1.5 rounded-xl transition-colors ${
+                isDarkMode ? 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+              }`}
+              aria-label="Close Navigation"
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -270,7 +482,7 @@ const Sidebar = ({ isOpen, onToggle, isExpanded = true, onToggleExpand }) => {
           <nav className="flex-1 overflow-y-auto p-3 space-y-4 custom-scrollbar">
             {navSections.map((section, idx) => (
               <div key={idx} className="space-y-1">
-                <p className={`px-2 text-[10px] font-bold tracking-wider uppercase mb-1 ${
+                <p className={`px-2.5 text-[10px] font-bold tracking-wider uppercase mb-1.5 ${
                   isDarkMode ? 'text-[#71717a]' : 'text-[#94a3b8]'
                 }`}>
                   {section.group}
@@ -288,19 +500,29 @@ const Sidebar = ({ isOpen, onToggle, isExpanded = true, onToggleExpand }) => {
                       end={item.path === '/'}
                       onClick={onToggle}
                       className={`
-                        flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all
+                        flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all
                         ${isActive 
-                          ? 'theme-bg-light theme-text-primary font-bold' 
-                          : isDarkMode ? 'text-[#a1a1aa] hover:bg-[#18181b]' : 'text-[#64748b] hover:bg-[#f8fafc]'
+                          ? isDarkMode
+                            ? 'bg-zinc-800/80 font-bold shadow-xs'
+                            : 'bg-slate-100 font-bold shadow-xs'
+                          : isDarkMode ? 'text-[#a1a1aa] hover:bg-[#18181b] hover:text-[#ffffff]' : 'text-[#64748b] hover:bg-[#f8fafc] hover:text-[#0f172a]'
                         }
                       `}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <Icon className={`w-4 h-4 ${isActive ? 'theme-text-primary' : 'text-slate-400'}`} />
-                        <span>{item.label}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon 
+                          className="w-4 h-4 shrink-0" 
+                          style={isActive ? { color: activeHexColor } : {}}
+                        />
+                        <span 
+                          className="truncate"
+                          style={isActive ? { color: activeHexColor } : {}}
+                        >
+                          {item.label}
+                        </span>
                       </div>
                       {item.badge && (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${item.badgeColor}`}>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${item.badgeColor}`}>
                           {item.badge}
                         </span>
                       )}
@@ -310,6 +532,19 @@ const Sidebar = ({ isOpen, onToggle, isExpanded = true, onToggleExpand }) => {
               </div>
             ))}
           </nav>
+
+          <div className={`p-3 border-t text-center ${isDarkMode ? 'border-[#27272a] bg-[#09090b]' : 'border-[#e2e8f0] bg-[#ffffff]'}`}>
+            <button
+              onClick={onToggle}
+              className={`w-full py-2 px-3 rounded-xl text-xs font-semibold border transition-all ${
+                isDarkMode 
+                  ? 'border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800/60' 
+                  : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              Close Menu
+            </button>
+          </div>
         </div>
       </div>
     </>

@@ -832,7 +832,7 @@ export default function Subcontractor() {
 
   if (loading && (!subcontractors || subcontractors.length === 0)) {
     return (
-      <div className={`min-h-screen p-6 md:p-8 transition-colors duration-200 ${isDarkMode ? 'bg-[#0f1117] text-zinc-100' : 'bg-[#f8fafc] text-slate-800'}`}>
+      <div className={`min-h-screen p-3.5 sm:p-6 md:p-8 transition-colors duration-200 ${isDarkMode ? 'bg-[#0f1117] text-zinc-100' : 'bg-[#f8fafc] text-slate-800'}`}>
         <PageLoader 
           message="Loading Subcontractor Roster & 1099 Records..."
           subMessage="Fetching C2C vendor agreements, COI insurance records, and W-9 certificates"
@@ -844,7 +844,7 @@ export default function Subcontractor() {
   }
 
   return (
-    <div className={`min-h-screen p-6 md:p-8 transition-colors duration-200 ${isDarkMode ? 'bg-[#0f1117] text-zinc-100' : 'bg-[#f8fafc] text-slate-800'}`}>
+    <div className={`min-h-screen p-3.5 sm:p-6 md:p-8 transition-colors duration-200 ${isDarkMode ? 'bg-[#0f1117] text-zinc-100' : 'bg-[#f8fafc] text-slate-800'}`}>
       
       {/* 1. MASTER HEADER */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
@@ -916,7 +916,7 @@ export default function Subcontractor() {
       </div>
 
       {/* 2. TOP METRIC KPI CARDS */}
-      <div className={`grid grid-cols-2 md:grid-cols-4 ${FEATURES.SUBCONTRACTOR_PLACEMENTS || FEATURES.SUBCONTRACTOR_INVOICES || FEATURES.SUBCONTRACTOR_W9 ? 'lg:grid-cols-6' : 'lg:grid-cols-4'} gap-4 mb-8`}>
+      <div className={`grid grid-cols-2 md:grid-cols-4 ${FEATURES.SUBCONTRACTOR_PLACEMENTS || FEATURES.SUBCONTRACTOR_INVOICES || FEATURES.SUBCONTRACTOR_W9 ? 'lg:grid-cols-6' : 'lg:grid-cols-4'} gap-2.5 sm:gap-4 mb-6 sm:mb-8`}>
         {[
           { label: 'Active Vendors', value: metrics.totalVendors, sub: 'STAFFING & C2C', icon: Building2, color: activeHexColor },
           ...(FEATURES.SUBCONTRACTOR_PLACEMENTS ? [{ label: '1099 Placements', value: metrics.activePlacements, sub: 'PLACED TALENT', icon: Users, color: '#8B5CF6' }] : []),
@@ -954,7 +954,7 @@ export default function Subcontractor() {
 
       {/* 3. PRIMARY SEGMENTED TABS */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-        <div className={`flex items-center gap-1.5 p-1.5 rounded-2xl border overflow-x-auto ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
+        <div className={`flex items-center gap-1.5 p-1.5 rounded-2xl border overflow-x-auto no-scrollbar scrollbar-none max-w-full ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
           {[
             { id: 'vendors', label: 'Vendor Directory', icon: Building2 },
             ...(FEATURES.SUBCONTRACTOR_PLACEMENTS ? [{ id: 'placements', label: '1099 Placements', icon: Users }] : []),

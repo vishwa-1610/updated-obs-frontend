@@ -116,7 +116,7 @@ function AppContent() {
       <main className={`min-h-[calc(100vh-4rem)] transition-all duration-200 ease-in-out ${
         hideLayout 
           ? "" 
-          : `pb-16 md:pb-8 ${isSidebarExpanded ? 'md:ml-60' : 'md:ml-18'}`
+          : `pb-24 md:pb-8 ${isSidebarExpanded ? 'md:ml-60' : 'md:ml-18'}`
       }`}>
         <Routes>
           {/* 1. PUBLIC ROUTES */}
@@ -196,3 +196,4 @@ function App() {
 }
 
 export default App;
+
