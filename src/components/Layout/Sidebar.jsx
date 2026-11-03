@@ -16,6 +16,7 @@ import {
   ShieldCheck, 
   ChevronLeft, 
   ChevronRight, 
+  Check,
   X,
   Menu,
   User,
@@ -25,7 +26,7 @@ import {
 import { useTheme, THEME_COLORS } from '../Theme/ThemeProvider';
 
 const Sidebar = ({ isOpen, onToggle, isExpanded = true, onToggleExpand }) => {
-  const { isDarkMode, accentColor, themeColors = THEME_COLORS } = useTheme();
+  const { isDarkMode, accentColor, changeAccentColor, themeColors = THEME_COLORS } = useTheme();
   const location = useLocation();
 
   const { notifications = [] } = useSelector((state) => state.onboarding || {});
@@ -534,6 +535,28 @@ const Sidebar = ({ isOpen, onToggle, isExpanded = true, onToggleExpand }) => {
           </nav>
 
           <div className={`p-3 border-t text-center ${isDarkMode ? 'border-[#27272a] bg-[#09090b]' : 'border-[#e2e8f0] bg-[#ffffff]'}`}>
+            {/* Theme Accent Color in Mobile Drawer */}
+            <div className="mb-3 px-1 text-left">
+              <span className={`text-[10px] font-bold tracking-wider uppercase block mb-1.5 ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+                Theme Accent Color
+              </span>
+              <div className="flex items-center justify-between gap-1">
+                {themeColors.map((color) => (
+                  <button
+                    key={color.id}
+                    onClick={() => changeAccentColor(color.id)}
+                    className={`w-6 h-6 rounded-full flex items-center justify-center transition-transform ${
+                      accentColor === color.id ? 'ring-2 ring-offset-2 ring-offset-zinc-900 scale-110' : 'hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: color.color }}
+                    title={color.label}
+                  >
+                    {accentColor === color.id && <Check className="w-3 h-3 text-white" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <button
               onClick={onToggle}
               className={`w-full py-2 px-3 rounded-xl text-xs font-semibold border transition-all ${
