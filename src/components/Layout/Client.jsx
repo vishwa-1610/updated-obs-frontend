@@ -26,6 +26,7 @@ import {
 } from '../../store/clientSlice';
 import clientService from '../../services/clientService';
 import PageLoader from '../common/LoadingScreen/LoadingScreen';
+import StunningSelect from '../common/StunningSelect';
 
 // ==========================================
 // STUNNING CUSTOM DATE PICKER
@@ -301,6 +302,17 @@ export default function Client() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [industryFilter, setIndustryFilter] = useState('ALL');
 
+  // Client Pagination State
+  const [clientCurrentPage, setClientCurrentPage] = useState(1);
+  const [clientPageSize, setClientPageSize] = useState(10);
+
+  // Contract Search, Filter & Pagination State
+  const [contractSearchTerm, setContractSearchTerm] = useState('');
+  const [contractTypeFilter, setContractTypeFilter] = useState('ALL');
+  const [contractStatusFilter, setContractStatusFilter] = useState('ALL');
+  const [contractCurrentPage, setContractCurrentPage] = useState(1);
+  const [contractPageSize, setContractPageSize] = useState(10);
+
   // Modals state
   const [selectedClient, setSelectedClient] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -419,6 +431,126 @@ export default function Client() {
 
     return { totalClients, totalContracts, totalRateCards, totalContractValue, totalLocations, totalContacts };
   }, [clients, contracts, rateCards, workLocations, contacts]);
+
+  // Reset pagination on filter changes
+  useEffect(() => {
+    setClientCurrentPage(1);
+  }, [searchTerm, statusFilter, industryFilter]);
+
+  useEffect(() => {
+    setContractCurrentPage(1);
+  }, [contractSearchTerm, contractTypeFilter, contractStatusFilter]);
+
+  // Client Pagination Calculations
+  const safeTotalClientsCount = filteredClients.length;
+  const clientTotalPages = Math.max(1, Math.ceil(safeTotalClientsCount / clientPageSize));
+  const clientFromRecord = safeTotalClientsCount > 0 ? (clientCurrentPage - 1) * clientPageSize + 1 : 0;
+  const clientToRecord = Math.min(clientCurrentPage * clientPageSize, safeTotalClientsCount);
+
+  useEffect(() => {
+    if (clientCurrentPage > clientTotalPages) {
+      setClientCurrentPage(1);
+    }
+  }, [clientCurrentPage, clientTotalPages]);
+
+  const paginatedClients = useMemo(() => {
+    const start = (clientCurrentPage - 1) * clientPageSize;
+    return filteredClients.slice(start, start + clientPageSize);
+  }, [filteredClients, clientCurrentPage, clientPageSize]);
+
+  const handleClientPageChange = (newPage) => {
+    if (newPage < 1 || newPage > clientTotalPages || newPage === clientCurrentPage || loading) return;
+    setClientCurrentPage(newPage);
+    const elem = document.getElementById('clients-list-container');
+    if (elem) elem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  const handleClientPageSizeChange = (newSize) => {
+    const size = Number(newSize);
+    if (!size || size === clientPageSize) return;
+    setClientPageSize(size);
+    setClientCurrentPage(1);
+  };
+
+  const getClientPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (clientTotalPages <= maxVisible) {
+      for (let i = 1; i <= clientTotalPages; i++) pages.push(i);
+    } else {
+      let start = Math.max(1, clientCurrentPage - 2);
+      let end = Math.min(clientTotalPages, start + maxVisible - 1);
+      if (end - start < maxVisible - 1) {
+        start = Math.max(1, end - maxVisible + 1);
+      }
+      for (let i = start; i <= end; i++) pages.push(i);
+    }
+    return pages;
+  };
+
+  // Contracts Filtering & Pagination Calculations
+  const filteredContracts = useMemo(() => {
+    return (contracts || []).filter((cnt) => {
+      const docName = (cnt.document_name || '').toLowerCase();
+      const sowNum = (cnt.sow_number || '').toLowerCase();
+      const clientName = (cnt.client_name || cnt.client?.client_name || '').toLowerCase();
+      const type = (cnt.contract_type || '').toLowerCase();
+      const status = (cnt.status || '').toLowerCase();
+      const query = contractSearchTerm.toLowerCase();
+
+      const matchesSearch = !query || docName.includes(query) || sowNum.includes(query) || clientName.includes(query) || type.includes(query);
+      const matchesType = contractTypeFilter === 'ALL' || type === contractTypeFilter.toLowerCase();
+      const matchesStatus = contractStatusFilter === 'ALL' || status === contractStatusFilter.toLowerCase();
+
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [contracts, contractSearchTerm, contractTypeFilter, contractStatusFilter]);
+
+  const safeTotalContractsCount = filteredContracts.length;
+  const contractTotalPages = Math.max(1, Math.ceil(safeTotalContractsCount / contractPageSize));
+  const contractFromRecord = safeTotalContractsCount > 0 ? (contractCurrentPage - 1) * contractPageSize + 1 : 0;
+  const contractToRecord = Math.min(contractCurrentPage * contractPageSize, safeTotalContractsCount);
+
+  useEffect(() => {
+    if (contractCurrentPage > contractTotalPages) {
+      setContractCurrentPage(1);
+    }
+  }, [contractCurrentPage, contractTotalPages]);
+
+  const paginatedContracts = useMemo(() => {
+    const start = (contractCurrentPage - 1) * contractPageSize;
+    return filteredContracts.slice(start, start + contractPageSize);
+  }, [filteredContracts, contractCurrentPage, contractPageSize]);
+
+  const handleContractPageChange = (newPage) => {
+    if (newPage < 1 || newPage > contractTotalPages || newPage === contractCurrentPage || loading) return;
+    setContractCurrentPage(newPage);
+    const elem = document.getElementById('contracts-list-container');
+    if (elem) elem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  const handleContractPageSizeChange = (newSize) => {
+    const size = Number(newSize);
+    if (!size || size === contractPageSize) return;
+    setContractPageSize(size);
+    setContractCurrentPage(1);
+  };
+
+  const getContractPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (contractTotalPages <= maxVisible) {
+      for (let i = 1; i <= contractTotalPages; i++) pages.push(i);
+    } else {
+      let start = Math.max(1, contractCurrentPage - 2);
+      let end = Math.min(contractTotalPages, start + maxVisible - 1);
+      if (end - start < maxVisible - 1) {
+        start = Math.max(1, end - maxVisible + 1);
+      }
+      for (let i = start; i <= end; i++) pages.push(i);
+    }
+    return pages;
+  };
 
   // Handlers
   const handleOpenDetail = (client) => {
@@ -766,7 +898,7 @@ export default function Client() {
 
       {/* --- TAB 1: CLIENT ACCOUNTS --- */}
       {activeTab === 'accounts' && (
-        <div className="space-y-6">
+        <div className="space-y-6" id="clients-list-container">
           {/* Filters */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2.5 flex-1 max-w-2xl">
@@ -803,7 +935,7 @@ export default function Client() {
             </div>
 
             <div className={`text-xs font-medium ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
-              Showing {filteredClients.length} of {(clients || []).length} accounts
+              Showing {safeTotalClientsCount > 0 ? `${clientFromRecord}-${clientToRecord}` : 0} of {safeTotalClientsCount} {safeTotalClientsCount !== (clients || []).length ? `(filtered from ${(clients || []).length})` : ''} accounts
             </div>
           </div>
 
@@ -836,7 +968,7 @@ export default function Client() {
                         </td>
                       </tr>
                     ) : (
-                      filteredClients.map((client) => (
+                      paginatedClients.map((client) => (
                         <tr
                           key={client.id}
                           onClick={() => handleOpenDetail(client)}
@@ -907,61 +1039,160 @@ export default function Client() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredClients.map((client) => (
-                <div
-                  key={client.id}
-                  onClick={() => handleOpenDetail(client)}
-                  className={`p-5 rounded-2xl border cursor-pointer transition-all hover:scale-[1.01] ${
-                    isDarkMode ? 'bg-[#131722] border-zinc-800 hover:border-zinc-700' : 'bg-white border-slate-100 hover:border-slate-200 shadow-sm'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm uppercase"
-                        style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
-                      >
-                        {(client.client_name || 'C')[0]}
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-sm">{client.client_name}</h3>
-                        <p className={`text-xs ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>{client.client_code || `CLI-${1000 + client.id}`}</p>
-                      </div>
-                    </div>
-                    {getStatusBadge(client.status)}
-                  </div>
-
-                  <div className={`p-3 rounded-xl mb-4 text-xs space-y-2 ${isDarkMode ? 'bg-[#181a20]' : 'bg-slate-50'}`}>
-                    <div className="flex justify-between">
-                      <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Industry:</span>
-                      <span className="font-semibold">{client.industry || 'Technology'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Terms:</span>
-                      <span className="font-mono font-semibold">{client.payment_terms || 'NET_30'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Location:</span>
-                      <span className="font-semibold">{client.city || 'New York'}, {client.state || 'NY'}</span>
-                    </div>
-                  </div>
-
-                  <div className={`flex items-center justify-between pt-2 border-t ${isDarkMode ? 'border-zinc-800/40' : 'border-slate-100'} text-xs`}>
-                    <span className="font-mono text-zinc-400">FEIN: {client.fein_ein || 'Registered'}</span>
-                    <span className="flex items-center gap-1 font-semibold" style={{ color: activeHexColor }}>
-                      View Account <ChevronRight className="w-3.5 h-3.5" />
-                    </span>
-                  </div>
+              {filteredClients.length === 0 ? (
+                <div className={`col-span-full py-12 text-center rounded-2xl border ${
+                  isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-500' : 'bg-white border-slate-100 text-slate-500'
+                }`}>
+                  <Building2 className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  No client accounts match your filter criteria.
                 </div>
-              ))}
+              ) : (
+                paginatedClients.map((client) => (
+                  <div
+                    key={client.id}
+                    onClick={() => handleOpenDetail(client)}
+                    className={`p-5 rounded-2xl border cursor-pointer transition-all hover:scale-[1.01] ${
+                      isDarkMode ? 'bg-[#131722] border-zinc-800 hover:border-zinc-700' : 'bg-white border-slate-100 hover:border-slate-200 shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm uppercase"
+                          style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+                        >
+                          {(client.client_name || 'C')[0]}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm">{client.client_name}</h3>
+                          <p className={`text-xs ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>{client.client_code || `CLI-${1000 + client.id}`}</p>
+                        </div>
+                      </div>
+                      {getStatusBadge(client.status)}
+                    </div>
+
+                    <div className={`p-3 rounded-xl mb-4 text-xs space-y-2 ${isDarkMode ? 'bg-[#181a20]' : 'bg-slate-50'}`}>
+                      <div className="flex justify-between">
+                        <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Industry:</span>
+                        <span className="font-semibold">{client.industry || 'Technology'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Terms:</span>
+                        <span className="font-mono font-semibold">{client.payment_terms || 'NET_30'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Location:</span>
+                        <span className="font-semibold">{client.city || 'New York'}, {client.state || 'NY'}</span>
+                      </div>
+                    </div>
+
+                    <div className={`flex items-center justify-between pt-2 border-t ${isDarkMode ? 'border-zinc-800/40' : 'border-slate-100'} text-xs`}>
+                      <span className="font-mono text-zinc-400">FEIN: {client.fein_ein || 'Registered'}</span>
+                      <span className="flex items-center gap-1 font-semibold" style={{ color: activeHexColor }}>
+                        View Account <ChevronRight className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           )}
+
+          {/* Client Pagination Controls */}
+          <div className={`mt-6 p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 transition-all shadow-sm ${
+            isDarkMode 
+              ? 'bg-[#131722]/95 border-zinc-800 text-zinc-300 shadow-zinc-950/40 backdrop-blur-sm' 
+              : 'bg-white border-slate-200/90 text-slate-700 shadow-slate-100/80'
+          }`}>
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>
+                Showing <strong className="font-bold text-current">{safeTotalClientsCount > 0 ? clientFromRecord : 0}</strong> to{' '}
+                <strong className="font-bold text-current">{clientToRecord}</strong> of{' '}
+                <strong className="font-bold text-current">{safeTotalClientsCount}</strong> clients
+              </span>
+
+              <div className="flex items-center gap-2 ml-2">
+                <span className={`text-[11px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>Rows:</span>
+                <StunningSelect
+                  value={clientPageSize}
+                  onChange={(e) => handleClientPageSizeChange(e.target.value)}
+                  options={[
+                    { value: 10, label: '10' },
+                    { value: 20, label: '20' },
+                    { value: 50, label: '50' },
+                    { value: 100, label: '100' },
+                  ]}
+                  dropUp={true}
+                  className="w-22"
+                  buttonClassName="py-1 px-2.5 rounded-xl border text-xs font-semibold"
+                  activeHexColor={activeHexColor}
+                  isDarkMode={isDarkMode}
+                />
+              </div>
+            </div>
+
+            {/* Page buttons */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => handleClientPageChange(clientCurrentPage - 1)}
+                disabled={clientCurrentPage <= 1 || loading}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                  clientCurrentPage <= 1 || loading
+                    ? 'opacity-40 cursor-not-allowed border-transparent'
+                    : isDarkMode
+                    ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                    : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                }`}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Previous</span>
+              </button>
+
+              <div className="flex items-center gap-1">
+                {getClientPageNumbers().map((pageNum) => {
+                  const isActive = pageNum === clientCurrentPage;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handleClientPageChange(pageNum)}
+                      disabled={loading}
+                      style={isActive ? { backgroundColor: activeHexColor, color: '#ffffff' } : {}}
+                      className={`min-w-[32px] h-8 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center ${
+                        isActive
+                          ? 'shadow-md scale-105'
+                          : isDarkMode
+                          ? 'bg-zinc-800/80 border border-zinc-700/80 hover:bg-zinc-700 text-zinc-300 hover:text-white'
+                          : 'bg-slate-50 border border-slate-200/90 hover:bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => handleClientPageChange(clientCurrentPage + 1)}
+                disabled={clientCurrentPage >= clientTotalPages || loading}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                  clientCurrentPage >= clientTotalPages || loading
+                    ? 'opacity-40 cursor-not-allowed border-transparent'
+                    : isDarkMode
+                    ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                    : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                }`}
+              >
+                <span>Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {/* --- TAB 2: CONTRACTS & SOWs --- */}
       {activeTab === 'contracts' && (
-        <div className="space-y-6">
+        <div className="space-y-6" id="contracts-list-container">
           <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
@@ -983,6 +1214,61 @@ export default function Client() {
             </div>
           </div>
 
+          {/* Contracts Filters */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2.5 flex-1 max-w-2xl">
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border flex-1 min-w-[220px] ${
+                isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-200' : 'bg-white border-slate-200 text-slate-800 shadow-sm'
+              }`}>
+                <Search className={`w-4 h-4 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
+                <input
+                  type="text"
+                  placeholder="Search contracts by document name, SOW #, or type..."
+                  value={contractSearchTerm}
+                  onChange={(e) => setContractSearchTerm(e.target.value)}
+                  className="bg-transparent border-none outline-none text-xs w-full"
+                />
+                {contractSearchTerm && (
+                  <button onClick={() => setContractSearchTerm('')} className="text-xs text-zinc-500 hover:text-zinc-300">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <select
+                value={contractTypeFilter}
+                onChange={(e) => setContractTypeFilter(e.target.value)}
+                className={`px-3 py-2 rounded-xl border text-xs font-medium outline-none ${
+                  isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-200' : 'bg-white border-slate-200 text-slate-700 shadow-sm'
+                }`}
+              >
+                <option value="ALL">All Types (MSA / SOW)</option>
+                <option value="MSA">MSA Only</option>
+                <option value="SOW">SOW Only</option>
+                <option value="NDA">NDA Only</option>
+                <option value="AMENDMENT">Amendment</option>
+              </select>
+
+              <select
+                value={contractStatusFilter}
+                onChange={(e) => setContractStatusFilter(e.target.value)}
+                className={`px-3 py-2 rounded-xl border text-xs font-medium outline-none ${
+                  isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-200' : 'bg-white border-slate-200 text-slate-700 shadow-sm'
+                }`}
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="ACTIVE">Active</option>
+                <option value="DRAFT">Draft</option>
+                <option value="EXPIRED">Expired</option>
+                <option value="TERMINATED">Terminated</option>
+              </select>
+            </div>
+
+            <div className={`text-xs font-medium ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+              Showing {safeTotalContractsCount > 0 ? `${contractFromRecord}-${contractToRecord}` : 0} of {safeTotalContractsCount} {safeTotalContractsCount !== (contracts || []).length ? `(filtered from ${(contracts || []).length})` : ''} contracts
+            </div>
+          </div>
+
           <div className={`rounded-2xl border overflow-hidden ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
@@ -999,15 +1285,15 @@ export default function Client() {
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${isDarkMode ? 'divide-zinc-800/60' : 'divide-slate-100'}`}>
-                  {(contracts || []).length === 0 ? (
+                  {filteredContracts.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-zinc-500">
                         <FileText className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                        No contract agreements or SOWs uploaded yet.
+                        No contract agreements or SOWs match your filter criteria.
                       </td>
                     </tr>
                   ) : (
-                    (contracts || []).map((cnt) => (
+                    paginatedContracts.map((cnt) => (
                       <tr key={cnt.id} className={isDarkMode ? 'hover:bg-zinc-800/30' : 'hover:bg-slate-50'}>
                         <td className="py-3.5 px-4 font-semibold">{cnt.document_name}</td>
                         <td className="py-3.5 px-4">
@@ -1041,6 +1327,96 @@ export default function Client() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Contracts Pagination Controls */}
+          <div className={`mt-6 p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 transition-all shadow-sm ${
+            isDarkMode 
+              ? 'bg-[#131722]/95 border-zinc-800 text-zinc-300 shadow-zinc-950/40 backdrop-blur-sm' 
+              : 'bg-white border-slate-200/90 text-slate-700 shadow-slate-100/80'
+          }`}>
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>
+                Showing <strong className="font-bold text-current">{safeTotalContractsCount > 0 ? contractFromRecord : 0}</strong> to{' '}
+                <strong className="font-bold text-current">{contractToRecord}</strong> of{' '}
+                <strong className="font-bold text-current">{safeTotalContractsCount}</strong> contracts
+              </span>
+
+              <div className="flex items-center gap-2 ml-2">
+                <span className={`text-[11px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>Rows:</span>
+                <StunningSelect
+                  value={contractPageSize}
+                  onChange={(e) => handleContractPageSizeChange(e.target.value)}
+                  options={[
+                    { value: 10, label: '10' },
+                    { value: 20, label: '20' },
+                    { value: 50, label: '50' },
+                    { value: 100, label: '100' },
+                  ]}
+                  dropUp={true}
+                  className="w-22"
+                  buttonClassName="py-1 px-2.5 rounded-xl border text-xs font-semibold"
+                  activeHexColor={activeHexColor}
+                  isDarkMode={isDarkMode}
+                />
+              </div>
+            </div>
+
+            {/* Page buttons */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => handleContractPageChange(contractCurrentPage - 1)}
+                disabled={contractCurrentPage <= 1 || loading}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                  contractCurrentPage <= 1 || loading
+                    ? 'opacity-40 cursor-not-allowed border-transparent'
+                    : isDarkMode
+                    ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                    : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                }`}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Previous</span>
+              </button>
+
+              <div className="flex items-center gap-1">
+                {getContractPageNumbers().map((pageNum) => {
+                  const isActive = pageNum === contractCurrentPage;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handleContractPageChange(pageNum)}
+                      disabled={loading}
+                      style={isActive ? { backgroundColor: activeHexColor, color: '#ffffff' } : {}}
+                      className={`min-w-[32px] h-8 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center ${
+                        isActive
+                          ? 'shadow-md scale-105'
+                          : isDarkMode
+                          ? 'bg-zinc-800/80 border border-zinc-700/80 hover:bg-zinc-700 text-zinc-300 hover:text-white'
+                          : 'bg-slate-50 border border-slate-200/90 hover:bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => handleContractPageChange(contractCurrentPage + 1)}
+                disabled={contractCurrentPage >= contractTotalPages || loading}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                  contractCurrentPage >= contractTotalPages || loading
+                    ? 'opacity-40 cursor-not-allowed border-transparent'
+                    : isDarkMode
+                    ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                    : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                }`}
+              >
+                <span>Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         </div>

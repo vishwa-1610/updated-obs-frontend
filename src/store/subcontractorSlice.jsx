@@ -170,6 +170,14 @@ const initialState = {
   contacts: [],
   workLocations: [],
   currentSubcontractor: null,
+  totalCount: 0,
+  totalPages: 1,
+  currentPage: 1,
+  pageSize: 10,
+  placementsTotalCount: 0,
+  placementsTotalPages: 1,
+  invoicesTotalCount: 0,
+  invoicesTotalPages: 1,
   loading: false,
   error: null,
   success: null,
@@ -198,6 +206,7 @@ const subcontractorSlice = createSlice({
     },
     setPage: (state, action) => {
       state.pagination.currentPage = action.payload;
+      state.currentPage = action.payload;
     }
   },
   extraReducers: (builder) => {
@@ -209,12 +218,29 @@ const subcontractorSlice = createSlice({
       })
       .addCase(fetchSubcontractors.fulfilled, (state, action) => {
         state.loading = false;
-        if (action.payload && action.payload.results) {
-          state.subcontractors = action.payload.results;
-          state.pagination.count = action.payload.count || action.payload.results.length;
+        const payload = action.payload;
+        const argPageSize = action.meta?.arg?.page_size;
+        const argPage = action.meta?.arg?.page;
+        if (payload && typeof payload === 'object' && !Array.isArray(payload) && Array.isArray(payload.results)) {
+          const results = payload.results;
+          state.subcontractors = results;
+          state.totalCount = payload.count !== undefined ? payload.count : results.length;
+          state.pagination.count = state.totalCount;
+          const limit = argPageSize || payload.page_size || state.pageSize || 10;
+          state.pageSize = limit;
+          if (argPage) state.currentPage = argPage;
+          state.totalPages = Math.max(1, Math.ceil(state.totalCount / limit));
+          state.pagination.totalPages = state.totalPages;
         } else {
-          state.subcontractors = Array.isArray(action.payload) ? action.payload : [];
-          state.pagination.count = state.subcontractors.length;
+          const list = Array.isArray(payload) ? payload : (payload?.results || []);
+          state.subcontractors = list;
+          state.totalCount = payload?.count !== undefined ? payload.count : list.length;
+          state.pagination.count = state.totalCount;
+          const limit = argPageSize || state.pageSize || 10;
+          state.pageSize = limit;
+          if (argPage) state.currentPage = argPage;
+          state.totalPages = Math.max(1, Math.ceil(state.totalCount / limit));
+          state.pagination.totalPages = state.totalPages;
         }
       })
       .addCase(fetchSubcontractors.rejected, (state, action) => {
@@ -226,6 +252,8 @@ const subcontractorSlice = createSlice({
       })
       .addCase(createSubcontractor.fulfilled, (state, action) => {
         state.subcontractors.unshift(action.payload);
+        state.totalCount += 1;
+        state.pagination.count += 1;
         state.success = 'Subcontractor registered successfully!';
       })
       .addCase(updateSubcontractor.fulfilled, (state, action) => {
@@ -238,22 +266,48 @@ const subcontractorSlice = createSlice({
       })
       .addCase(deleteSubcontractor.fulfilled, (state, action) => {
         state.subcontractors = state.subcontractors.filter(s => s.id !== action.payload);
+        if (state.totalCount > 0) state.totalCount -= 1;
+        state.pagination.count = state.totalCount;
         state.success = 'Subcontractor removed.';
       })
       // Placements
       .addCase(fetchPlacements.fulfilled, (state, action) => {
-        state.placements = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
+        const payload = action.payload;
+        if (payload && typeof payload === 'object' && !Array.isArray(payload) && Array.isArray(payload.results)) {
+          state.placements = payload.results;
+          state.placementsTotalCount = payload.count !== undefined ? payload.count : payload.results.length;
+          const limit = action.meta?.arg?.page_size || 10;
+          state.placementsTotalPages = Math.max(1, Math.ceil(state.placementsTotalCount / limit));
+        } else {
+          const list = Array.isArray(payload) ? payload : (payload?.results || []);
+          state.placements = list;
+          state.placementsTotalCount = list.length;
+          state.placementsTotalPages = Math.max(1, Math.ceil(list.length / 10));
+        }
       })
       .addCase(createPlacement.fulfilled, (state, action) => {
         state.placements.unshift(action.payload);
+        state.placementsTotalCount += 1;
         state.success = '1099 Placement recorded successfully!';
       })
       // Invoices
       .addCase(fetchInvoices.fulfilled, (state, action) => {
-        state.invoices = Array.isArray(action.payload) ? action.payload : (action.payload?.results || []);
+        const payload = action.payload;
+        if (payload && typeof payload === 'object' && !Array.isArray(payload) && Array.isArray(payload.results)) {
+          state.invoices = payload.results;
+          state.invoicesTotalCount = payload.count !== undefined ? payload.count : payload.results.length;
+          const limit = action.meta?.arg?.page_size || 10;
+          state.invoicesTotalPages = Math.max(1, Math.ceil(state.invoicesTotalCount / limit));
+        } else {
+          const list = Array.isArray(payload) ? payload : (payload?.results || []);
+          state.invoices = list;
+          state.invoicesTotalCount = list.length;
+          state.invoicesTotalPages = Math.max(1, Math.ceil(list.length / 10));
+        }
       })
       .addCase(createInvoice.fulfilled, (state, action) => {
         state.invoices.unshift(action.payload);
+        state.invoicesTotalCount += 1;
         state.success = 'Vendor invoice submitted!';
       })
       // W-9

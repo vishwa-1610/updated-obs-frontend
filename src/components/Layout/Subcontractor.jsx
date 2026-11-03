@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   Briefcase, Building2, Users, FileText, Shield, DollarSign,
@@ -25,6 +25,7 @@ import {
 } from '../../store/subcontractorSlice';
 import subcontractorService from '../../services/subcontractorService';
 import PageLoader from '../common/LoadingScreen/LoadingScreen';
+import StunningSelect from '../common/StunningSelect';
 import { FEATURES } from '../../config/features';
 
 // ==========================================
@@ -286,6 +287,8 @@ export default function Subcontractor() {
   // Redux state
   const {
     subcontractors,
+    totalCount,
+    totalPages,
     placements,
     invoices,
     w9Forms,
@@ -298,8 +301,25 @@ export default function Subcontractor() {
   const [activeTab, setActiveTab] = useState('vendors'); // 'vendors' | 'placements' | 'invoices' | 'w9' | 'contacts' | 'locations'
   const [viewMode, setViewMode] = useState('table');
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [vendorTypeFilter, setVendorTypeFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortField, setSortField] = useState('date_added');
+  const [sortDirection, setSortDirection] = useState('desc');
+
+  // Placements search & pagination state
+  const [placementSearch, setPlacementSearch] = useState('');
+  const [placementStatusFilter, setPlacementStatusFilter] = useState('ALL');
+  const [placementCurrentPage, setPlacementCurrentPage] = useState(1);
+  const [placementPageSize, setPlacementPageSize] = useState(10);
+
+  // Invoices search & pagination state
+  const [invoiceSearch, setInvoiceSearch] = useState('');
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('ALL');
+  const [invoiceCurrentPage, setInvoiceCurrentPage] = useState(1);
+  const [invoicePageSize, setInvoicePageSize] = useState(10);
 
   // Modals state
   const [selectedSubcontractor, setSelectedSubcontractor] = useState(null);
@@ -383,35 +403,233 @@ export default function Subcontractor() {
     is_signed: true
   });
 
-  // Initial Load
+  // Debounce search input
   useEffect(() => {
-    loadAllData();
-  }, [dispatch]);
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
 
-  const loadAllData = () => {
-    dispatch(fetchSubcontractors());
+  // Fetch Subcontractors with backend-driven pagination, search & filters
+  const fetchSubcontractorsList = useCallback(() => {
+    const params = {
+      page: currentPage,
+      page_size: pageSize,
+      ordering: sortDirection === 'desc' ? `-${sortField}` : sortField,
+    };
+    if (debouncedSearch && debouncedSearch.trim()) {
+      params.search = debouncedSearch.trim();
+    }
+    if (vendorTypeFilter && vendorTypeFilter !== 'ALL') {
+      params.vendor_type = vendorTypeFilter;
+    }
+    if (statusFilter && statusFilter !== 'ALL') {
+      params.status = statusFilter;
+    }
+    dispatch(fetchSubcontractors(params));
+  }, [dispatch, currentPage, pageSize, sortField, sortDirection, debouncedSearch, vendorTypeFilter, statusFilter]);
+
+  useEffect(() => {
+    fetchSubcontractorsList();
+  }, [fetchSubcontractorsList]);
+
+  // Load auxiliary data
+  const loadAuxData = useCallback(() => {
     if (FEATURES.SUBCONTRACTOR_PLACEMENTS) dispatch(fetchPlacements());
     if (FEATURES.SUBCONTRACTOR_INVOICES) dispatch(fetchInvoices());
     if (FEATURES.SUBCONTRACTOR_W9) dispatch(fetchW9Forms());
     dispatch(fetchContacts());
     dispatch(fetchWorkLocations());
+  }, [dispatch]);
+
+  useEffect(() => {
+    loadAuxData();
+  }, [loadAuxData]);
+
+  const loadAllData = () => {
+    fetchSubcontractorsList();
+    loadAuxData();
   };
 
-  // Filtered Vendors
-  const filteredVendors = useMemo(() => {
-    return (subcontractors || []).filter((sub) => {
-      const name = (sub.subcontractor_name || '').toLowerCase();
-      const code = (sub.vendor_code || '').toLowerCase();
-      const email = (sub.email || '').toLowerCase();
-      const query = searchTerm.toLowerCase();
+  // Vendors List & Pagination Bounds
+  const vendorsList = subcontractors || [];
+  const safeTotalCount = (totalCount !== undefined && totalCount > 0) ? totalCount : vendorsList.length;
+  const safeTotalPages = totalPages || Math.max(1, Math.ceil(safeTotalCount / pageSize));
+  const fromRecord = safeTotalCount > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+  const toRecord = Math.min(currentPage * pageSize, safeTotalCount);
 
-      const matchesSearch = name.includes(query) || code.includes(query) || email.includes(query);
-      const matchesType = vendorTypeFilter === 'ALL' || sub.vendor_type === vendorTypeFilter;
-      const matchesStatus = statusFilter === 'ALL' || (sub.status || '').toUpperCase() === statusFilter.toUpperCase();
+  useEffect(() => {
+    if (currentPage > safeTotalPages) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, safeTotalPages]);
 
-      return matchesSearch && matchesType && matchesStatus;
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > safeTotalPages || newPage === currentPage || loading) return;
+    setCurrentPage(newPage);
+    const elem = document.getElementById('subcontractors-list-container');
+    if (elem) elem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  const handlePageSizeChange = (newSize) => {
+    const size = Number(newSize);
+    if (!size || size === pageSize) return;
+    setPageSize(size);
+    setCurrentPage(1);
+  };
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1);
+  };
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (safeTotalPages <= maxVisible) {
+      for (let i = 1; i <= safeTotalPages; i++) pages.push(i);
+    } else {
+      let start = Math.max(1, currentPage - 2);
+      let end = Math.min(safeTotalPages, start + maxVisible - 1);
+      if (end - start < maxVisible - 1) {
+        start = Math.max(1, end - maxVisible + 1);
+      }
+      for (let i = start; i <= end; i++) pages.push(i);
+    }
+    return pages;
+  };
+
+  // Placements search & pagination calculations
+  useEffect(() => {
+    setPlacementCurrentPage(1);
+  }, [placementSearch, placementStatusFilter]);
+
+  const filteredPlacements = useMemo(() => {
+    return (placements || []).filter((pl) => {
+      const candidateName = `${pl.candidate_first_name || ''} ${pl.candidate_last_name || ''}`.toLowerCase();
+      const role = (pl.job_title || '').toLowerCase();
+      const client = (pl.client_name || '').toLowerCase();
+      const query = placementSearch.toLowerCase();
+      const matchesSearch = !query || candidateName.includes(query) || role.includes(query) || client.includes(query);
+      const matchesStatus = placementStatusFilter === 'ALL' || (pl.status || '').toLowerCase() === placementStatusFilter.toLowerCase();
+      return matchesSearch && matchesStatus;
     });
-  }, [subcontractors, searchTerm, vendorTypeFilter, statusFilter]);
+  }, [placements, placementSearch, placementStatusFilter]);
+
+  const safePlacementsCount = filteredPlacements.length;
+  const placementTotalPages = Math.max(1, Math.ceil(safePlacementsCount / placementPageSize));
+  const placementFromRecord = safePlacementsCount > 0 ? (placementCurrentPage - 1) * placementPageSize + 1 : 0;
+  const placementToRecord = Math.min(placementCurrentPage * placementPageSize, safePlacementsCount);
+
+  useEffect(() => {
+    if (placementCurrentPage > placementTotalPages) {
+      setPlacementCurrentPage(1);
+    }
+  }, [placementCurrentPage, placementTotalPages]);
+
+  const paginatedPlacements = useMemo(() => {
+    const start = (placementCurrentPage - 1) * placementPageSize;
+    return filteredPlacements.slice(start, start + placementPageSize);
+  }, [filteredPlacements, placementCurrentPage, placementPageSize]);
+
+  const handlePlacementPageChange = (newPage) => {
+    if (newPage < 1 || newPage > placementTotalPages || newPage === placementCurrentPage || loading) return;
+    setPlacementCurrentPage(newPage);
+    const elem = document.getElementById('placements-list-container');
+    if (elem) elem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  const handlePlacementPageSizeChange = (newSize) => {
+    const size = Number(newSize);
+    if (!size || size === placementPageSize) return;
+    setPlacementPageSize(size);
+    setPlacementCurrentPage(1);
+  };
+
+  const getPlacementPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (placementTotalPages <= maxVisible) {
+      for (let i = 1; i <= placementTotalPages; i++) pages.push(i);
+    } else {
+      let start = Math.max(1, placementCurrentPage - 2);
+      let end = Math.min(placementTotalPages, start + maxVisible - 1);
+      if (end - start < maxVisible - 1) {
+        start = Math.max(1, end - maxVisible + 1);
+      }
+      for (let i = start; i <= end; i++) pages.push(i);
+    }
+    return pages;
+  };
+
+  // Invoices search & pagination calculations
+  useEffect(() => {
+    setInvoiceCurrentPage(1);
+  }, [invoiceSearch, invoiceStatusFilter]);
+
+  const filteredInvoices = useMemo(() => {
+    return (invoices || []).filter((inv) => {
+      const num = (inv.invoice_number || '').toLowerCase();
+      const notes = (inv.notes || '').toLowerCase();
+      const query = invoiceSearch.toLowerCase();
+      const matchesSearch = !query || num.includes(query) || notes.includes(query);
+      const matchesStatus = invoiceStatusFilter === 'ALL' || (inv.status || '').toUpperCase() === invoiceStatusFilter.toUpperCase();
+      return matchesSearch && matchesStatus;
+    });
+  }, [invoices, invoiceSearch, invoiceStatusFilter]);
+
+  const safeInvoicesCount = filteredInvoices.length;
+  const invoiceTotalPages = Math.max(1, Math.ceil(safeInvoicesCount / invoicePageSize));
+  const invoiceFromRecord = safeInvoicesCount > 0 ? (invoiceCurrentPage - 1) * invoicePageSize + 1 : 0;
+  const invoiceToRecord = Math.min(invoiceCurrentPage * invoicePageSize, safeInvoicesCount);
+
+  useEffect(() => {
+    if (invoiceCurrentPage > invoiceTotalPages) {
+      setInvoiceCurrentPage(1);
+    }
+  }, [invoiceCurrentPage, invoiceTotalPages]);
+
+  const paginatedInvoices = useMemo(() => {
+    const start = (invoiceCurrentPage - 1) * invoicePageSize;
+    return filteredInvoices.slice(start, start + invoicePageSize);
+  }, [filteredInvoices, invoiceCurrentPage, invoicePageSize]);
+
+  const handleInvoicePageChange = (newPage) => {
+    if (newPage < 1 || newPage > invoiceTotalPages || newPage === invoiceCurrentPage || loading) return;
+    setInvoiceCurrentPage(newPage);
+    const elem = document.getElementById('invoices-list-container');
+    if (elem) elem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  const handleInvoicePageSizeChange = (newSize) => {
+    const size = Number(newSize);
+    if (!size || size === invoicePageSize) return;
+    setInvoicePageSize(size);
+    setInvoiceCurrentPage(1);
+  };
+
+  const getInvoicePageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (invoiceTotalPages <= maxVisible) {
+      for (let i = 1; i <= invoiceTotalPages; i++) pages.push(i);
+    } else {
+      let start = Math.max(1, invoiceCurrentPage - 2);
+      let end = Math.min(invoiceTotalPages, start + maxVisible - 1);
+      if (end - start < maxVisible - 1) {
+        start = Math.max(1, end - maxVisible + 1);
+      }
+      for (let i = start; i <= end; i++) pages.push(i);
+    }
+    return pages;
+  };
 
   // KPI Metrics calculation
   const metrics = useMemo(() => {
@@ -807,7 +1025,7 @@ export default function Subcontractor() {
 
       {/* --- TAB 1: VENDOR DIRECTORY --- */}
       {activeTab === 'vendors' && (
-        <div className="space-y-6">
+        <div className="space-y-6" id="subcontractors-list-container">
           {/* Filter Bar */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2.5 flex-1 max-w-2xl">
@@ -817,7 +1035,7 @@ export default function Subcontractor() {
                 <Search className={`w-4 h-4 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
                 <input
                   type="text"
-                  placeholder="Search vendors by name, code, email..."
+                  placeholder="Search vendors by name, code, email, city..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="bg-transparent border-none outline-none text-xs w-full"
@@ -831,7 +1049,10 @@ export default function Subcontractor() {
 
               <select
                 value={vendorTypeFilter}
-                onChange={(e) => setVendorTypeFilter(e.target.value)}
+                onChange={(e) => {
+                  setVendorTypeFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className={`px-3 py-2 rounded-xl border text-xs font-medium outline-none ${
                   isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-200' : 'bg-white border-slate-200 text-slate-700 shadow-sm'
                 }`}
@@ -845,7 +1066,10 @@ export default function Subcontractor() {
 
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className={`px-3 py-2 rounded-xl border text-xs font-medium outline-none ${
                   isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-200' : 'bg-white border-slate-200 text-slate-700 shadow-sm'
                 }`}
@@ -858,7 +1082,7 @@ export default function Subcontractor() {
             </div>
 
             <div className={`text-xs font-medium ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
-              Showing {filteredVendors.length} of {(subcontractors || []).length} vendors
+              Showing {safeTotalCount > 0 ? `${fromRecord}-${toRecord}` : 0} of {safeTotalCount} vendors
             </div>
           </div>
 
@@ -873,17 +1097,23 @@ export default function Subcontractor() {
                     <tr className={`border-b text-[11px] font-bold uppercase tracking-wider ${
                       isDarkMode ? 'border-zinc-800/80 bg-[#181a20] text-zinc-400' : 'border-slate-100 bg-slate-50 text-slate-500'
                     }`}>
-                      <th className="py-3.5 px-4">Vendor & Code</th>
+                      <th className="py-3.5 px-4 cursor-pointer select-none" onClick={() => handleSort('subcontractor_name')}>
+                        <span className="flex items-center gap-1">Vendor & Code {sortField === 'subcontractor_name' && (sortDirection === 'asc' ? '↑' : '↓')}</span>
+                      </th>
                       <th className="py-3.5 px-4">Vendor Type</th>
-                      <th className="py-3.5 px-4">Location</th>
+                      <th className="py-3.5 px-4 cursor-pointer select-none" onClick={() => handleSort('city')}>
+                        <span className="flex items-center gap-1">Location {sortField === 'city' && (sortDirection === 'asc' ? '↑' : '↓')}</span>
+                      </th>
                       <th className="py-3.5 px-4">Payment Terms</th>
                       <th className="py-3.5 px-4">Insurance COI</th>
-                      <th className="py-3.5 px-4">Compliance Status</th>
+                      <th className="py-3.5 px-4 cursor-pointer select-none" onClick={() => handleSort('status')}>
+                        <span className="flex items-center gap-1">Compliance Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}</span>
+                      </th>
                       <th className="py-3.5 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className={`divide-y ${isDarkMode ? 'divide-zinc-800/60' : 'divide-slate-100'}`}>
-                    {filteredVendors.length === 0 ? (
+                    {vendorsList.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="py-12 text-center text-zinc-500">
                           <Building2 className="w-8 h-8 mx-auto mb-2 opacity-40" />
@@ -891,7 +1121,7 @@ export default function Subcontractor() {
                         </td>
                       </tr>
                     ) : (
-                      filteredVendors.map((sub) => (
+                      vendorsList.map((sub) => (
                         <tr
                           key={sub.id}
                           onClick={() => handleOpenDetail(sub)}
@@ -969,61 +1199,160 @@ export default function Subcontractor() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredVendors.map((sub) => (
-                <div
-                  key={sub.id}
-                  onClick={() => handleOpenDetail(sub)}
-                  className={`p-5 rounded-2xl border cursor-pointer transition-all hover:scale-[1.01] ${
-                    isDarkMode ? 'bg-[#131722] border-zinc-800 hover:border-zinc-700' : 'bg-white border-slate-100 hover:border-slate-200 shadow-sm'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm uppercase"
-                        style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
-                      >
-                        {(sub.subcontractor_name || 'V')[0]}
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-sm">{sub.subcontractor_name}</h3>
-                        <p className={`text-xs ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>{sub.vendor_code || `VEND-${100 + sub.id}`}</p>
-                      </div>
-                    </div>
-                    {getStatusBadge(sub.status)}
-                  </div>
-
-                  <div className={`p-3 rounded-xl mb-4 text-xs space-y-2 ${isDarkMode ? 'bg-[#181a20]' : 'bg-slate-50'}`}>
-                    <div className="flex justify-between">
-                      <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Type:</span>
-                      <span className="font-semibold">{sub.vendor_type || 'STAFFING_AGENCY'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Payment Terms:</span>
-                      <span className="font-mono font-semibold">{sub.payment_terms || 'NET_30'} ({sub.payment_method || 'ACH'})</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Location:</span>
-                      <span className="font-semibold">{sub.city || 'San Jose'}, {sub.state || 'CA'}</span>
-                    </div>
-                  </div>
-
-                  <div className={`flex items-center justify-between pt-2 border-t ${isDarkMode ? 'border-zinc-800/40' : 'border-slate-100'} text-xs`}>
-                    <span className="font-mono text-zinc-400">FEIN: {sub.fein_ein || 'Registered'}</span>
-                    <span className="flex items-center gap-1 font-semibold" style={{ color: activeHexColor }}>
-                      View Profile <ChevronRight className="w-3.5 h-3.5" />
-                    </span>
-                  </div>
+              {vendorsList.length === 0 ? (
+                <div className={`col-span-full py-12 text-center rounded-2xl border ${
+                  isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-500' : 'bg-white border-slate-100 text-slate-500'
+                }`}>
+                  <Building2 className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  No subcontractor vendors match filter criteria.
                 </div>
-              ))}
+              ) : (
+                vendorsList.map((sub) => (
+                  <div
+                    key={sub.id}
+                    onClick={() => handleOpenDetail(sub)}
+                    className={`p-5 rounded-2xl border cursor-pointer transition-all hover:scale-[1.01] ${
+                      isDarkMode ? 'bg-[#131722] border-zinc-800 hover:border-zinc-700' : 'bg-white border-slate-100 hover:border-slate-200 shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm uppercase"
+                          style={{ backgroundColor: `${activeHexColor}20`, color: activeHexColor }}
+                        >
+                          {(sub.subcontractor_name || 'V')[0]}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm">{sub.subcontractor_name}</h3>
+                          <p className={`text-xs ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>{sub.vendor_code || `VEND-${100 + sub.id}`}</p>
+                        </div>
+                      </div>
+                      {getStatusBadge(sub.status)}
+                    </div>
+
+                    <div className={`p-3 rounded-xl mb-4 text-xs space-y-2 ${isDarkMode ? 'bg-[#181a20]' : 'bg-slate-50'}`}>
+                      <div className="flex justify-between">
+                        <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Type:</span>
+                        <span className="font-semibold">{sub.vendor_type || 'STAFFING_AGENCY'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Payment Terms:</span>
+                        <span className="font-mono font-semibold">{sub.payment_terms || 'NET_30'} ({sub.payment_method || 'ACH'})</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>Location:</span>
+                        <span className="font-semibold">{sub.city || 'San Jose'}, {sub.state || 'CA'}</span>
+                      </div>
+                    </div>
+
+                    <div className={`flex items-center justify-between pt-2 border-t ${isDarkMode ? 'border-zinc-800/40' : 'border-slate-100'} text-xs`}>
+                      <span className="font-mono text-zinc-400">FEIN: {sub.fein_ein || 'Registered'}</span>
+                      <span className="flex items-center gap-1 font-semibold" style={{ color: activeHexColor }}>
+                        View Profile <ChevronRight className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           )}
+
+          {/* Vendors Pagination Controls */}
+          <div className={`mt-6 p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 transition-all shadow-sm ${
+            isDarkMode 
+              ? 'bg-[#131722]/95 border-zinc-800 text-zinc-300 shadow-zinc-950/40 backdrop-blur-sm' 
+              : 'bg-white border-slate-200/90 text-slate-700 shadow-slate-100/80'
+          }`}>
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>
+                Showing <strong className="font-bold text-current">{safeTotalCount > 0 ? fromRecord : 0}</strong> to{' '}
+                <strong className="font-bold text-current">{toRecord}</strong> of{' '}
+                <strong className="font-bold text-current">{safeTotalCount}</strong> vendors
+              </span>
+
+              <div className="flex items-center gap-2 ml-2">
+                <span className={`text-[11px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>Rows:</span>
+                <StunningSelect
+                  value={pageSize}
+                  onChange={(e) => handlePageSizeChange(e.target.value)}
+                  options={[
+                    { value: 10, label: '10' },
+                    { value: 20, label: '20' },
+                    { value: 50, label: '50' },
+                    { value: 100, label: '100' },
+                  ]}
+                  dropUp={true}
+                  className="w-22"
+                  buttonClassName="py-1 px-2.5 rounded-xl border text-xs font-semibold"
+                  activeHexColor={activeHexColor}
+                  isDarkMode={isDarkMode}
+                />
+              </div>
+            </div>
+
+            {/* Page buttons */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage <= 1 || loading}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                  currentPage <= 1 || loading
+                    ? 'opacity-40 cursor-not-allowed border-transparent'
+                    : isDarkMode
+                    ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                    : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                }`}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Previous</span>
+              </button>
+
+              <div className="flex items-center gap-1">
+                {getPageNumbers().map((pageNum) => {
+                  const isActive = pageNum === currentPage;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      disabled={loading}
+                      style={isActive ? { backgroundColor: activeHexColor, color: '#ffffff' } : {}}
+                      className={`min-w-[32px] h-8 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center ${
+                        isActive
+                          ? 'shadow-md scale-105'
+                          : isDarkMode
+                          ? 'bg-zinc-800/80 border border-zinc-700/80 hover:bg-zinc-700 text-zinc-300 hover:text-white'
+                          : 'bg-slate-50 border border-slate-200/90 hover:bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= safeTotalPages || loading}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                  currentPage >= safeTotalPages || loading
+                    ? 'opacity-40 cursor-not-allowed border-transparent'
+                    : isDarkMode
+                    ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                    : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                }`}
+              >
+                <span>Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {/* --- TAB 2: 1099 PLACEMENTS --- */}
       {FEATURES.SUBCONTRACTOR_PLACEMENTS && activeTab === 'placements' && (
-        <div className="space-y-6">
+        <div className="space-y-6" id="placements-list-container">
           <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
@@ -1045,6 +1374,46 @@ export default function Subcontractor() {
             </div>
           </div>
 
+          {/* Placements Filters */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2.5 flex-1 max-w-2xl">
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border flex-1 min-w-[220px] ${
+                isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-200' : 'bg-white border-slate-200 text-slate-800 shadow-sm'
+              }`}>
+                <Search className={`w-4 h-4 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
+                <input
+                  type="text"
+                  placeholder="Search placements by talent name, role, client..."
+                  value={placementSearch}
+                  onChange={(e) => setPlacementSearch(e.target.value)}
+                  className="bg-transparent border-none outline-none text-xs w-full"
+                />
+                {placementSearch && (
+                  <button onClick={() => setPlacementSearch('')} className="text-xs text-zinc-500 hover:text-zinc-300">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <select
+                value={placementStatusFilter}
+                onChange={(e) => setPlacementStatusFilter(e.target.value)}
+                className={`px-3 py-2 rounded-xl border text-xs font-medium outline-none ${
+                  isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-200' : 'bg-white border-slate-200 text-slate-700 shadow-sm'
+                }`}
+              >
+                <option value="ALL">All Placement Statuses</option>
+                <option value="Active">Active</option>
+                <option value="Completed">Completed</option>
+                <option value="Terminated">Terminated</option>
+              </select>
+            </div>
+
+            <div className={`text-xs font-medium ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+              Showing {safePlacementsCount > 0 ? `${placementFromRecord}-${placementToRecord}` : 0} of {safePlacementsCount} placements
+            </div>
+          </div>
+
           <div className={`rounded-2xl border overflow-hidden ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
@@ -1062,15 +1431,15 @@ export default function Subcontractor() {
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${isDarkMode ? 'divide-zinc-800/60' : 'divide-slate-100'}`}>
-                  {(placements || []).length === 0 ? (
+                  {filteredPlacements.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-12 text-center text-zinc-500">
                         <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                        No 1099 candidate placements found.
+                        No 1099 candidate placements match filter criteria.
                       </td>
                     </tr>
                   ) : (
-                    (placements || []).map((pl) => {
+                    paginatedPlacements.map((pl) => {
                       const pay = parseFloat(pl.pay_rate || 0);
                       const bill = parseFloat(pl.bill_rate || 0);
                       const margin = bill > 0 ? (((bill - pay) / bill) * 100).toFixed(1) : '0';
@@ -1105,12 +1474,102 @@ export default function Subcontractor() {
               </table>
             </div>
           </div>
+
+          {/* Placements Pagination Controls */}
+          <div className={`mt-6 p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 transition-all shadow-sm ${
+            isDarkMode 
+              ? 'bg-[#131722]/95 border-zinc-800 text-zinc-300 shadow-zinc-950/40 backdrop-blur-sm' 
+              : 'bg-white border-slate-200/90 text-slate-700 shadow-slate-100/80'
+          }`}>
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>
+                Showing <strong className="font-bold text-current">{safePlacementsCount > 0 ? placementFromRecord : 0}</strong> to{' '}
+                <strong className="font-bold text-current">{placementToRecord}</strong> of{' '}
+                <strong className="font-bold text-current">{safePlacementsCount}</strong> placements
+              </span>
+
+              <div className="flex items-center gap-2 ml-2">
+                <span className={`text-[11px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>Rows:</span>
+                <StunningSelect
+                  value={placementPageSize}
+                  onChange={(e) => handlePlacementPageSizeChange(e.target.value)}
+                  options={[
+                    { value: 10, label: '10' },
+                    { value: 20, label: '20' },
+                    { value: 50, label: '50' },
+                    { value: 100, label: '100' },
+                  ]}
+                  dropUp={true}
+                  className="w-22"
+                  buttonClassName="py-1 px-2.5 rounded-xl border text-xs font-semibold"
+                  activeHexColor={activeHexColor}
+                  isDarkMode={isDarkMode}
+                />
+              </div>
+            </div>
+
+            {/* Page buttons */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => handlePlacementPageChange(placementCurrentPage - 1)}
+                disabled={placementCurrentPage <= 1 || loading}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                  placementCurrentPage <= 1 || loading
+                    ? 'opacity-40 cursor-not-allowed border-transparent'
+                    : isDarkMode
+                    ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                    : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                }`}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Previous</span>
+              </button>
+
+              <div className="flex items-center gap-1">
+                {getPlacementPageNumbers().map((pageNum) => {
+                  const isActive = pageNum === placementCurrentPage;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePlacementPageChange(pageNum)}
+                      disabled={loading}
+                      style={isActive ? { backgroundColor: activeHexColor, color: '#ffffff' } : {}}
+                      className={`min-w-[32px] h-8 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center ${
+                        isActive
+                          ? 'shadow-md scale-105'
+                          : isDarkMode
+                          ? 'bg-zinc-800/80 border border-zinc-700/80 hover:bg-zinc-700 text-zinc-300 hover:text-white'
+                          : 'bg-slate-50 border border-slate-200/90 hover:bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => handlePlacementPageChange(placementCurrentPage + 1)}
+                disabled={placementCurrentPage >= placementTotalPages || loading}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                  placementCurrentPage >= placementTotalPages || loading
+                    ? 'opacity-40 cursor-not-allowed border-transparent'
+                    : isDarkMode
+                    ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                    : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                }`}
+              >
+                <span>Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {/* --- TAB 3: INVOICES & REMITTANCES --- */}
       {FEATURES.SUBCONTRACTOR_INVOICES && activeTab === 'invoices' && (
-        <div className="space-y-6">
+        <div className="space-y-6" id="invoices-list-container">
           <div className={`p-5 rounded-2xl border ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
@@ -1132,6 +1591,47 @@ export default function Subcontractor() {
             </div>
           </div>
 
+          {/* Invoices Filters */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2.5 flex-1 max-w-2xl">
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border flex-1 min-w-[220px] ${
+                isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-200' : 'bg-white border-slate-200 text-slate-800 shadow-sm'
+              }`}>
+                <Search className={`w-4 h-4 ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`} />
+                <input
+                  type="text"
+                  placeholder="Search invoices by invoice #, notes..."
+                  value={invoiceSearch}
+                  onChange={(e) => setInvoiceSearch(e.target.value)}
+                  className="bg-transparent border-none outline-none text-xs w-full"
+                />
+                {invoiceSearch && (
+                  <button onClick={() => setInvoiceSearch('')} className="text-xs text-zinc-500 hover:text-zinc-300">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <select
+                value={invoiceStatusFilter}
+                onChange={(e) => setInvoiceStatusFilter(e.target.value)}
+                className={`px-3 py-2 rounded-xl border text-xs font-medium outline-none ${
+                  isDarkMode ? 'bg-[#131722] border-zinc-800 text-zinc-200' : 'bg-white border-slate-200 text-slate-700 shadow-sm'
+                }`}
+              >
+                <option value="ALL">All Invoice Statuses</option>
+                <option value="SUBMITTED">Submitted</option>
+                <option value="APPROVED">Approved</option>
+                <option value="PAID">Paid</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+            </div>
+
+            <div className={`text-xs font-medium ${isDarkMode ? 'text-zinc-400' : 'text-slate-500'}`}>
+              Showing {safeInvoicesCount > 0 ? `${invoiceFromRecord}-${invoiceToRecord}` : 0} of {safeInvoicesCount} invoices
+            </div>
+          </div>
+
           <div className={`rounded-2xl border overflow-hidden ${isDarkMode ? 'bg-[#131722] border-zinc-800' : 'bg-white border-slate-100 shadow-sm'}`}>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
@@ -1149,15 +1649,15 @@ export default function Subcontractor() {
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${isDarkMode ? 'divide-zinc-800/60' : 'divide-slate-100'}`}>
-                  {(invoices || []).length === 0 ? (
+                  {filteredInvoices.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-12 text-center text-zinc-500">
                         <DollarSign className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                        No vendor invoices submitted yet.
+                        No vendor invoices match filter criteria.
                       </td>
                     </tr>
                   ) : (
-                    (invoices || []).map((inv) => (
+                    paginatedInvoices.map((inv) => (
                       <tr key={inv.id} className={isDarkMode ? 'hover:bg-zinc-800/30' : 'hover:bg-slate-50'}>
                         <td className="py-3.5 px-4 font-mono font-bold text-blue-500">{inv.invoice_number}</td>
                         <td className="py-3.5 px-4">{inv.invoice_date}</td>
@@ -1186,6 +1686,96 @@ export default function Subcontractor() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* Invoices Pagination Controls */}
+          <div className={`mt-6 p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 transition-all shadow-sm ${
+            isDarkMode 
+              ? 'bg-[#131722]/95 border-zinc-800 text-zinc-300 shadow-zinc-950/40 backdrop-blur-sm' 
+              : 'bg-white border-slate-200/90 text-slate-700 shadow-slate-100/80'
+          }`}>
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <span className={isDarkMode ? 'text-zinc-400' : 'text-slate-500'}>
+                Showing <strong className="font-bold text-current">{safeInvoicesCount > 0 ? invoiceFromRecord : 0}</strong> to{' '}
+                <strong className="font-bold text-current">{invoiceToRecord}</strong> of{' '}
+                <strong className="font-bold text-current">{safeInvoicesCount}</strong> invoices
+              </span>
+
+              <div className="flex items-center gap-2 ml-2">
+                <span className={`text-[11px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-zinc-500' : 'text-slate-400'}`}>Rows:</span>
+                <StunningSelect
+                  value={invoicePageSize}
+                  onChange={(e) => handleInvoicePageSizeChange(e.target.value)}
+                  options={[
+                    { value: 10, label: '10' },
+                    { value: 20, label: '20' },
+                    { value: 50, label: '50' },
+                    { value: 100, label: '100' },
+                  ]}
+                  dropUp={true}
+                  className="w-22"
+                  buttonClassName="py-1 px-2.5 rounded-xl border text-xs font-semibold"
+                  activeHexColor={activeHexColor}
+                  isDarkMode={isDarkMode}
+                />
+              </div>
+            </div>
+
+            {/* Page buttons */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => handleInvoicePageChange(invoiceCurrentPage - 1)}
+                disabled={invoiceCurrentPage <= 1 || loading}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                  invoiceCurrentPage <= 1 || loading
+                    ? 'opacity-40 cursor-not-allowed border-transparent'
+                    : isDarkMode
+                    ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                    : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                }`}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Previous</span>
+              </button>
+
+              <div className="flex items-center gap-1">
+                {getInvoicePageNumbers().map((pageNum) => {
+                  const isActive = pageNum === invoiceCurrentPage;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handleInvoicePageChange(pageNum)}
+                      disabled={loading}
+                      style={isActive ? { backgroundColor: activeHexColor, color: '#ffffff' } : {}}
+                      className={`min-w-[32px] h-8 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center ${
+                        isActive
+                          ? 'shadow-md scale-105'
+                          : isDarkMode
+                          ? 'bg-zinc-800/80 border border-zinc-700/80 hover:bg-zinc-700 text-zinc-300 hover:text-white'
+                          : 'bg-slate-50 border border-slate-200/90 hover:bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => handleInvoicePageChange(invoiceCurrentPage + 1)}
+                disabled={invoiceCurrentPage >= invoiceTotalPages || loading}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                  invoiceCurrentPage >= invoiceTotalPages || loading
+                    ? 'opacity-40 cursor-not-allowed border-transparent'
+                    : isDarkMode
+                    ? 'bg-zinc-800/80 border-zinc-700/80 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-200 shadow-sm'
+                    : 'bg-slate-50 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300 text-slate-700 shadow-sm'
+                }`}
+              >
+                <span>Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         </div>
